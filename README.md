@@ -103,7 +103,7 @@ This project is licensed under **CC BY-NC-SA 4.0**:
 * ✅ Free to use and modify
 * 🔗 Must credit the original creator (**Lakunake**)
 * ❌ Commercial use is **not allowed**
-* ♻️ Must share any changes as open source **if distributed or hosted publicly**
+* ♻️ Must share any changes with the same license **if distributed or hosted publicly**
 
 See [LICENSE](LICENSE) for more details.
 
