@@ -2,34 +2,10 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-// Read and parse config file
-function readConfig() {
-  const configPath = path.join(__dirname, 'config.txt');
-  const configData = fs.readFileSync(configPath, 'utf8');
-  const config = {};
-  
-  configData.split('\n').forEach(line => {
-    line = line.trim();
-    if (line && !line.startsWith('#')) {
-      const [key, value] = line.split(':').map(part => part.trim());
-      config[key] = value;
-    }
-  });
-  
-  return config;
-}
-
-const config = readConfig();
-
-// Use config values
-const PORT = parseInt(config.port) || 3000;
-const SKIP_SECONDS = parseInt(config.skip_seconds) || 5;
-const VOLUME_STEP = parseInt(config.volume_step) || 5;
 
 // Serve static and video files
 app.use(express.static(__dirname));
@@ -48,11 +24,6 @@ io.on('connection', (socket) => {
 
   // Send current state to new client
   socket.emit('sync', videoState);
-  // Send config values to client
-  socket.emit('config', {
-    skipSeconds: SKIP_SECONDS,
-    volumeStep: VOLUME_STEP / 100 // Convert percentage to decimal
-  });
   
   // Listen for control events from clients
   socket.on('control', (data) => {
@@ -84,4 +55,5 @@ io.on('connection', (socket) => {
 });
 
 // Server listening on port 3000
+const PORT = 3000;
 server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
