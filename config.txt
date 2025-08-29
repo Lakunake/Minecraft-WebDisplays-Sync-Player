@@ -3,7 +3,7 @@
 # Lines starting with # are comments
 
 # Number of expected clients (1-50)
-max_clients: 1
+max_clients: 3
 
 # Video file name in videos folder (include extension)
 video_file: filmeva.mp4
