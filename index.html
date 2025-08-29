@@ -41,17 +41,10 @@
     const video = document.getElementById('video');
     const statusEl = document.getElementById('status');
     const socket = io();
-// Get config from server
-socket.on('config', (config) => {
-  skipSeconds = config.skipSeconds || 5;
-  volumeStep = config.volumeStep || 0.05;
-});
     
     // State variables
     let lastUpdate = 0;
     let uiTimeout = null;
-let skipSeconds = 5; // Default value
-let volumeStep = 0.05; // Default value (5%)
     
     // Initialize player
     video.currentTime = 1;
@@ -122,14 +115,14 @@ let volumeStep = 0.05; // Default value (5%)
       
       // Left edge: Rewind
       if (x <= edgeZone) {
-        video.currentTime = Math.max(0, video.currentTime - skipSeconds);
-        showTemporaryMessage(`↩ Rewind ${skipSeconds}s`);
+        video.currentTime = Math.max(0, video.currentTime - 5);
+        showTemporaryMessage("↩ Rewind 5s");
         sendControlEvent();
       } 
       // Right edge: Skip
       else if (x >= w - edgeZone) {
-        video.currentTime = Math.min(video.duration, video.currentTime + skipSeconds);
-        showTemporaryMessage(`↪ Skip ${skipSeconds}s`);
+        video.currentTime = Math.min(video.duration, video.currentTime + 5);
+        showTemporaryMessage("↪ Skip 5s");
         sendControlEvent();
       }
       // Center: Play/Pause
@@ -142,12 +135,12 @@ let volumeStep = 0.05; // Default value (5%)
       }
       // Left half: Volume Down
       else if (x < center) {
-        video.volume = Math.max(0, video.volume - volumeStep);
+        video.volume = Math.max(0, video.volume - 0.05);
         showTemporaryMessage(`Volume: ${Math.round(video.volume * 100)}%`);
       }
       // Right half: Volume Up
       else {
-        video.volume = Math.min(1, video.volume + volumeStep);
+        video.volume = Math.min(1, video.volume + 0.05);
         showTemporaryMessage(`Volume: ${Math.round(video.volume * 100)}%`);
       }
     });
