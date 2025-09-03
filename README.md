@@ -1,6 +1,6 @@
 # WebDisplays-Video-Player
 
-THIS IS NO MOD, DATAPACK,PLUGIN OR RESOURCE PACK. THIS IS A STANDALONE COMPANION TOOL NODE.JS SERVER ENCHANCED WITH FFMPEG 
+THIS IS NO MOD, DATAPACK, PLUGIN OR RESOURCE PACK. THIS IS A STANDALONE COMPANION TOOL NODE.JS SERVER ENCHANCED WITH FFMPEG 
 
 A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using Node.js and Socket.IO. This project allows all players to view the same video in perfect sync—including play, pause, and seek actions—across connected clients.
 
