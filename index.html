@@ -53,8 +53,6 @@ socket.on('config', (config) => {
 let skipSeconds = 5; // Default value
 let volumeStep = 0.05; // Default value (5%)
     
-    // Initialize player
-    video.currentTime = 1;
     video.volume = 0.5;
     
     // UI functions
@@ -85,12 +83,17 @@ let volumeStep = 0.05; // Default value (5%)
       if (now - lastUpdate < 100) return;
       lastUpdate = now;
       
-      // Sync playback state
-      if (state.isPlaying && video.paused) {
-        video.play();
-      } else if (!state.isPlaying && !video.paused) {
-        video.pause();
-        showTemporaryMessage("Paused", 0);
+      // Always sync playback state with server
+      if (state.isPlaying !== !video.paused) {
+        if (state.isPlaying) {
+          video.play().catch(e => {
+            console.log('Playback error:', e);
+            showTemporaryMessage('Playback failed');
+          });
+        } else {
+          video.pause();
+          showTemporaryMessage("Paused", 0);
+        }
       }
       
       // Sync time position
@@ -162,4 +165,3 @@ let volumeStep = 0.05; // Default value (5%)
   </script>
 </body>
 </html>
-
