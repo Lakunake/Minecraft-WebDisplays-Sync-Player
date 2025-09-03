@@ -30,6 +30,7 @@ const config = readConfig();
 const PORT = parseInt(config.port) || 3000;
 const SKIP_SECONDS = parseInt(config.skip_seconds) || 5;
 const VOLUME_STEP = parseInt(config.volume_step) || 5;
+const START_TIME = parseInt(config.start_time) || 1;
 
 // Serve static and video files
 app.use(express.static(__dirname));
@@ -38,13 +39,13 @@ app.use('/videos', express.static(path.join(__dirname, 'videos')));
 // Store the current video state globally
 let videoState = {
   isPlaying: true,
-  currentTime: 1,
+  currentTime: START_TIME,
   lastUpdate: Date.now()
 };
 
 // Socket.io handling - FIXED SYNCHRONIZATION
 io.on('connection', (socket) => {
-  console.log('A user connected');
+  console.log('A user connected:', socket.id);
 
   // Send current state to new client
   socket.emit('sync', videoState);
@@ -63,25 +64,26 @@ io.on('connection', (socket) => {
       lastUpdate: Date.now()
     };
     
-    // Broadcast to all other clients except the sender
-    socket.broadcast.emit('sync', videoState);
+    // Broadcast to ALL clients including the sender
+    io.emit('sync', videoState);
+    console.log('Broadcasting sync to all clients:', videoState);
   });
 
   // Time synchronization
-  const syncInterval = setInterval(() => {
-    if (videoState.isPlaying) {
-      const now = Date.now();
-      const elapsed = (now - videoState.lastUpdate) / 1000;
-      videoState.currentTime += elapsed;
-      videoState.lastUpdate = now;
-    }
-  }, 5000);
-
   socket.on('disconnect', () => {
     console.log('A user disconnected');
-    clearInterval(syncInterval);
   });
 });
+
+// Global time synchronization interval
+const syncInterval = setInterval(() => {
+  if (videoState.isPlaying) {
+    const now = Date.now();
+    const elapsed = (now - videoState.lastUpdate) / 1000;
+    videoState.currentTime += elapsed;
+    videoState.lastUpdate = now;
+  }
+}, 5000);
 
 // Server listening on port 3000
 server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
