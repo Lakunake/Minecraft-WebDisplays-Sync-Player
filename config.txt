@@ -19,3 +19,6 @@ volume_step: 5
 
 # Rewind/Skip seconds (5-60)
 skip_seconds: 5
+
+# Start time in seconds (1-End Time in Seconds)
+start_time: 1
