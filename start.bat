@@ -65,6 +65,7 @@ set CHUNK_SIZE=10
 set PORT=3000
 set VOLUME_STEP=5
 set SKIP_SECONDS=10
+set START_TIME=1
 
 for /f "tokens=1,* delims=: " %%a in ('type config.txt ^| findstr /v "^#"') do (
     if "%%a"=="max_clients" set MAX_CLIENTS=%%b
@@ -73,6 +74,7 @@ for /f "tokens=1,* delims=: " %%a in ('type config.txt ^| findstr /v "^#"') do (
     if "%%a"=="port" set PORT=%%b
     if "%%a"=="volume_step" set VOLUME_STEP=%%b
     if "%%a"=="skip_seconds" set SKIP_SECONDS=%%b
+    if "%%a"=="start_time" set START_TIME=%%b
 )
 
 :: =================================================================
@@ -164,4 +166,4 @@ echo - This computer: http://localhost:%PORT%
 echo - Your network: http://%LOCAL_IP%:%PORT%
 echo.
 echo Starting Server...
-node server.js %MAX_CLIENTS% %CHUNK_SIZE% %PORT% %VOLUME_STEP% %SKIP_SECONDS% "%VIDEO_FILE%"
+node server.js %MAX_CLIENTS% %CHUNK_SIZE% %PORT% %VOLUME_STEP% %SKIP_SECONDS% "%VIDEO_FILE%" %START_TIME%
