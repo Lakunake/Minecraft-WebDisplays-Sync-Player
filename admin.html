@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Control Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #2c3e50; color: #ecf0f1; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; background: #34495e; border-radius: 8px; padding: 20px; }
+    h1, h2 { text-align: center; margin-bottom: 20px; color: #3498db; }
+    .section { margin-bottom: 30px; padding: 20px; background: #2c3e50; border-radius: 5px; }
+    
+    /* File browser */
+    .file-browser { max-height: 300px; overflow-y: auto; margin-bottom: 20px; }
+    .file-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #34495e; }
+    .file-item:hover { background: #34495e; }
+    .file-actions button { margin-left: 10px; padding: 5px 10px; background: #3498db; border: none; border-radius: 3px; color: white; cursor: pointer; }
+    
+    /* Playlist */
+    .playlist { max-height: 300px; overflow-y: auto; margin-bottom: 20px; }
+    .playlist-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #34495e; }
+    .playlist-item.main { background: #27ae60; }
+    .playlist-actions { display: flex; gap: 10px; }
+    
+    /* Controls */
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
+    .control-btn { padding: 10px 20px; background: #3498db; border: none; border-radius: 5px; color: white; cursor: pointer; font-size: 16px; }
+    .control-btn:hover { background: #2980b9; }
+    .control-btn:active { transform: scale(0.98); }
+    
+    /* Forms */
+    input[type="number"] { padding: 8px; border: 1px solid #34495e; border-radius: 4px; width: 80px; }
+    
+    /* Status */
+    .status { text-align: center; padding: 10px; margin-top: 20px; background: #16a085; border-radius: 4px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Video Sync Admin Panel</h1>
+    
+    <div id="setup-section" class="section">
+      <h2>Playlist Setup</h2>
+      
+      <div class="file-browser" id="file-browser">
+        <h3>Available Files</h3>
+        <!-- Files will be populated by JavaScript -->
+      </div>
+      
+      <div class="playlist" id="playlist-container">
+        <h3>Playlist</h3>
+        <!-- Playlist items will be populated by JavaScript -->
+      </div>
+      
+      <div class="controls">
+        <input type="number" id="start-time" placeholder="Start Time (seconds)" min="0">
+        <button class="control-btn" id="launch-btn">Launch Playlist</button>
+      </div>
+    </div>
+    
+    <div id="remote-section" class="section" style="display: none;">
+      <h2>Remote Control</h2>
+      
+      <div class="controls">
+        <button class="control-btn" id="play-pause-btn">Play/Pause</button>
+        <button class="control-btn" id="skip-back-btn">↩ <span id="skip-back-text">5s</span></button>
+        <button class="control-btn" id="skip-forward-btn">↪ <span id="skip-forward-text">5s</span></button>
+        <input type="number" id="seek-time" placeholder="Time (s)" min="0">
+        <button class="control-btn" id="seek-btn">Seek</button>
+      </div>
+      
+      <div class="status" id="status-message"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let playlist = [];
+    let mainVideoIndex = -1;
+    let skipSeconds = 5;
+
+    // Fetch available files from server
+    async function loadFiles() {
+      try {
+        const response = await fetch('/api/files');
+        const files = await response.json();
+        displayFiles(files);
+      } catch (error) {
+        console.error('Error loading files:', error);
+      }
+    }
+
+    // Display files in the file browser
+    function displayFiles(files) {
+      const fileBrowser = document.getElementById('file-browser');
+      fileBrowser.innerHTML = '<h3>Available Files</h3>';
+      
+      files.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+          <span>${file}</span>
+          <div class="file-actions">
+            <button onclick="addToPlaylist('${file}')">Add to Playlist</button>
+          </div>
+        `;
+        fileBrowser.appendChild(fileItem);
+      });
+    }
+
+    // Add a file to the playlist
+    function addToPlaylist(filename) {
+      if (!playlist.some(item => item.filename === filename)) {
+        playlist.push({ filename, isMain: false });
+        updatePlaylistDisplay();
+      }
+    }
+
+    // Remove a file from the playlist
+    function removeFromPlaylist(index) {
+      playlist.splice(index, 1);
+      if (mainVideoIndex === index) {
+        mainVideoIndex = -1;
+      } else if (mainVideoIndex > index) {
+        mainVideoIndex--;
+      }
+      updatePlaylistDisplay();
+    }
+
+    // Set a video as the main video
+    function setAsMain(index) {
+      mainVideoIndex = index;
+      updatePlaylistDisplay();
+    }
+
+    // Update the playlist display
+    function updatePlaylistDisplay() {
+      const playlistContainer = document.getElementById('playlist-container');
+      playlistContainer.innerHTML = '<h3>Playlist</h3>';
+      
+      if (playlist.length === 0) {
+        playlistContainer.innerHTML += '<p>No files in playlist</p>';
+        return;
+      }
+      
+      playlist.forEach((item, index) => {
+        const playlistItem = document.createElement('div');
+        playlistItem.className = `playlist-item ${index === mainVideoIndex ? 'main' : ''}`;
+        playlistItem.innerHTML = `
+          <span>${item.filename} ${index === mainVideoIndex ? '(Main)' : ''}</span>
+          <div class="playlist-actions">
+            ${index !== mainVideoIndex ? 
+              `<button onclick="setAsMain(${index})">Set as Main</button>` : ''}
+            <button onclick="removeFromPlaylist(${index})">Remove</button>
+          </div>
+        `;
+        playlistContainer.appendChild(playlistItem);
+      });
+    }
+
+    // Launch the playlist
+    function launchPlaylist() {
+      if (playlist.length === 0) {
+        showStatus('Playlist is empty!', 'error');
+        return;
+      }
+      
+      if (mainVideoIndex === -1) {
+        showStatus('Please select a main video!', 'error');
+        return;
+      }
+      
+      const startTime = document.getElementById('start-time').value || 0;
+      
+      // Send playlist to server
+      socket.emit('set-playlist', {
+        playlist,
+        mainVideoIndex: parseInt(mainVideoIndex),
+        startTime: parseFloat(startTime)
+      });
+      
+      // Switch to remote view
+      document.getElementById('setup-section').style.display = 'none';
+      document.getElementById('remote-section').style.display = 'block';
+      
+      showStatus('Playlist launched successfully!', 'success');
+    }
+
+    // Show status message
+    function showStatus(message, type) {
+      const statusEl = document.getElementById('status-message');
+      statusEl.textContent = message;
+      statusEl.style.display = 'block';
+      statusEl.style.background = type === 'error' ? '#e74c3c' : '#16a085';
+      
+      setTimeout(() => {
+        statusEl.style.display = 'none';
+      }, 3000);
+    }
+
+    // Remote control functions
+    function playPause() {
+      socket.emit('control', { action: 'playpause' });
+    }
+
+    function skipBack() {
+      socket.emit('control', { action: 'skip', direction: 'back', seconds: skipSeconds });
+    }
+
+    function skipForward() {
+      socket.emit('control', { action: 'skip', direction: 'forward', seconds: skipSeconds });
+    }
+
+    function seekTo() {
+      const time = document.getElementById('seek-time').value;
+      if (time) {
+        socket.emit('control', { action: 'seek', time: parseFloat(time) });
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadFiles();
+      
+      // Setup event listeners
+      document.getElementById('launch-btn').addEventListener('click', launchPlaylist);
+      document.getElementById('play-pause-btn').addEventListener('click', playPause);
+      document.getElementById('skip-back-btn').addEventListener('click', skipBack);
+      document.getElementById('skip-forward-btn').addEventListener('click', skipForward);
+      document.getElementById('seek-btn').addEventListener('click', seekTo);
+      
+      // Get config for skip seconds
+      socket.emit('get-config');
+    });
+
+    // Handle config from server
+    socket.on('config', (config) => {
+      skipSeconds = config.skipSeconds || 5;
+      document.getElementById('skip-back-text').textContent = `${skipSeconds}s`;
+      document.getElementById('skip-forward-text').textContent = `${skipSeconds}s`;
+    });
+
+    // Handle playlist confirmation
+    socket.on('playlist-set', () => {
+      showStatus('Playlist updated on server', 'success');
+    });
+  </script>
+</body>
+</html>
