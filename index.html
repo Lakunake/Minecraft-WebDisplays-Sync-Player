@@ -5,7 +5,7 @@
   <title>Synced Video</title>
   <style>
     html, body { margin:0; padding:0; background:black; height:100%; overflow:hidden; }
-    video { width:100%; height:100%; background:black; }
+    video { width:100%; height:100%; background:black; display: none; }
     video::-webkit-media-controls,
     video::-moz-media-controls { display:none!important; }
     #status {
@@ -27,6 +27,20 @@
     #status.visible {
       opacity: 1;
     }
+    #waiting-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 24px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      z-index: 90;
+      background: rgba(0,0,0,0.7);
+      padding: 20px 40px;
+      border-radius: 10px;
+    }
   </style>
 </head>
 <body>
@@ -35,6 +49,7 @@
   </video>
   
   <div id="status">Paused</div>
+  <div id="waiting-message">Waiting for admin to launch playlist...</div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -48,12 +63,18 @@ socket.on('config', (config) => {
 });
     
     // State variables
+    let currentPlaylist = { videos: [], currentIndex: 0 };
+    let mainVideoStartTime = 0;
     let lastUpdate = 0;
     let uiTimeout = null;
-let skipSeconds = 5; // Default value
-let volumeStep = 0.05; // Default value (5%)
+    let skipSeconds = 5; // Default value
+    let volumeStep = 0.05; // Default value (5%)
     
     video.volume = 0.5;
+    
+    // Initially show waiting message and hide video
+    document.getElementById('waiting-message').style.display = 'block';
+    document.getElementById('video').style.display = 'none';
     
     // UI functions
     function showTemporaryMessage(message, duration = 2000) {
@@ -77,6 +98,70 @@ let volumeStep = 0.05; // Default value (5%)
     }
     
     // Handle server sync events
+    // Handle playlist updates from server
+    socket.on('playlist-update', (playlist) => {
+      // Hide waiting message and show video
+      document.getElementById('waiting-message').style.display = 'none';
+      document.getElementById('video').style.display = 'block';
+      
+      currentPlaylist = playlist;
+      mainVideoStartTime = playlist.mainVideoStartTime || 0;
+      
+      // If this is the main video, set the start time
+      if (currentPlaylist.currentIndex === currentPlaylist.mainVideoIndex) {
+        video.currentTime = mainVideoStartTime;
+      }
+      
+      // Load the current video
+      if (currentPlaylist.videos.length > 0) {
+        const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
+        video.src = `/videos/${currentVideo.filename}`;
+        video.load();
+        
+        if (!video.paused) {
+          video.play().catch(e => {
+            console.log('Playback error:', e);
+          });
+        }
+      }
+    });
+
+    // Handle playlist position updates from server
+    socket.on('playlist-position', (index) => {
+      // Hide waiting message and show video if it's still showing
+      document.getElementById('waiting-message').style.display = 'none';
+      document.getElementById('video').style.display = 'block';
+      
+      currentPlaylist.currentIndex = index;
+      
+      if (currentPlaylist.videos.length > 0) {
+        const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
+        video.src = `/videos/${currentVideo.filename}`;
+        video.load();
+        
+        // If this is the main video, set the start time
+        if (currentPlaylist.currentIndex === currentPlaylist.mainVideoIndex) {
+          video.currentTime = mainVideoStartTime;
+        }
+        
+        if (!video.paused) {
+          video.play().catch(e => {
+            console.log('Playback error:', e);
+          });
+        }
+      }
+    });
+
+    // Handle video ending and move to next in playlist
+    video.addEventListener('ended', () => {
+      if (currentPlaylist.videos.length > 0) {
+        // Move to next video in playlist
+        const nextIndex = (currentPlaylist.currentIndex + 1) % currentPlaylist.videos.length;
+        
+        // Notify server to update playlist position
+        socket.emit('playlist-next', nextIndex);
+      }
+    });
     socket.on('sync', (state) => {
       // Prevent feedback loops
       const now = Date.now();
