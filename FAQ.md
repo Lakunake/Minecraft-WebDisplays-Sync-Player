@@ -5,7 +5,7 @@ Main videos are usually videos big in size or quality that tend to take long to 
 Check if your video uses H.265/HEVC codecs. Chromium browsers do not support this. A quick way to check is if the video includes subtitles or multiple audio dubs.
 After, use either HandBrake or ffmpeg to convert your file to an mp4 encoded with H.264. Handbrake is the easy choice of two.
 
-**Does the software collect any personal data?**
+**Does the software collect any personal data?**           
 No. This software does not transmit usage information, track the files you open, or send data to third parties. 
 
 **My router doesn't support NAT loopback. What do I do?**  (thank you @xdcoelite)
