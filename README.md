@@ -2,7 +2,7 @@
 
 A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using Node.js and Socket.IO. This project allows all players to view the same video in perfect sync—including play, pause, and seek actions—across connected clients.
 
-> 🔗 GitHub Repo: [Lakunake/WebDisplays-Video-Player](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player)
+> Frequently Asked Questions: [FAQ](FAQ.md)
 
 ---
 
@@ -16,7 +16,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 
 ## 🎮 Features
 
-* 📺 Multi-format streaming (MP4, MP3)            ⚠️ NO AV1 AND HEVC CODEC
+* 📺 Multi-format streaming (MP4, MP3)            ⚠️ NO H.265 AND HEVC CODECS
 * ✨ High Quality streaming with FFmpeg optimization
 * 🎵 Playlist support with sequential playback
 * 👨‍💼 Admin control panel for remote management
