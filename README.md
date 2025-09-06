@@ -58,7 +58,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 1. Run `start.bat` in your folder
 2. Make sure your selected port is open in your firewall/router
 3. Access the video player from devices at the provided links
-4. Access admin panel at `http://your-ip:port/admin`
+4. Access admin panel at `http://your-ip:port/admin` and go to `http://your-ip:port` in minecraft
 
 ### 🌍 Option 2: Hamachi (Virtual LAN), Basic to setup. Hard if your friends know nothing about computers.
 
