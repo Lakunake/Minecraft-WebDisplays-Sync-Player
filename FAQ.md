@@ -1,3 +1,6 @@
+**How do I properly use the admin panel?**
+Open the admin panel on your default browser, chrome or safari for example, then launch your playlist, after you can freely watch the videos you want while using the admin panel through your default browser like a remote that overrides the other ones to ensure sync
+
 **What's a main video?**  
 Main videos are typically large or high-quality files that may take longer to load. Selecting one as the “main” video lets the player preload it in the background while smaller, faster videos are playing.
 
