@@ -1,5 +1,5 @@
 **What's a main video?**  
-Main videos are usually videos big in size or quality that tend to take long to download, select a video as main to make it preload while other small and optimized videos are playing.
+Main videos are usually videos big in size or quality that tend to take long to download, select a video as main to make it preload while other small and optimized videos are playing. Also check if your video file is renamed to filmeva.mp4 and is under the videos folder if you're on an older version of the software
 
 **My video doesn't load. What do I do?**  
 Check if your video uses H.265/HEVC codecs. Chromium browsers do not support this. A quick way to check is if the video includes subtitles or multiple audio dubs.
