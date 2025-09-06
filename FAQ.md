@@ -12,4 +12,4 @@ Edit your computer’s `hosts` file:
 
 Now accessing `yourdomain.ddns.net` will connect locally.
 
-For more help, visit [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) or email **johnwebdisplays@gmail.com**.
+Your Question isn't here? Then visit [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) or email **johnwebdisplays@gmail.com**.
