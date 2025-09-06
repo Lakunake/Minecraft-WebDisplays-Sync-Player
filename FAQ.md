@@ -8,6 +8,9 @@ Main videos are typically large or high-quality files that may take longer to lo
 Check if your video uses H.265/HEVC codecs. Chromium browsers do not support this. To check your file, you can use a tool like MediaInfo
  or check its properties in your OS. After, use either HandBrake or ffmpeg to convert your file to an mp4 encoded with H.264. Handbrake is the easy choice of two. Also check if your video file is renamed to filmeva.mp4 and is under the videos folder if you're on an older version of the software
 
+**Can I use this outside of Minecraft and on normal browsers?**
+Althought it is originally designed for the WebDisplays mod, it should have *ALMOST* no problems doing that.(Mod's custom browser lets me do some things general browsers wont allow)
+
 **Does the software collect any personal data?**           
 No. This software does not transmit usage information, track the files you open, or send data to third parties. 
 
