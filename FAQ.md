@@ -6,7 +6,6 @@ Check if your video uses H.265/HEVC codecs. Chromium browsers do not support thi
 After, use either HandBrake or ffmpeg to convert your file to an mp4 encoded with H.264. Handbrake is the easy choice of two.
 
 **Does the software collect any personal data?**
-
 No. This software does not transmit usage information, track the files you open, or send data to third parties. 
 
 **My router doesn't support NAT loopback. What do I do?**  (thank you @xdcoelite)
