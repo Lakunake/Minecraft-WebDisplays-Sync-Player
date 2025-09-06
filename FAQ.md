@@ -8,7 +8,7 @@ After, use either HandBrake or ffmpeg to convert your file to an mp4 encoded wit
 **Does the software collect any personal data?**           
 No. This software does not transmit usage information, track the files you open, or send data to third parties. 
 
-**My router doesn't support NAT loopback. What do I do?**  (thank you @xdcoelite)
+**My router doesn't support NAT loopback, I can't see the stream. What do I do?**  (thank you @xdcoelite)
 
 Edit your computer’s `hosts` file:  
 1. Go to `C:\Windows\System32\drivers\etc`  
