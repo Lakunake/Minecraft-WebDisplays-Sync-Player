@@ -1,3 +1,6 @@
+**What's a main video?**  
+Main videos are usually videos big in size or quality that tend to take long to download, select a video as main to make it preload while other small and optimized videos are playing.
+
 **My video doesn't load. What do I do?**  
 Check if your video uses H.265/HEVC codecs. Chromium browsers do not support this. A quick way to check is if the video includes subtitles or multiple audio dubs.
 After, use either HandBrake or ffmpeg to convert your file to an mp4 encoded with H.264. Handbrake is the easy choice of two.
