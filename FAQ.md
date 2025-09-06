@@ -1,16 +1,16 @@
 **What's a main video?**  
-Main videos are usually videos big in size or quality that tend to take long to download, select a video as main to make it preload while other small and optimized videos are playing. Also check if your video file is renamed to filmeva.mp4 and is under the videos folder if you're on an older version of the software
+Main videos are typically large or high-quality files that may take longer to load. Selecting one as the “main” video lets the player preload it in the background while smaller, faster videos are playing.
 
 **My video doesn't load. What do I do?**  
-Check if your video uses H.265/HEVC codecs. Chromium browsers do not support this. A quick way to check is if the video includes subtitles or multiple audio dubs.
-After, use either HandBrake or ffmpeg to convert your file to an mp4 encoded with H.264. Handbrake is the easy choice of two.
+Check if your video uses H.265/HEVC codecs. Chromium browsers do not support this. To check your file, you can use a tool like MediaInfo
+ or check its properties in your OS. After, use either HandBrake or ffmpeg to convert your file to an mp4 encoded with H.264. Handbrake is the easy choice of two. Also check if your video file is renamed to filmeva.mp4 and is under the videos folder if you're on an older version of the software
 
 **Does the software collect any personal data?**           
 No. This software does not transmit usage information, track the files you open, or send data to third parties. 
 
 **My router doesn't support NAT loopback, I can't see the stream. What do I do?**  (thank you @xdcoelite)
 
-Edit your computer’s `hosts` file:  
+Edit your computer’s `hosts` file:     
 1. Go to `C:\Windows\System32\drivers\etc`  
 2. Open `hosts` as Administrator.  
 3. Add:  
@@ -19,4 +19,6 @@ Edit your computer’s `hosts` file:
 
 Now accessing `yourdomain.ddns.net` will connect locally.
 
-Your Question isn't here? Then visit [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) or email **johnwebdisplays@gmail.com**.
+⚠️ Editing your hosts file can affect how your system resolves domains. Only make changes if you’re comfortable, and double-check the entries.
+
+Your Question isn't here? Then visit [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) or email **johnwebdisplays [at] gmail [dot] com**.
