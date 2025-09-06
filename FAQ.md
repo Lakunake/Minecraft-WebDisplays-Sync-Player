@@ -14,4 +14,4 @@ Add this line at the bottom:
 
 Now, accessing yourdomain.ddns.net on that PC will connect locally instead of trying to use the public IP.
 
-Please go to 
+Please go to [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) if you have any more questions or email me at johnwebdisplays@gmail.com
