@@ -1,5 +1,6 @@
 **My video doesn't load. What do I do?**  
 Check if your video uses H.265/HEVC codecs. Chromium browsers do not support this. A quick way to check is if the video includes subtitles or multiple audio dubs.
+After, use either HandBrake or ffmpeg to convert your file to an mp4 encoded with H.264. Handbrake is the easy choice of two.
 
 **My router doesn't support NAT loopback. What do I do?**  (thank you @xdcoelite)
 Edit your computer’s `hosts` file:  
