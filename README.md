@@ -75,7 +75,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 4. Set start command: `node server.js`
 5. Deploy and access your video player via the provided URL
 
-Congratulations if you managed to deploy it successfully using 
+> Congratulations if you managed to deploy it successfully using Cloud Hosting...
 ---
 
 ## 📁 File Structure
@@ -119,14 +119,6 @@ This project is licensed under **CC BY-NC-SA 4.0**:
 * ♻️ Must share any changes with the same license **if distributed or hosted publicly**
 
 See [LICENSE](LICENSE) for more details.
-
----
-
-## 🗺️ Version History
-
-- **v1.4.2**: Admin panel, playlist support, multi-format videos
-- **v1.3.4**: FFmpeg integration, high quality streaming
-- **v1.0**: Initial release with basic synchronization
 
 ---
 
