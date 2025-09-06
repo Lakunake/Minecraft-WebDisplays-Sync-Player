@@ -1,17 +1,14 @@
-My video Doesnt load what do i do?
+**My video doesn't load. What do I do?**  
+Check if your video uses H.265/HEVC codecs. Chromium browsers do not support this. A quick way to check is if the video includes subtitles or multiple audio dubs.
 
-Check if your video is using h.265 or hevc codecs. Chromium browsers don't support that(unless i sacrifice my soul and code it)  Best way to check for this is checking if the video includes subtitles or Dubs
+**My router doesn't support NAT loopback. What do I do?**  (thank you @xdcoelite)
+Edit your computer’s `hosts` file:  
+1. Go to `C:\Windows\System32\drivers\etc`  
+2. Open `hosts` as Administrator.  
+3. Add:  
+   `192.168.x.x yourdomain.ddns.net`  
+   (Replace with your PC’s local IP and your public hostname.)  
 
-My Router Does not support NAT loopback. What do i do?   (thank you @xdcoelite)
+Now accessing `yourdomain.ddns.net` will connect locally.
 
-Edit your computer's hosts file to bypass the public IP.
-Go to C:\Windows\System32\drivers\etc
-Open the hosts file as Administrator.
-
-Add this line at the bottom:
-192.168.x.x yourdomain.ddns.net
-(Replace 192.168.x.x with your PC's local IP and yourdomain.ddns.net with your public hostname)
-
-Now, accessing yourdomain.ddns.net on that PC will connect locally instead of trying to use the public IP.
-
-Please go to [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) if you have any more questions or email me at johnwebdisplays@gmail.com
+For more help, visit [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) or email **johnwebdisplays@gmail.com**.
