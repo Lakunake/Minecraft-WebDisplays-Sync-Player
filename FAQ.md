@@ -1,3 +1,11 @@
+**It just... does not work?**
+Open Command Prompt(CMD), and write these commands in order
+
+```cmd
+md (Your path to the code)
+npm install express@5.1.0
+npm install socket.io@4.8.1```
+
 **How do I properly use the admin panel?**
 Open the admin panel on your default browser, chrome or safari for example, then launch your playlist, after you can freely watch the videos you want while using the admin panel through your default browser like a remote that overrides the other ones to ensure sync
 
