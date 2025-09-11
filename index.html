@@ -41,12 +41,18 @@
       padding: 20px 40px;
       border-radius: 10px;
     }
+    #preload-video {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <video id="video" autoplay preload="auto">
-    <source src="/videos/filmeva.mp4" type="video/mp4">
+    <!-- Source will be set dynamically -->
   </video>
+  
+  <!-- Hidden video for preloading main video -->
+  <video id="preload-video" preload="auto"></video>
   
   <div id="status">Paused</div>
   <div id="waiting-message">Waiting for admin to launch playlist...</div>
@@ -54,16 +60,18 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const video = document.getElementById('video');
+    const preloadVideo = document.getElementById('preload-video');
     const statusEl = document.getElementById('status');
     const socket = io();
-// Get config from server
-socket.on('config', (config) => {
-  skipSeconds = config.skipSeconds || 5;
-  volumeStep = config.volumeStep || 0.05;
-});
+    
+    // Get config from server
+    socket.on('config', (config) => {
+      skipSeconds = config.skipSeconds || 5;
+      volumeStep = config.volumeStep || 0.05;
+    });
     
     // State variables
-    let currentPlaylist = { videos: [], currentIndex: 0 };
+    let currentPlaylist = { videos: [], currentIndex: 0, mainVideoIndex: -1 };
     let mainVideoStartTime = 0;
     let lastUpdate = 0;
     let uiTimeout = null;
@@ -71,6 +79,7 @@ socket.on('config', (config) => {
     let volumeStep = 0.05; // Default value (5%)
     
     video.volume = 0.5;
+    preloadVideo.volume = 0; // Mute preload video
     
     // Initially show waiting message and hide video
     document.getElementById('waiting-message').style.display = 'block';
@@ -97,58 +106,49 @@ socket.on('config', (config) => {
       });
     }
     
-    // Handle server sync events
-    // Handle playlist updates from server
+        // Handle playlist updates from server
     socket.on('playlist-update', (playlist) => {
-      // Hide waiting message and show video
-      document.getElementById('waiting-message').style.display = 'none';
-      document.getElementById('video').style.display = 'block';
-      
       currentPlaylist = playlist;
       mainVideoStartTime = playlist.mainVideoStartTime || 0;
       
-      // If this is the main video, set the start time
-      if (currentPlaylist.currentIndex === currentPlaylist.mainVideoIndex) {
-        video.currentTime = mainVideoStartTime;
+      // Preload main video if specified
+      if (playlist.mainVideoIndex >= 0 && playlist.videos.length > playlist.mainVideoIndex) {
+        const mainVideo = playlist.videos[playlist.mainVideoIndex];
+        preloadVideo.src = `/videos/${mainVideo.filename}`;
+        preloadVideo.load();
+        console.log('Preloading main video:', mainVideo.filename);
       }
       
-      // Load the current video
-      if (currentPlaylist.videos.length > 0) {
-        const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
-        video.src = `/videos/${currentVideo.filename}`;
-        video.load();
+      // Only hide waiting message if we have videos to play
+      if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
+        // Hide waiting message and show video
+        document.getElementById('waiting-message').style.display = 'none';
+        document.getElementById('video').style.display = 'block';
         
-        if (!video.paused) {
-          video.play().catch(e => {
-            console.log('Playback error:', e);
-          });
-        }
+        // Load the current video
+        loadCurrentVideo();
+      } else {
+        // Show waiting message if no videos available
+        document.getElementById('waiting-message').style.display = 'block';
+        document.getElementById('video').style.display = 'none';
       }
     });
 
-    // Handle playlist position updates from server
+       // Handle playlist position updates from server
     socket.on('playlist-position', (index) => {
-      // Hide waiting message and show video if it's still showing
-      document.getElementById('waiting-message').style.display = 'none';
-      document.getElementById('video').style.display = 'block';
-      
       currentPlaylist.currentIndex = index;
       
-      if (currentPlaylist.videos.length > 0) {
-        const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
-        video.src = `/videos/${currentVideo.filename}`;
-        video.load();
+      // Only proceed if we have videos
+      if (currentPlaylist.videos.length > 0 && index >= 0) {
+        // Hide waiting message if it's still showing
+        document.getElementById('waiting-message').style.display = 'none';
+        document.getElementById('video').style.display = 'block';
         
-        // If this is the main video, set the start time
-        if (currentPlaylist.currentIndex === currentPlaylist.mainVideoIndex) {
-          video.currentTime = mainVideoStartTime;
-        }
-        
-        if (!video.paused) {
-          video.play().catch(e => {
-            console.log('Playback error:', e);
-          });
-        }
+        loadCurrentVideo();
+      } else {
+        // Show waiting message if no videos
+        document.getElementById('waiting-message').style.display = 'block';
+        document.getElementById('video').style.display = 'none';
       }
     });
 
@@ -162,13 +162,55 @@ socket.on('config', (config) => {
         socket.emit('playlist-next', nextIndex);
       }
     });
+
+    // Load the current video based on playlist position
+    function loadCurrentVideo() {
+      if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
+        // Show waiting message if no videos
+        document.getElementById('waiting-message').style.display = 'block';
+        document.getElementById('video').style.display = 'none';
+        return;
+      }
+      
+      const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
+      video.src = `/videos/${currentVideo.filename}`;
+      
+      // If this is the main video, set the start time
+      if (currentPlaylist.currentIndex === currentPlaylist.mainVideoIndex) {
+        video.currentTime = mainVideoStartTime;
+      } else {
+        video.currentTime = 0;
+      }
+      
+      video.load();
+      
+      video.onloadeddata = function() {
+        if (!video.paused) {
+          video.play().catch(e => {
+            console.log('Playback error:', e);
+            // Show waiting message if playback fails
+            document.getElementById('waiting-message').style.display = 'block';
+            document.getElementById('video').style.display = 'none';
+          });
+        }
+      };
+      
+      video.onerror = function() {
+        console.log('Error loading video:', currentVideo.filename);
+        // Show waiting message if video fails to load
+        document.getElementById('waiting-message').style.display = 'block';
+        document.getElementById('video').style.display = 'none';
+      };
+    }
+    
+    // Handle server sync events
     socket.on('sync', (state) => {
       // Prevent feedback loops
       const now = Date.now();
       if (now - lastUpdate < 100) return;
       lastUpdate = now;
       
-      // Always sync playback state with server
+      // Sync playback state
       if (state.isPlaying !== !video.paused) {
         if (state.isPlaying) {
           video.play().catch(e => {
