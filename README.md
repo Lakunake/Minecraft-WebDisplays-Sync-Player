@@ -22,7 +22,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 * 👨‍💼 Admin control panel for remote management
 * 🔁 Real-time playback synchronization using Socket.IO
 * ⚙️ Lightweight Node.js + Express server
-* 🖱️ Custom video control zones (click-based)
+* 🖱️ Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
 * 🔄 Automatic video preloading for smooth transitions
 
 ---
