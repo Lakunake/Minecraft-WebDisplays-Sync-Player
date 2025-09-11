@@ -11,18 +11,78 @@ cd /d "%batchdir%"
 echo Running from: %cd%
 
 :: =================================================================
-:: Check Node.js installation
+:: Check and install Node.js if needed
 :: =================================================================
 echo Checking Node.js installation...
 where node >nul 2>&1
 if %errorlevel% neq 0 (
     echo.
-    echo ERROR: Node.js is not installed or not in PATH!
-    echo Please download and install Node.js from:
-    echo https://nodejs.org/
+    echo Node.js not found. Attempting to install...
+    
+    :: Download and install Node.js
+    powershell -Command "Invoke-WebRequest 'https://nodejs.org/dist/v18.17.1/node-v18.17.1-x64.msi' -OutFile 'nodejs-installer.msi'"
+    if exist nodejs-installer.msi (
+        echo Installing Node.js...
+        start /wait msiexec /i nodejs-installer.msi /quiet
+        del nodejs-installer.msi
+        echo Node.js installed successfully.
+        
+        :: Refresh PATH to recognize Node.js
+        for /f "skip=2 tokens=3*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path') do set "systempath=%%a %%b"
+        setx Path "%systempath%;C:\Program Files\nodejs" /M
+        set "PATH=%systempath%;C:\Program Files\nodejs"
+    ) else (
+        echo Failed to download Node.js installer.
+        echo Please download and install Node.js from:
+        echo https://nodejs.org/
+        echo.
+        pause
+        exit /b 1
+    )
+)
+
+:: =================================================================
+:: Check and install FFmpeg if needed
+:: =================================================================
+echo Checking FFmpeg installation...
+where ffmpeg >nul 2>&1
+if %errorlevel% neq 0 (
     echo.
-    pause
-    exit /b 1
+    echo FFmpeg not found. Attempting to install...
+    
+    :: Create temp directory for FFmpeg
+    if not exist temp mkdir temp
+    cd temp
+    
+    :: Download and extract FFmpeg
+    powershell -Command "Invoke-WebRequest 'https://github.com/GyanD/codexffmpeg/releases/download/6.0/ffmpeg-6.0-full_build.7z' -OutFile 'ffmpeg.7z'"
+    if exist ffmpeg.7z (
+        :: Check if 7-Zip is available
+        where 7z >nul 2>&1
+        if %errorlevel% neq 0 (
+            echo Installing 7-Zip...
+            powershell -Command "Invoke-WebRequest 'https://www.7-zip.org/a/7z2301-x64.exe' -OutFile '7z-installer.exe'"
+            start /wait 7z-installer.exe /S
+            del 7z-installer.exe
+        )
+        
+        :: Extract FFmpeg
+        echo Extracting FFmpeg...
+        7z x ffmpeg.7z -o"C:\Program Files\ffmpeg" >nul
+        del ffmpeg.7z
+        
+        :: Add FFmpeg to PATH
+        for /f "skip=2 tokens=3*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path') do set "systempath=%%a %%b"
+        setx Path "%systempath%;C:\Program Files\ffmpeg\bin" /M
+        set "PATH=%systempath%;C:\Program Files\ffmpeg\bin"
+        
+        echo FFmpeg installed successfully.
+    ) else (
+        echo Failed to download FFmpeg.
+        echo Some video formats may not play correctly.
+        echo Install FFmpeg from: https://ffmpeg.org/
+    )
+    cd ..
 )
 
 :: =================================================================
@@ -78,58 +138,29 @@ for /f "tokens=1,* delims=: " %%a in ('type config.txt ^| findstr /v "^#"') do (
 )
 
 :: =================================================================
-:: Check FFmpeg installation
+:: Set up firewall rules
 :: =================================================================
-echo Checking FFmpeg installation...
-where ffmpeg >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo [WARNING]: FFMPEG IS NOT INSTALLED!
-    echo Some video formats may not play correctly.
-    echo Install FFmpeg from: https://ffmpeg.org/
-    echo.
-    timeout /t 5 >nul
-)
+echo Configuring firewall for port %PORT%...
+set FIREWALL_RULE_NAME=WebDisplays Video Sync (Port %PORT%)
 
-:: =================================================================
-:: Check firewall rule status
-:: =================================================================
-echo Checking firewall rule for port %PORT%...
-set FIREWALL_RULE_EXISTS=0
-netsh advfirewall firewall show rule name="Node.js WebDisplay" >nul 2>&1 && set FIREWALL_RULE_EXISTS=1
-
-if %FIREWALL_RULE_EXISTS% equ 1 (
-    echo Firewall rule exists
+:: Check if rule already exists
+netsh advfirewall firewall show rule name="%FIREWALL_RULE_NAME%" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Firewall rule already exists.
 ) else (
-    echo Firewall rule does not exist
-    net session >nul 2>&1
+    echo Adding firewall rule...
+    netsh advfirewall firewall add rule name="%FIREWALL_RULE_NAME%" dir=in action=allow protocol=TCP localport=%PORT%
     if %errorlevel% equ 0 (
-        echo Adding firewall rule...
-        netsh advfirewall firewall add rule name="Node.js WebDisplay" dir=in action=allow protocol=TCP localport=%PORT%
-        echo Rule added for port %PORT%
+        echo Firewall rule added successfully.
     ) else (
         echo.
-        echo [WARNING]: ADMIN PRIVILEGES REQUIRED FOR FIREWALL CONFIGURATION!
-        echo No firewall rule exists for port %PORT%.
+        echo [WARNING]: Failed to add firewall rule.
         echo Server may not be accessible from other devices.
         echo.
         echo To fix: Run this script as Administrator
         echo.
-        timeout /t 5 >nul
+        timeout /t 3 >nul
     )
-)
-
-:: =================================================================
-:: Verify video file exists
-:: =================================================================
-if not exist "videos\%VIDEO_FILE%" (
-    echo.
-    echo ERROR: Video file not found!
-    echo Expected: videos\%VIDEO_FILE%
-    dir /b videos
-    echo.
-    pause
-    exit /b 1
 )
 
 :: =================================================================
