@@ -6,7 +6,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 
 ---
 
-## 🚀 Requirements
+## Requirements
 
 * [Node.js](https://nodejs.org/) installed on your machine (v16+ recommended)
 * [ffmpeg](https://ffmpeg.org/) installed for high bitrate support and video optimization
@@ -14,16 +14,16 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 
 ---
 
-## 🎮 Features
+## Features
 
-* 📺 Multi-format streaming (MP4, MP3)            ⚠️ NO H.265 AND HEVC CODECS
-* ✨ High Quality streaming with FFmpeg optimization
-* 🎵 Playlist support with sequential playback
-* 👨‍💼 Admin control panel for remote management
-* 🔁 Real-time playback synchronization using Socket.IO
-* ⚙️ Lightweight Node.js + Express server
-* 🖱️ Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
-* 🔄 Automatic video preloading for smooth transitions
+* Multi-format streaming (MP4, MP3)            ⚠️ NO H.265 AND HEVC CODECS
+* High Quality streaming with FFmpeg optimization
+* Playlist support with sequential playback
+* Admin control panel for remote management
+* Real-time playback synchronization using Socket.IO
+* Lightweight Node.js + Express server
+* Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
+* Automatic video preloading for smooth transitions
 
 ---
 
@@ -39,10 +39,10 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 | **Between Center and Right Edge**      | 🔊 Increase volume (5%)  | ❌ Local only  |
 
 ### Admin Controls (Web Interface):
-- 📋 Playlist creation and management
-- 🎬 Remote play/pause/skip/seek controls to eliminate desync
-- ⭐ Main video selection with custom start time
-- 📊 File browser for media management
+- Playlist creation and management
+- Remote play/pause/skip/seek controls to eliminate desync
+- Main video selection with custom start time
+- File browser for media management
 
 > ⚠️ All users will see the same video at the same time except for **volume**, which is controlled individually per client.
 
@@ -53,21 +53,21 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 > ⚠️ All commands are run from Command Prompt (CMD).
 > Ensure [Node.js](https://nodejs.org/) is installed before proceeding.
 
-### 🔌 Option 1: LAN or Public IP (Direct Hosting), Best for Many people and Repeated users, complex setup
+### Option 1: LAN or Public IP (Direct Hosting), Best for Many people and Repeated users, complex setup
 
 1. Run `start.bat` in your folder
 2. Make sure your selected port is open in your firewall/router
 3. Access the video player from devices at the provided links
 4. Access admin panel at `http://your-ip:port/admin` and go to `http://your-ip:port` in minecraft
 
-### 🌍 Option 2: Hamachi (Virtual LAN), Basic to setup. Hard if your friends know nothing about computers.
+### Option 2: Hamachi (Virtual LAN), Basic to setup. Hard if your friends know nothing about computers.
 
 1. Download and install [LogMeIn Hamachi](https://vpn.net)
 2. Create a network, have others join it
 3. Share your **Hamachi IP address** (shown in Hamachi)
 4. Run `start.bat`, then visit the provided network link
 
-### 🚀 Option 3: Cloud Hosting (Render, Heroku, etc.) ⚠️NOT RECOMMENDED!!!
+### Option 3: Cloud Hosting (Render, Heroku, etc.) ⚠️NOT RECOMMENDED!!!
 
 1. Fork the repository: [https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player)
 2. Connect your repository to your hosting service
