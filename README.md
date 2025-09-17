@@ -38,6 +38,8 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 | **Between Left Edge and Center**       | 🔈 Decrease volume (5%)  | ❌ Local only  |
 | **Between Center and Right Edge**      | 🔊 Increase volume (5%)  | ❌ Local only  |
 
+![Controls](https://cdn.modrinth.com/data/N3CzASyr/images/dee2ac0695a18044f60e62bf75c5d3a94de57bd6.png "Visualised Controls (<3 comic sans)")
+
 ### Admin Controls (Web Interface):
 - Playlist creation and management
 - Remote play/pause/skip/seek controls to eliminate desync
