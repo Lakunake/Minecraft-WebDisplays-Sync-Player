@@ -39,6 +39,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 | **Between Center and Right Edge**      | 🔊 Increase volume (5%)  | ❌ Local only  |
 
 ![Controls](https://cdn.modrinth.com/data/N3CzASyr/images/dee2ac0695a18044f60e62bf75c5d3a94de57bd6.png "Visualised Controls (<3 comic sans)")
+> Of course use Left Click if you're not in minecraft while using this
 
 ### Admin Controls (Web Interface):
 - Playlist creation and management
