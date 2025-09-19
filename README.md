@@ -64,8 +64,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 3. Access the video player from devices at the provided links
 4. Access admin panel at `http://your-ip:port/admin` and go to `http://your-ip:port` in minecraft
 
-### Method 2: Tailscale (Virtual LAN), Basic to setup.
-Takes a bit longer than to do a subsequent start compared to method one
+### Method 2: Tailscale (Virtual LAN) Basic to setup. Takes a bit longer than method one to do a subsequent start
 
 1. Download and install [Tailscale](https://tailscale.com/download) on everybody's computers
 2. Invite your friends to your [Tailnet](https://tailscale.com/kb/1136/tailnet)
