@@ -63,12 +63,12 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 3. Access the video player from devices at the provided links
 4. Access admin panel at `http://your-ip:port/admin` and go to `http://your-ip:port` in minecraft
 
-### Option 2: Hamachi (Virtual LAN), Basic to setup. Hard if your friends know nothing about computers.
+### Option 2: Tailscale (Virtual LAN), Basic to setup. Takes a bit longer than to do a subsequent start compared to method one
 
-1. Download and install [LogMeIn Hamachi](https://vpn.net)
-2. Create a network, have others join it
-3. Share your **Hamachi IP address** (shown in Hamachi)
-4. Run `start.bat`, then visit the provided network link
+1. Download and install [Tailscale](https://tailscale.com/download) on everybody's computers
+2. Invite your friends to your [Tailnet](https://tailscale.com/kb/1136/tailnet)
+3. Run `start.bat`, then visit the provided network link
+> Beware, Tailscale only allows 3 emails per Tailnet, but it allows a 100 devices to be connected at the same time, so it would be best if you created a new email for your friends to log into tailscale to just for this
 
 ### Option 3: Cloud Hosting (Render, Heroku, etc.) ⚠️NOT RECOMMENDED!!!
 
