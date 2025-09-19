@@ -56,21 +56,23 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 > ⚠️ All commands are run from Command Prompt (CMD).
 > Ensure [Node.js](https://nodejs.org/) is installed before proceeding.
 
-### Option 1: LAN or Public IP (Direct Hosting), Best for Many people and Repeated users, complex setup
+### Method 1: LAN or Public IP (Direct Hosting),
+<small>Best for Many people and Repeated users, complex setup</small>
 
 1. Run `start.bat` in your folder
 2. Make sure your selected port is open in your firewall/router
 3. Access the video player from devices at the provided links
 4. Access admin panel at `http://your-ip:port/admin` and go to `http://your-ip:port` in minecraft
 
-### Option 2: Tailscale (Virtual LAN), Basic to setup. Takes a bit longer than to do a subsequent start compared to method one
+### Method 2: Tailscale (Virtual LAN), Basic to setup.
+Takes a bit longer than to do a subsequent start compared to method one
 
 1. Download and install [Tailscale](https://tailscale.com/download) on everybody's computers
 2. Invite your friends to your [Tailnet](https://tailscale.com/kb/1136/tailnet)
 3. Run `start.bat`, then visit the provided network link
 > Beware, Tailscale only allows 3 emails per Tailnet, but it allows a 100 devices to be connected at the same time, so it would be best if you created a new email for your friends to log into tailscale to just for this
 
-### Option 3: Cloud Hosting (Render, Heroku, etc.) ⚠️NOT RECOMMENDED!!!
+### Method 3: Cloud Hosting (Render, Heroku, etc.) ⚠️NOT RECOMMENDED!!!
 
 1. Fork the repository: [https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player)
 2. Connect your repository to your hosting service
