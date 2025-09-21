@@ -1,6 +1,6 @@
 {
-  "name": "webdisplays",
-  "version": "1.0.0",
+  "name": "Sync-Player",
+  "version": "Cloud-Special",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
