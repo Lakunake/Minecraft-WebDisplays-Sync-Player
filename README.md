@@ -136,5 +136,5 @@ See [LICENSE](LICENSE) for more details.
 ## 🙏 Credits
 
 Created by **Lakunake**
-Built with ❤️ using Node.js, Express, and Socket.IO
+Built using Node.js, Express, and Socket.IO
 Contact: johnwebdisplays [at] gmail [dot] com        (Obviously not my real name)
