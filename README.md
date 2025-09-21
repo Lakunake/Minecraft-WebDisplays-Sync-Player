@@ -16,7 +16,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 
 ## Features
 
-* Multi-format streaming (MP4, MP3)            ⚠️ NO H.265 AND HEVC CODECS
+* Multi-format streaming (MP4, MP3)
 * High Quality streaming with FFmpeg optimization
 * Playlist support with sequential playback
 * Admin control panel for remote management
@@ -24,6 +24,8 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 * Lightweight Node.js + Express server
 * Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
 * Automatic video preloading for smooth transitions
+> [!WARNING]  
+> H.265 or HEVC codec are not *yet* supported
 
 ---
 
@@ -47,14 +49,16 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 - Main video selection with custom start time
 - File browser for media management
 
-> ⚠️ All users will see the same video at the same time except for **volume**, which is controlled individually per client.
+> [!NOTE]
+>  All users will see the same video at the same time except for **volume**, which is controlled individually per client.
 
 ---
 
 ## 🌐 Hosting Tutorials
 
-> ⚠️ All commands are run from Command Prompt (CMD).
+> [!NOTE]
 > Ensure [Node.js](https://nodejs.org/) is installed before proceeding.
+> Run npm install express@5.1.0 socket.io@4.8.1 in case of the auto install failing.
 
 ### Method 1: LAN or Public IP (Direct Hosting),
 <small>Best for Many people and Repeated users, complex setup</small>
@@ -69,15 +73,18 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 1. Download and install [Tailscale](https://tailscale.com/download) on everybody's computers
 2. Invite your friends to your [Tailnet](https://tailscale.com/kb/1136/tailnet)
 3. Run `start.bat`, then visit the provided network link
+> [!IMPORTANT]  
 > Beware, Tailscale only allows 3 emails per Tailnet, but it allows a 100 devices to be connected at the same time, so it would be best if you created a new email for your friends to log into tailscale to just for this
 
-### Method 3: Cloud Hosting (Render, Heroku, etc.) ⚠️NOT RECOMMENDED!!!
+### Method 3: Cloud Hosting (Render, Heroku, etc.)
 
 1. Fork the repository: [https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player)
 2. Connect your repository to your hosting service
 3. Set build command: `npm install`
 4. Set start command: `node server.js`
 5. Deploy and access your video player via the provided URL
+> [!WARNING]
+> Not recommended due to the free plan limitations of websites
 
 > Congratulations if you managed to deploy it successfully using Cloud Hosting...
 ---
