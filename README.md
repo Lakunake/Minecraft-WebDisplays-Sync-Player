@@ -58,7 +58,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 
 > [!NOTE]
 > Ensure [Node.js](https://nodejs.org/) is installed before proceeding.
-> Run npm install express@5.1.0 socket.io@4.8.1 in case of the auto install failing.
+> Run "npm install express@5.1.0 socket.io@4.8.1" at cmd in case of the auto install failing.
 
 ### Method 1: LAN or Public IP (Direct Hosting),
 <small>Best for Many people and Repeated users, complex setup</small>
@@ -78,7 +78,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 
 ### Method 3: Cloud Hosting (Render, Heroku, etc.)
 
-1. Fork the repository: [https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player)
+1. Fork the repository: [https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player)
 2. Connect your repository to your hosting service
 3. Set build command: `npm install`
 4. Set start command: `node server.js`
