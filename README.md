@@ -10,7 +10,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 
 * [Node.js](https://nodejs.org/) installed on your machine (v16+ recommended)
 * [ffmpeg](https://ffmpeg.org/) installed for high bitrate support and video optimization
-* Media files placed in the `/videos/` folder (supports MP4, MP3, AVI, MOV, WMV, MKV, WEBM)
+* Media files placed in the `/videos/` folder (supports MP4, MP3)
 
 ---
 
