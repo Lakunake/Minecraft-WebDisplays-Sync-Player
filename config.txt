@@ -2,11 +2,8 @@
 # Format: key: value  (space after colon is optional)
 # Lines starting with # are comments
 
-# Number of expected clients (1-50)
-max_clients: 3
-
-# Video chunk size in MB (5-50)
-chunk_size: 10
+# Video file name in videos folder (include extension)
+video_file: filmeva.mp4
 
 # Server port (1024-49151)
 port: 3000
