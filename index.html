@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Synced Video</title>
+  <title>Synced Video Player</title>
   <style>
     html, body { margin:0; padding:0; background:black; height:100%; overflow:hidden; }
     video { width:100%; height:100%; background:black; display: none; }
@@ -44,6 +44,24 @@
     #preload-video {
       display: none;
     }
+    #current-track-info {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: rgba(255,255,255,0.7);
+      background: rgba(0,0,0,0.5);
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      z-index: 90;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #current-track-info.visible {
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -56,12 +74,18 @@
   
   <div id="status">Paused</div>
   <div id="waiting-message">Waiting for admin to launch playlist...</div>
+  
+  <!-- Subtle track information display (no controls) -->
+  <div id="current-track-info"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const video = document.getElementById('video');
     const preloadVideo = document.getElementById('preload-video');
     const statusEl = document.getElementById('status');
+    const waitingMessage = document.getElementById('waiting-message');
+    const trackInfoEl = document.getElementById('current-track-info');
+    
     const socket = io();
     
     // Get config from server
@@ -75,15 +99,21 @@
     let mainVideoStartTime = 0;
     let lastUpdate = 0;
     let uiTimeout = null;
+    let trackInfoTimeout = null;
     let skipSeconds = 5; // Default value
     let volumeStep = 0.05; // Default value (5%)
+    let currentAudioTrack = 0;
+    let currentSubtitleTrack = -1;
+    let currentVideoInfo = null;
+    let videoLoadAttempts = 0;
+    const maxVideoLoadAttempts = 3;
     
     video.volume = 0.5;
     preloadVideo.volume = 0; // Mute preload video
     
     // Initially show waiting message and hide video
-    document.getElementById('waiting-message').style.display = 'block';
-    document.getElementById('video').style.display = 'none';
+    waitingMessage.style.display = 'block';
+    video.style.display = 'none';
     
     // UI functions
     function showTemporaryMessage(message, duration = 2000) {
@@ -98,6 +128,18 @@
       }
     }
     
+    function showTrackInfo(message, duration = 3000) {
+      clearTimeout(trackInfoTimeout);
+      trackInfoEl.textContent = message;
+      trackInfoEl.classList.add('visible');
+      
+      if (duration > 0) {
+        trackInfoTimeout = setTimeout(() => {
+          trackInfoEl.classList.remove('visible');
+        }, duration);
+      }
+    }
+    
     // Send control event to server
     function sendControlEvent() {
       socket.emit('control', {
@@ -106,7 +148,7 @@
       });
     }
     
-        // Handle playlist updates from server
+    // Handle playlist updates from server
     socket.on('playlist-update', (playlist) => {
       currentPlaylist = playlist;
       mainVideoStartTime = playlist.mainVideoStartTime || 0;
@@ -122,33 +164,33 @@
       // Only hide waiting message if we have videos to play
       if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
         // Hide waiting message and show video
-        document.getElementById('waiting-message').style.display = 'none';
-        document.getElementById('video').style.display = 'block';
+        waitingMessage.style.display = 'none';
+        video.style.display = 'block';
         
         // Load the current video
         loadCurrentVideo();
       } else {
         // Show waiting message if no videos available
-        document.getElementById('waiting-message').style.display = 'block';
-        document.getElementById('video').style.display = 'none';
+        waitingMessage.style.display = 'block';
+        video.style.display = 'none';
       }
     });
 
-       // Handle playlist position updates from server
+    // Handle playlist position updates from server
     socket.on('playlist-position', (index) => {
       currentPlaylist.currentIndex = index;
       
       // Only proceed if we have videos
       if (currentPlaylist.videos.length > 0 && index >= 0) {
         // Hide waiting message if it's still showing
-        document.getElementById('waiting-message').style.display = 'none';
-        document.getElementById('video').style.display = 'block';
+        waitingMessage.style.display = 'none';
+        video.style.display = 'block';
         
         loadCurrentVideo();
       } else {
         // Show waiting message if no videos
-        document.getElementById('waiting-message').style.display = 'block';
-        document.getElementById('video').style.display = 'none';
+        waitingMessage.style.display = 'block';
+        video.style.display = 'none';
       }
     });
 
@@ -167,12 +209,14 @@
     function loadCurrentVideo() {
       if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
         // Show waiting message if no videos
-        document.getElementById('waiting-message').style.display = 'block';
-        document.getElementById('video').style.display = 'none';
+        waitingMessage.style.display = 'block';
+        video.style.display = 'none';
         return;
       }
       
       const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
+      currentVideoInfo = currentVideo;
+      
       video.src = `/videos/${currentVideo.filename}`;
       
       // If this is the main video, set the start time
@@ -185,22 +229,43 @@
       video.load();
       
       video.onloadeddata = function() {
+        videoLoadAttempts = 0; // Reset attempts on successful load
+        
         if (!video.paused) {
           video.play().catch(e => {
             console.log('Playback error:', e);
-            // Show waiting message if playback fails
-            document.getElementById('waiting-message').style.display = 'block';
-            document.getElementById('video').style.display = 'none';
+            handlePlaybackError(e);
           });
         }
       };
       
       video.onerror = function() {
         console.log('Error loading video:', currentVideo.filename);
-        // Show waiting message if video fails to load
-        document.getElementById('waiting-message').style.display = 'block';
-        document.getElementById('video').style.display = 'none';
+        videoLoadAttempts++;
+        
+        if (videoLoadAttempts < maxVideoLoadAttempts) {
+          // Retry loading the video
+          setTimeout(() => {
+            console.log('Retrying video load, attempt:', videoLoadAttempts);
+            loadCurrentVideo();
+          }, 1000);
+        } else {
+          // Show waiting message if video fails to load
+          waitingMessage.style.display = 'block';
+          video.style.display = 'none';
+          showTemporaryMessage('Failed to load video. Please check file format.', 5000);
+        }
       };
+    }
+    
+    // Handle playback errors
+    function handlePlaybackError(error) {
+      console.log('Playback error:', error);
+      
+      // Show waiting message if playback fails
+      waitingMessage.style.display = 'block';
+      video.style.display = 'none';
+      showTemporaryMessage('Playback failed. Please check file format.', 3000);
     }
     
     // Handle server sync events
@@ -215,7 +280,7 @@
         if (state.isPlaying) {
           video.play().catch(e => {
             console.log('Playback error:', e);
-            showTemporaryMessage('Playback failed');
+            handlePlaybackError(e);
           });
         } else {
           video.pause();
@@ -226,6 +291,30 @@
       // Sync time position
       if (Math.abs(video.currentTime - state.currentTime) > 0.5) {
         video.currentTime = state.currentTime;
+      }
+      
+      // Sync audio track (just display info, no control)
+      if (state.audioTrack !== undefined && state.audioTrack !== currentAudioTrack) {
+        currentAudioTrack = state.audioTrack;
+        if (currentVideoInfo && currentVideoInfo.tracks && currentVideoInfo.tracks.audio) {
+          const audioTrack = currentVideoInfo.tracks.audio[currentAudioTrack];
+          if (audioTrack) {
+            showTrackInfo(`Audio: ${audioTrack.language} ${audioTrack.title ? `- ${audioTrack.title}` : ''}`);
+          }
+        }
+      }
+      
+      // Sync subtitle track (just display info, no control)
+      if (state.subtitleTrack !== undefined && state.subtitleTrack !== currentSubtitleTrack) {
+        currentSubtitleTrack = state.subtitleTrack;
+        if (currentSubtitleTrack >= 0 && currentVideoInfo && currentVideoInfo.tracks && currentVideoInfo.tracks.subtitles) {
+          const subtitleTrack = currentVideoInfo.tracks.subtitles[currentSubtitleTrack];
+          if (subtitleTrack) {
+            showTrackInfo(`Subtitles: ${subtitleTrack.language} ${subtitleTrack.title ? `- ${subtitleTrack.title}` : ''}`);
+          }
+        } else if (currentSubtitleTrack < 0) {
+          showTrackInfo("Subtitles: Off");
+        }
       }
     });
     
