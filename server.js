@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,18 +12,32 @@ const io = new Server(server);
 // Read and parse config file
 function readConfig() {
   const configPath = path.join(__dirname, 'config.txt');
-  const configData = fs.readFileSync(configPath, 'utf8');
-  const config = {};
-  
-  configData.split('\n').forEach(line => {
-    line = line.trim();
-    if (line && !line.startsWith('#')) {
-      const [key, value] = line.split(':').map(part => part.trim());
-      config[key] = value;
+  try {
+    if (fs.existsSync(configPath)) {
+      const configData = fs.readFileSync(configPath, 'utf8');
+      const config = {};
+      
+      configData.split('\n').forEach(line => {
+        line = line.trim();
+        if (line && !line.startsWith('#')) {
+          const [key, value] = line.split(':').map(part => part.trim());
+          if (key && value) config[key] = value;
+        }
+      });
+      
+      return config;
     }
-  });
+  } catch (error) {
+    console.error('Error reading config file:', error);
+  }
   
-  return config;
+  // Return default config if file doesn't exist or is invalid
+  return {
+    video_file: 'filmeva.mp4',
+    port: '3000',
+    volume_step: '5',
+    skip_seconds: '5'
+  };
 }
 
 const config = readConfig();
@@ -31,7 +46,6 @@ const config = readConfig();
 const PORT = parseInt(config.port) || 3000;
 const SKIP_SECONDS = parseInt(config.skip_seconds) || 5;
 const VOLUME_STEP = parseInt(config.volume_step) || 5;
-const START_TIME = parseInt(config.start_time) || 1;
 
 // Serve static and video files
 app.use(express.static(__dirname));
@@ -46,6 +60,64 @@ const PLAYLIST = {
   preloadMainVideo: false
 };
 
+// Store the current video state globally
+let videoState = {
+  isPlaying: true,
+  currentTime: 0,
+  lastUpdate: Date.now(),
+  audioTrack: 0,
+  subtitleTrack: -1
+};
+
+// Function to get track information for a file using ffprobe
+async function getTracksForFile(filename) {
+  const filePath = path.join(__dirname, 'videos', filename);
+  const tracks = {
+    audio: [],
+    subtitles: []
+  };
+
+  return new Promise((resolve) => {
+    // Use ffprobe to extract track information
+    const command = `ffprobe -v quiet -print_format json -show_streams "${filePath}"`;
+    
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error('Error running ffprobe:', error);
+        resolve(tracks); // Return empty tracks if ffprobe fails
+        return;
+      }
+      
+      try {
+        const probeData = JSON.parse(stdout);
+        
+        if (probeData.streams) {
+          probeData.streams.forEach((stream, index) => {
+            const trackInfo = {
+              index: index,
+              codec: stream.codec_name || 'unknown',
+              language: (stream.tags && stream.tags.language) || 'und',
+              title: (stream.tags && stream.tags.title) || `Track ${index}`,
+              default: stream.disposition && stream.disposition.default ? true : false
+            };
+            
+            if (stream.codec_type === 'audio') {
+              tracks.audio.push(trackInfo);
+            } else if (stream.codec_type === 'subtitle') {
+              tracks.subtitles.push(trackInfo);
+            }
+          });
+        }
+        
+        resolve(tracks);
+      } catch (parseError) {
+        console.error('Error parsing ffprobe output:', parseError);
+        resolve(tracks); // Return empty tracks if parsing fails
+      }
+    });
+  });
+}
+
 // Serve admin page
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
@@ -55,27 +127,40 @@ app.get('/admin', (req, res) => {
 app.get('/api/files', (req, res) => {
   const videosPath = path.join(__dirname, 'videos');
   
-  fs.readdir(videosPath, (err, files) => {
+  fs.readdir(videosPath, async (err, files) => {
     if (err) {
       return res.status(500).json({ error: 'Unable to read videos directory' });
     }
     
-    // Filter for video and audio files
-    const mediaFiles = files.filter(file => {
+    // Filter for video files
+    const mediaFiles = [];
+    for (const file of files) {
       const ext = path.extname(file).toLowerCase();
-      return ['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm'].includes(ext);
-    });
+      if (['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm'].includes(ext)) {
+        // For simplicity, we'll assume all MKV files work with HEVC extensions
+        const usesHEVC = ext === '.mkv';
+        mediaFiles.push({
+          filename: file,
+          usesHEVC: usesHEVC
+        });
+      }
+    }
     
     res.json(mediaFiles);
   });
 });
 
-// Store the current video state globally
-let videoState = {
-  isPlaying: true,
-  currentTime: START_TIME,
-  lastUpdate: Date.now()
-};
+// API endpoint to get track information for files
+app.get('/api/tracks/:filename', async (req, res) => {
+  const filename = req.params.filename;
+  try {
+    const tracks = await getTracksForFile(filename);
+    res.json(tracks);
+  } catch (error) {
+    console.error('Error reading track info:', error);
+    res.status(500).json({ error: 'Unable to read track information' });
+  }
+});
 
 // Socket.io handling
 io.on('connection', (socket) => {
@@ -108,24 +193,55 @@ io.on('connection', (socket) => {
         videoState.currentTime = data.time;
         videoState.lastUpdate = Date.now();
         io.emit('sync', videoState);
+      } else if (data.action === 'selectTrack') {
+        if (data.type === 'audio') {
+          videoState.audioTrack = data.trackIndex;
+        } else if (data.type === 'subtitle') {
+          videoState.subtitleTrack = data.trackIndex;
+        }
+        videoState.lastUpdate = Date.now();
+        io.emit('sync', videoState);
       }
     } else {
       // Handle regular client control events
       videoState = {
         isPlaying: data.isPlaying,
         currentTime: data.currentTime,
-        lastUpdate: Date.now()
+        lastUpdate: Date.now(),
+        audioTrack: videoState.audioTrack,
+        subtitleTrack: videoState.subtitleTrack
       };
       io.emit('sync', videoState);
       console.log('Broadcasting sync to all clients:', videoState);
     }
   });
 
-   // New event for setting the playlist
-  socket.on('set-playlist', (data) => {
+  // New event for setting the playlist
+  socket.on('set-playlist', async (data) => {
     console.log('Received playlist data:', data);
     
-    PLAYLIST.videos = data.playlist;
+    // Process each video to get track information
+    const processedPlaylist = [];
+    
+    for (const item of data.playlist) {
+      const videoInfo = { ...item };
+      
+      // For all video files, get track information
+      try {
+        const tracks = await getTracksForFile(item.filename);
+        videoInfo.tracks = tracks;
+      } catch (error) {
+        console.error('Error getting track info:', error);
+        videoInfo.tracks = { audio: [], subtitles: [] };
+      }
+      
+      // Assume HEVC works with user extensions
+      videoInfo.usesHEVC = item.filename.endsWith('.mkv');
+      
+      processedPlaylist.push(videoInfo);
+    }
+    
+    PLAYLIST.videos = processedPlaylist;
     PLAYLIST.mainVideoIndex = data.mainVideoIndex;
     PLAYLIST.mainVideoStartTime = data.startTime;
     PLAYLIST.currentIndex = 0;
@@ -146,7 +262,10 @@ io.on('connection', (socket) => {
     io.emit('playlist-update', PLAYLIST);
     
     // Send confirmation to admin
-    socket.emit('playlist-set');
+    socket.emit('playlist-set', { 
+      success: true,
+      message: 'Playlist launched successfully!' 
+    });
   }); 
 
   // New event for getting config (for admin)
@@ -178,5 +297,23 @@ const syncInterval = setInterval(() => {
   }
 }, 5000);
 
+// Error handling for server
+server.on('error', (error) => {
+  console.error('Server error:', error);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('Shutting down server...');
+  clearInterval(syncInterval);
+  server.close(() => {
+    console.log('Server stopped');
+    process.exit(0);
+  });
+});
+
 // Server listening
-server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`Admin panel available at http://localhost:${PORT}/admin`);
+});
