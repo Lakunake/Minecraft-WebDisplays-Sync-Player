@@ -5,6 +5,9 @@
 # Number of expected clients (1-50)
 max_clients: 3
 
+# Video file name in videos folder (include extension)
+video_file: filmeva.mp4
+
 # Video chunk size in MB (5-50)
 chunk_size: 10
 
@@ -16,3 +19,5 @@ volume_step: 5
 
 # Rewind/Skip seconds (5-60)
 skip_seconds: 5
+# admin page password, 0 means none, you will skip the password entering page
+adminpass:0
