@@ -1,6 +1,6 @@
 {
-  "name": "Sync-Player",
-  "version": "1.4.2",
+  "name": "sync-player",
+  "version": "security.demo",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

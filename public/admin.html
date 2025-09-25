@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Control Panel - Video Sync</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      line-height: 1.6;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #333;
+    }
+    
+    h1 {
+      color: #4CAF50;
+      margin-bottom: 5px;
+      font-size: 28px;
+    }
+    
+    .subtitle {
+      color: #888;
+      font-size: 16px;
+    }
+    
+    .panel {
+      background: #252525;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    h2 {
+      color: #4CAF50;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+      font-size: 20px;
+    }
+    
+    .file-browser {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      border-bottom: 1px solid #333;
+      transition: background 0.2s;
+    }
+    
+    .file-item:hover {
+      background: #2a2a2a;
+    }
+    
+    .file-name {
+      flex-grow: 1;
+      font-size: 16px;
+    }
+    
+    .file-actions button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    
+    .file-actions button:hover {
+      background: #3e8e41;
+    }
+    
+    .playlist {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    
+    .playlist-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      border-bottom: 1px solid #333;
+      transition: background 0.2s;
+    }
+    
+    .playlist-item.main {
+      background: #2c5f2d;
+      border-left: 4px solid #4CAF50;
+    }
+    
+    .playlist-info {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+    }
+    
+    .main-badge {
+      background: #4CAF50;
+      color: white;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    
+    .playlist-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .playlist-actions button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    
+    .btn-set-main {
+      background: #2196F3;
+      color: white;
+    }
+    
+    .btn-remove {
+      background: #f44336;
+      color: white;
+    }
+    
+    .control-group {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      align-items: center;
+    }
+    
+    label {
+      font-weight: bold;
+      min-width: 120px;
+    }
+    
+    input[type="number"] {
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #1e1e1e;
+      color: #e0e0e0;
+      width: 100px;
+    }
+    
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    
+    .btn-launch {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    
+    .btn-launch:hover {
+      background: #3e8e41;
+    }
+    
+    .remote-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .remote-btn {
+      padding: 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      background: #333;
+      color: #e0e0e0;
+      transition: background 0.2s;
+    }
+    
+    .remote-btn:hover {
+      background: #444;
+    }
+    
+    .btn-play {
+      background: #4CAF50;
+      grid-column: 2;
+    }
+    
+    .btn-pause {
+      background: #FF9800;
+      grid-column: 2;
+    }
+    
+    .btn-skip-back {
+      background: #2196F3;
+    }
+    
+    .btn-skip-forward {
+      background: #2196F3;
+    }
+    
+    .seek-controls {
+      grid-column: 1 / span 3;
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .seek-controls input {
+      flex-grow: 1;
+      padding: 12px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #1e1e1e;
+      color: #e0e0e0;
+    }
+    
+    .btn-seek {
+      background: #9C27B0;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .status-message {
+      text-align: center;
+      padding: 12px;
+      margin-top: 20px;
+      border-radius: 4px;
+      display: none;
+    }
+    
+    .status-success {
+      background: #2c5f2d;
+      display: block;
+    }
+    
+    .status-error {
+      background: #f44336;
+      display: block;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .visible {
+      display: block;
+    }
+    
+    .empty-message {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+      font-style: italic;
+    }
+    
+    @media (max-width: 768px) {
+      .remote-controls {
+        grid-template-columns: 1fr;
+      }
+      
+      .btn-play, .btn-pause, .btn-skip-back, .btn-skip-forward {
+        grid-column: 1;
+      }
+      
+      .seek-controls {
+        grid-column: 1;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Video Sync Admin Panel</h1>
+    <p class="subtitle">Manage playlists and control playback</p>
+  </header>
+  
+  <div id="setup-section">
+    <div class="panel">
+      <h2>Available Media Files</h2>
+      <div class="file-browser" id="file-browser">
+        <div class="empty-message">Loading files...</div>
+      </div>
+    </div>
+    
+    <div class="panel">
+      <h2>Playlist</h2>
+      <div class="playlist" id="playlist-container">
+        <div class="empty-message">No files in playlist yet</div>
+      </div>
+      
+      <div class="control-group">
+        <label for="start-time">Main Video Start (s):</label>
+        <input type="number" id="start-time" min="0" value="0">
+      </div>
+      
+      <div class="action-buttons">
+        <button class="btn-launch" id="launch-btn">Launch Playlist</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="remote-section" class="hidden">
+    <div class="panel">
+      <h2>Remote Control</h2>
+      <div class="remote-controls">
+        <button class="remote-btn btn-skip-back" id="skip-back-btn">↩ <span id="skip-back-text">5s</span></button>
+        <button class="remote-btn btn-play" id="play-btn">Play</button>
+        <button class="remote-btn btn-pause" id="pause-btn">Pause</button>
+        <button class="remote-btn btn-skip-forward" id="skip-forward-btn">↪ <span id="skip-forward-text">5s</span></button>
+        
+        <div class="seek-controls">
+          <input type="number" id="seek-time" placeholder="Time in seconds" min="0">
+          <button class="btn-seek" id="seek-btn">Seek</button>
+        </div>
+      </div>
+      
+      <div class="status-message" id="status-message"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let playlist = [];
+    let mainVideoIndex = -1;
+    let skipSeconds = 5;
+
+    // Fetch available files from server
+    async function loadFiles() {
+      try {
+        const response = await fetch('/api/files');
+        const files = await response.json();
+        displayFiles(files);
+      } catch (error) {
+        console.error('Error loading files:', error);
+        document.getElementById('file-browser').innerHTML = 
+          '<div class="empty-message">Error loading files. Check server connection.</div>';
+      }
+    }
+
+    // Display files in the file browser
+    function displayFiles(files) {
+      const fileBrowser = document.getElementById('file-browser');
+      
+      if (files.length === 0) {
+        fileBrowser.innerHTML = '<div class="empty-message">No media files found in videos folder</div>';
+        return;
+      }
+      
+      fileBrowser.innerHTML = '';
+      
+      files.forEach((file) => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+          <div class="file-name">${file}</div>
+          <div class="file-actions">
+            <button onclick="addToPlaylist('${file}')">Add to Playlist</button>
+          </div>
+        `;
+        fileBrowser.appendChild(fileItem);
+      });
+    }
+
+    // Add a file to the playlist
+    function addToPlaylist(filename) {
+      if (!playlist.some(item => item.filename === filename)) {
+        playlist.push({ filename, isMain: false });
+        updatePlaylistDisplay();
+      }
+    }
+
+    // Remove a file from the playlist
+    function removeFromPlaylist(index) {
+      playlist.splice(index, 1);
+      if (mainVideoIndex === index) {
+        mainVideoIndex = -1;
+      } else if (mainVideoIndex > index) {
+        mainVideoIndex--;
+      }
+      updatePlaylistDisplay();
+    }
+
+    // Set a video as the main video
+    function setAsMain(index) {
+      mainVideoIndex = index;
+      updatePlaylistDisplay();
+    }
+
+    // Update the playlist display
+    function updatePlaylistDisplay() {
+      const playlistContainer = document.getElementById('playlist-container');
+      
+      if (playlist.length === 0) {
+        playlistContainer.innerHTML = '<div class="empty-message">No files in playlist yet</div>';
+        return;
+      }
+      
+      playlistContainer.innerHTML = '';
+      
+      playlist.forEach((item, index) => {
+        const playlistItem = document.createElement('div');
+        playlistItem.className = `playlist-item ${index === mainVideoIndex ? 'main' : ''}`;
+        playlistItem.innerHTML = `
+          <div class="playlist-info">
+            <span>${item.filename}</span>
+            ${index === mainVideoIndex ? '<span class="main-badge">Main</span>' : ''}
+          </div>
+          <div class="playlist-actions">
+            ${index !== mainVideoIndex ? 
+              `<button class="btn-set-main" onclick="setAsMain(${index})">Set Main</button>` : ''}
+            <button class="btn-remove" onclick="removeFromPlaylist(${index})">Remove</button>
+          </div>
+        `;
+        playlistContainer.appendChild(playlistItem);
+      });
+    }
+
+    // Launch the playlist
+    function launchPlaylist() {
+      if (playlist.length === 0) {
+        showStatus('Playlist is empty!', 'error');
+        return;
+      }
+      
+      if (mainVideoIndex === -1) {
+        showStatus('Please select a main video!', 'error');
+        return;
+      }
+      
+      const startTime = document.getElementById('start-time').value || 0;
+      
+      // Send playlist to server
+      socket.emit('set-playlist', {
+        playlist,
+        mainVideoIndex: parseInt(mainVideoIndex),
+        startTime: parseFloat(startTime)
+      });
+    }
+
+    // Show status message
+    function showStatus(message, type) {
+      const statusEl = document.getElementById('status-message');
+      statusEl.textContent = message;
+      statusEl.className = `status-message status-${type}`;
+      
+      setTimeout(() => {
+        statusEl.className = 'status-message';
+      }, 3000);
+    }
+
+    // Remote control functions - these SET the state (not toggle)
+    function playVideo() {
+      socket.emit('control', { 
+        action: 'playpause', 
+        state: true // Set to playing
+      });
+    }
+
+    function pauseVideo() {
+      socket.emit('control', { 
+        action: 'playpause', 
+        state: false // Set to paused
+      });
+    }
+
+    function skipBack() {
+      socket.emit('control', { 
+        action: 'skip', 
+        direction: 'back', 
+        seconds: skipSeconds 
+      });
+    }
+
+    function skipForward() {
+      socket.emit('control', { 
+        action: 'skip', 
+        direction: 'forward', 
+        seconds: skipSeconds 
+      });
+    }
+
+    function seekTo() {
+      const time = document.getElementById('seek-time').value;
+      if (time) {
+        socket.emit('control', { 
+          action: 'seek', 
+          time: parseFloat(time) 
+        });
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadFiles();
+      
+      // Setup event listeners
+      document.getElementById('launch-btn').addEventListener('click', launchPlaylist);
+      document.getElementById('play-btn').addEventListener('click', playVideo);
+      document.getElementById('pause-btn').addEventListener('click', pauseVideo);
+      document.getElementById('skip-back-btn').addEventListener('click', skipBack);
+      document.getElementById('skip-forward-btn').addEventListener('click', skipForward);
+      document.getElementById('seek-btn').addEventListener('click', seekTo);
+      
+      // Get config for skip seconds
+      socket.emit('get-config');
+    });
+
+    // Handle config from server
+    socket.on('config', (config) => {
+      skipSeconds = config.skipSeconds || 5;
+      document.getElementById('skip-back-text').textContent = `${skipSeconds}s`;
+      document.getElementById('skip-forward-text').textContent = `${skipSeconds}s`;
+    });
+
+    // Handle playlist confirmation
+    socket.on('playlist-set', () => {
+      showStatus('Playlist launched successfully!', 'success');
+      
+      // Switch to remote view after a brief delay
+      setTimeout(() => {
+        document.getElementById('setup-section').classList.add('hidden');
+        document.getElementById('remote-section').classList.remove('hidden');
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
