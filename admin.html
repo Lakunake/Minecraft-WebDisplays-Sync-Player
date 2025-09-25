@@ -79,6 +79,14 @@
     .file-name {
       flex-grow: 1;
       font-size: 16px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .hevc-warning-icon {
+      color: #ff6b6b;
+      margin-left: 8px;
+      cursor: help;
     }
     
     .file-actions button {
@@ -97,7 +105,7 @@
     }
     
     .playlist {
-      max-height: 300px;
+      max-height: 400px;
       overflow-y: auto;
       margin-bottom: 20px;
       background: #1e1e1e;
@@ -106,9 +114,6 @@
     }
     
     .playlist-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       padding: 12px 15px;
       border-bottom: 1px solid #333;
       transition: background 0.2s;
@@ -120,9 +125,9 @@
     }
     
     .playlist-info {
-      flex-grow: 1;
       display: flex;
       align-items: center;
+      margin-bottom: 8px;
     }
     
     .main-badge {
@@ -137,6 +142,7 @@
     .playlist-actions {
       display: flex;
       gap: 8px;
+      margin-bottom: 10px;
     }
     
     .playlist-actions button {
@@ -157,6 +163,33 @@
       color: white;
     }
     
+    .track-selection {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    
+    .track-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .track-group label {
+      min-width: 100px;
+      margin-right: 10px;
+    }
+    
+    .track-group select {
+      flex-grow: 1;
+      padding: 6px;
+      background: #1e1e1e;
+      color: #e0e0e0;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+    
     .control-group {
       display: flex;
       gap: 15px;
@@ -174,7 +207,7 @@
       border: 1px solid #444;
       border-radius: 4px;
       background: #1e1e1e;
-      color: #e0e0e0;
+      color: #e0e0e;
       width: 100px;
     }
     
@@ -255,6 +288,7 @@
       border-radius: 4px;
       background: #1e1e1e;
       color: #e0e0e0;
+      width: 100px;
     }
     
     .btn-seek {
@@ -284,6 +318,17 @@
       display: block;
     }
     
+    .status-warning {
+      background: #FF9800;
+      color: #333;
+      display: block;
+    }
+    
+    .status-info {
+      background: #2196F3;
+      display: block;
+    }
+    
     .hidden {
       display: none;
     }
@@ -297,6 +342,40 @@
       padding: 20px;
       color: #888;
       font-style: italic;
+    }
+    
+    .hevc-warning {
+      background: #f44336;
+      color: white;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .loading-indicator {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+    }
+    
+    .mkv-info {
+      background: #2196F3;
+      color: white;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
     
     @media (max-width: 768px) {
@@ -320,6 +399,16 @@
     <h1>Video Sync Admin Panel</h1>
     <p class="subtitle">Manage playlists and control playback</p>
   </header>
+  
+  <!-- HEVC Warning Banner -->
+  <div id="hevc-warning" class="hevc-warning hidden">
+    <strong>⚠️ HEVC Codec Warning:</strong> MKV files often use HEVC (H.265) codecs which cannot be played on browsers without HEVC extensions. This affects all clients including the host. Users may need to install HEVC codecs from the Microsoft Store for proper playback.
+  </div>
+  
+  <!-- MKV Info Banner -->
+  <div id="mkv-info" class="mkv-info hidden">
+    <strong>ℹ️ MKV File Information:</strong> MKV files support multiple audio and subtitle tracks. You can select which tracks to use by default for each MKV file in your playlist.
+  </div>
   
   <div id="setup-section">
     <div class="panel">
@@ -399,21 +488,95 @@
       files.forEach((file) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
-        fileItem.innerHTML = `
-          <div class="file-name">${file}</div>
-          <div class="file-actions">
-            <button onclick="addToPlaylist('${file}')">Add to Playlist</button>
-          </div>
-        `;
+        
+        const fileNameDiv = document.createElement('div');
+        fileNameDiv.className = 'file-name';
+        fileNameDiv.innerHTML = file.filename;
+        
+        // Show warning for all MKV files (simplified approach)
+        if (file.filename.endsWith('.mkv')) {
+          const warningIcon = document.createElement('span');
+          warningIcon.className = 'hevc-warning-icon';
+          warningIcon.title = 'MKV files may contain HEVC codec which may not play on all devices';
+          warningIcon.innerHTML = '⚠️';
+          fileNameDiv.appendChild(warningIcon);
+        }
+        
+        const fileActions = document.createElement('div');
+        fileActions.className = 'file-actions';
+        
+        const addButton = document.createElement('button');
+        addButton.textContent = 'Add to Playlist';
+        addButton.onclick = () => addToPlaylist(file);
+        
+        fileActions.appendChild(addButton);
+        fileItem.appendChild(fileNameDiv);
+        fileItem.appendChild(fileActions);
+        
         fileBrowser.appendChild(fileItem);
       });
     }
 
     // Add a file to the playlist
-    function addToPlaylist(filename) {
-      if (!playlist.some(item => item.filename === filename)) {
-        playlist.push({ filename, isMain: false });
+    async function addToPlaylist(file) {
+      if (!playlist.some(item => item.filename === file.filename)) {
+        // Create a copy of the file object to avoid reference issues
+        const fileCopy = {...file};
+        
+        // For MKV files, fetch track information
+        if (fileCopy.filename.endsWith('.mkv')) {
+          try {
+            // Show loading indicator
+            const addButton = event.target;
+            const originalText = addButton.textContent;
+            addButton.disabled = true;
+            addButton.innerHTML = 'Adding... <span class="loading-indicator"></span>';
+            
+            const response = await fetch(`/api/tracks/${encodeURIComponent(fileCopy.filename)}`);
+            if (response.ok) {
+              const tracks = await response.json();
+              // Ensure tracks has the expected structure
+              fileCopy.tracks = {
+                audio: tracks.audio || [],
+                subtitles: tracks.subtitles || []
+              };
+            } else {
+              console.error('Error fetching track info:', response.statusText);
+              fileCopy.tracks = { audio: [], subtitles: [] };
+            }
+            
+            // Restore button
+            addButton.disabled = false;
+            addButton.textContent = originalText;
+          } catch (error) {
+            console.error('Error fetching track info:', error);
+            fileCopy.tracks = { audio: [], subtitles: [] };
+            
+            // Restore button in case of error
+            const addButton = event.target;
+            addButton.disabled = false;
+            addButton.textContent = 'Add to Playlist';
+          }
+        } else {
+          // For non-MKV files, set empty tracks
+          fileCopy.tracks = { audio: [], subtitles: [] };
+        }
+        
+        // Mark all MKV files as potentially having HEVC
+        if (fileCopy.filename.endsWith('.mkv')) {
+          fileCopy.usesHEVC = true;
+        } else {
+          fileCopy.usesHEVC = false;
+        }
+        
+        playlist.push(fileCopy);
         updatePlaylistDisplay();
+        
+        // Show warning if there are MKV files
+        updateHevcWarning();
+        
+        // Show MKV info if there are MKV files
+        updateMkvInfo();
       }
     }
 
@@ -426,10 +589,21 @@
         mainVideoIndex--;
       }
       updatePlaylistDisplay();
+      
+      // Update warning if MKV files were removed
+      updateHevcWarning();
+      updateMkvInfo();
     }
 
     // Set a video as the main video
     function setAsMain(index) {
+      const item = playlist[index];
+      
+      // Check if it's an MKV file and show info
+      if (item.filename.endsWith('.mkv')) {
+        showStatus('Note: MKV files may have limited browser support. Ensure proper codecs are installed.', 'info');
+      }
+      
       mainVideoIndex = index;
       updatePlaylistDisplay();
     }
@@ -448,19 +622,113 @@
       playlist.forEach((item, index) => {
         const playlistItem = document.createElement('div');
         playlistItem.className = `playlist-item ${index === mainVideoIndex ? 'main' : ''}`;
-        playlistItem.innerHTML = `
-          <div class="playlist-info">
-            <span>${item.filename}</span>
-            ${index === mainVideoIndex ? '<span class="main-badge">Main</span>' : ''}
-          </div>
-          <div class="playlist-actions">
-            ${index !== mainVideoIndex ? 
-              `<button class="btn-set-main" onclick="setAsMain(${index})">Set Main</button>` : ''}
-            <button class="btn-remove" onclick="removeFromPlaylist(${index})">Remove</button>
-          </div>
-        `;
+        
+        // Playlist info section
+        const playlistInfo = document.createElement('div');
+        playlistInfo.className = 'playlist-info';
+        
+        const fileName = document.createElement('span');
+        fileName.textContent = item.filename;
+        
+        if (item.filename.endsWith('.mkv')) {
+          const warningIcon = document.createElement('span');
+          warningIcon.className = 'hevc-warning-icon';
+          warningIcon.title = 'MKV files may contain HEVC codec which may not play on all devices';
+          warningIcon.innerHTML = '⚠️';
+          fileName.appendChild(warningIcon);
+        }
+        
+        playlistInfo.appendChild(fileName);
+        
+        if (index === mainVideoIndex) {
+          const mainBadge = document.createElement('span');
+          mainBadge.className = 'main-badge';
+          mainBadge.textContent = 'Main';
+          playlistInfo.appendChild(mainBadge);
+        }
+        
+        // Playlist actions section
+        const playlistActions = document.createElement('div');
+        playlistActions.className = 'playlist-actions';
+        
+        if (index !== mainVideoIndex) {
+          const setMainButton = document.createElement('button');
+          setMainButton.className = 'btn-set-main';
+          setMainButton.textContent = 'Set Main';
+          setMainButton.onclick = () => setAsMain(index);
+          playlistActions.appendChild(setMainButton);
+        }
+        
+        const removeButton = document.createElement('button');
+        removeButton.className = 'btn-remove';
+        removeButton.textContent = 'Remove';
+        removeButton.onclick = () => removeFromPlaylist(index);
+        playlistActions.appendChild(removeButton);
+        
+        // Track selection section (for MKV files)
+        let trackSelectionHtml = '';
+        if (item.filename.endsWith('.mkv') && item.tracks) {
+          trackSelectionHtml = `
+            <div class="track-selection">
+              <div class="track-group">
+                <label>Audio Track:</label>
+                <select id="audio-track-${index}" class="audio-track-select">
+                  ${item.tracks.audio && item.tracks.audio.length > 0 ? 
+                    item.tracks.audio.map((track, trackIndex) => 
+                      `<option value="${trackIndex}" ${track.default ? 'selected' : ''}>${track.language} - ${track.title || `Track ${trackIndex}`}</option>`
+                    ).join('') : 
+                    '<option value="0">Default Audio</option>'
+                  }
+                </select>
+              </div>
+              <div class="track-group">
+                <label>Subtitle Track:</label>
+                <select id="subtitle-track-${index}" class="subtitle-track-select">
+                  <option value="-1" selected>None</option>
+                  ${item.tracks.subtitles && item.tracks.subtitles.length > 0 ? 
+                    item.tracks.subtitles.map((track, trackIndex) => 
+                      `<option value="${trackIndex}" ${track.default ? 'selected' : ''}>${track.language} - ${track.title || `Track ${trackIndex}`}</option>`
+                    ).join('') : ''
+                  }
+                </select>
+              </div>
+            </div>
+          `;
+        }
+        
+        playlistItem.appendChild(playlistInfo);
+        playlistItem.appendChild(playlistActions);
+        
+        if (trackSelectionHtml) {
+          playlistItem.innerHTML += trackSelectionHtml;
+        }
+        
         playlistContainer.appendChild(playlistItem);
       });
+    }
+
+    // Update HEVC warning visibility
+    function updateHevcWarning() {
+      const hasMKVFiles = playlist.some(item => item.filename.endsWith('.mkv') && item.usesHEVC);
+      const warningElement = document.getElementById('hevc-warning');
+      
+      if (hasMKVFiles) {
+        warningElement.classList.remove('hidden');
+      } else {
+        warningElement.classList.add('hidden');
+      }
+    }
+
+    // Update MKV info visibility
+    function updateMkvInfo() {
+      const hasMKVFiles = playlist.some(item => item.filename.endsWith('.mkv'));
+      const infoElement = document.getElementById('mkv-info');
+      
+      if (hasMKVFiles) {
+        infoElement.classList.remove('hidden');
+      } else {
+        infoElement.classList.add('hidden');
+      }
     }
 
     // Launch the playlist
@@ -475,11 +743,39 @@
         return;
       }
       
+      proceedWithLaunch();
+    }
+
+    // Proceed with launching the playlist
+    async function proceedWithLaunch() {
       const startTime = document.getElementById('start-time').value || 0;
+      
+      // Collect track selections for MKV files
+      const playlistWithTracks = playlist.map((item, index) => {
+        const playlistItem = { ...item };
+        
+        if (item.filename.endsWith('.mkv')) {
+          const audioSelect = document.getElementById(`audio-track-${index}`);
+          const subtitleSelect = document.getElementById(`subtitle-track-${index}`);
+          
+          if (audioSelect) {
+            playlistItem.selectedAudioTrack = parseInt(audioSelect.value);
+          }
+          
+          if (subtitleSelect) {
+            playlistItem.selectedSubtitleTrack = parseInt(subtitleSelect.value);
+          }
+        }
+        
+        return playlistItem;
+      });
+      
+      // Show loading status
+      showStatus('Setting up playlist...', 'info');
       
       // Send playlist to server
       socket.emit('set-playlist', {
-        playlist,
+        playlist: playlistWithTracks,
         mainVideoIndex: parseInt(mainVideoIndex),
         startTime: parseFloat(startTime)
       });
@@ -493,21 +789,21 @@
       
       setTimeout(() => {
         statusEl.className = 'status-message';
-      }, 3000);
+      }, 5000);
     }
 
-    // Remote control functions - these SET the state (not toggle)
+    // Remote control functions
     function playVideo() {
       socket.emit('control', { 
         action: 'playpause', 
-        state: true // Set to playing
+        state: true
       });
     }
 
     function pauseVideo() {
       socket.emit('control', { 
         action: 'playpause', 
-        state: false // Set to paused
+        state: false
       });
     }
 
@@ -561,14 +857,18 @@
     });
 
     // Handle playlist confirmation
-    socket.on('playlist-set', () => {
-      showStatus('Playlist launched successfully!', 'success');
-      
-      // Switch to remote view after a brief delay
-      setTimeout(() => {
-        document.getElementById('setup-section').classList.add('hidden');
-        document.getElementById('remote-section').classList.remove('hidden');
-      }, 1000);
+    socket.on('playlist-set', (data) => {
+      if (data.success) {
+        showStatus(data.message || 'Playlist launched successfully!', 'success');
+        
+        // Switch to remote view after a brief delay
+        setTimeout(() => {
+          document.getElementById('setup-section').classList.add('hidden');
+          document.getElementById('remote-section').classList.remove('hidden');
+        }, 2000);
+      } else {
+        showStatus(data.message || 'Failed to launch playlist!', 'error');
+      }
     });
   </script>
 </body>
