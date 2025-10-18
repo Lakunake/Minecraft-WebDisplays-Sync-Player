@@ -137,4 +137,4 @@ See [LICENSE](LICENSE) for more details.
 
 Created by **Lakunake**
 Built using Node.js, Express, and Socket.IO
-Contact: johnwebdisplays [at] gmail [dot] com        (Obviously not my real name)
+Contact: johnwebdisplays@gmail.com        (Obviously not my real name)
