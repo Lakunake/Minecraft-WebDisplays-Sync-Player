@@ -106,8 +106,7 @@ config.txt              # Configuration file (port, settings, etc.)
 Edit `config.txt` to customize:
 
 ```ini
-max_clients: 10         # Amount of Expected Simultaneous clients
-chunk_size: 10          # Video chunk size in MB
+video_file: filmeva.mp4 # Optional video file specification
 port: 3000              # Server port
 volume_step: 5          # Volume adjustment percentage
 skip_seconds: 5         # Skip duration in seconds
