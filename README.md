@@ -109,10 +109,12 @@ Edit `config.txt` to customize:
 
 ```ini
 max_clients: 10         # Amount of Expected Simultaneous clients
+video_file: filmeva.mp4 # Optional video file name specificatiom
 chunk_size: 10          # Video chunk size in MB
 port: 3000              # Server port
 volume_step: 5          # Volume adjustment percentage
 skip_seconds: 5         # Skip duration in seconds
+adminpass: 0            # Password to the admin panel, 0 skips password verification
 ```
 
 ---
