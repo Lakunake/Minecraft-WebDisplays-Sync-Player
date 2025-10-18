@@ -158,7 +158,8 @@ echo
 echo "Access URLs:"
 echo "- This computer: http://localhost:$PORT"
 echo "- Your network: http://$LOCAL_IP:$PORT"
-echo "- Admin Panel: http://localhost:$PORT/admin"
+echo "- Admin Panel: http://localhost:$PORT/admin / http://$LOCAL_IP:$PORT/admin"
 echo
 echo "Starting Server..."
+
 node server.js
