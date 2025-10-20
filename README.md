@@ -10,13 +10,13 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 
 * [Node.js](https://nodejs.org/) installed on your machine (v16+ recommended)
 * [ffmpeg](https://ffmpeg.org/) installed for high bitrate support and video optimization
-* Media files placed in the `/videos/` folder (supports MP4, MP3)
+* Media files placed in the `/videos/` folder (supports MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM)
 
 ---
 
 ## Features
 
-* Multi-format streaming (MP4, MP3)
+* Multi-format streaming (MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM)
 * High Quality streaming with FFmpeg optimization
 * Playlist support with sequential playback
 * Admin control panel for remote management
@@ -24,8 +24,6 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 * Lightweight Node.js + Express server
 * Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
 * Automatic video preloading for smooth transitions
-> [!WARNING]  
-> H.265 or HEVC codec are not *yet* supported
 
 ---
 
@@ -76,7 +74,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 > [!IMPORTANT]  
 > Beware, Tailscale only allows 3 emails per Tailnet, but it allows a 100 devices to be connected at the same time, so it would be best if you created a new email for your friends to log into tailscale to just for this
 
-### Method 3: Cloud Hosting (Render, Heroku, etc.)
+### Method 3: Cloud Hosting (Render, Heroku, Replit, etc.)
 
 1. Fork the repository: [https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player)
 2. Connect your repository to your hosting service
@@ -108,8 +106,6 @@ config.txt              # Configuration file (port, settings, etc.)
 Edit `config.txt` to customize:
 
 ```ini
-max_clients: 10         # Amount of Expected Simultaneous clients
-chunk_size: 10          # Video chunk size in MB
 port: 3000              # Server port
 volume_step: 5          # Volume adjustment percentage
 skip_seconds: 5         # Skip duration in seconds
