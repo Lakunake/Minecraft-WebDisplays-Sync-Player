@@ -74,7 +74,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 2. Invite your friends to your [Tailnet](https://tailscale.com/kb/1136/tailnet)
 3. Run `start.bat`, then visit the provided network link
 > [!IMPORTANT]  
-> Beware, Tailscale only allows 3 emails per Tailnet, but it allows a 100 devices to be connected at the same time, so it would be best if you created a new email for your friends to log into tailscale to just for this
+> Beware, Tailscale only allows 3 emails per [Tailnet](https://tailscale.com/kb/1136/tailnet), but it allows a 100 devices to be connected at the same time, so it would be best if you created a new email for your friends to log into tailscale to just for this
 
 ### Method 3: Cloud Hosting (Render, Heroku, Replit, etc.)
 
