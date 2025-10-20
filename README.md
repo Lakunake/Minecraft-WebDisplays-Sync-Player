@@ -24,6 +24,8 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 * Lightweight Node.js + Express server
 * Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
 * Automatic video preloading for smooth transitions
+* Dynamic Audio/Subtitle track changing
+* Minimal UI in view mode
 
 ---
 
