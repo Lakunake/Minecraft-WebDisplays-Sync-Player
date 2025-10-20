@@ -1,4 +1,4 @@
-# Minecraft Video Sync Configuration
+# Sync-Player Config
 # Format: key: value  (space after colon is optional)
 # Lines starting with # are comments
 
