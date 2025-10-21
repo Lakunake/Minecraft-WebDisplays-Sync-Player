@@ -118,15 +118,14 @@ config.txt              # Optional config file to customize server port, install
 
 ## 📜 License
 
-**Short name**: `CC BY-NC-SA 4.0`
-**URL**: [https://creativecommons.org/licenses/by-nc-sa/4.0/](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+**Short name**: `AGPLv3`
+**URL**: [gnu.org/licenses/agpl-3.0.html](https://www.gnu.org/licenses/agpl-3.0.html)
 
-This project is licensed under **CC BY-NC-SA 4.0**:
+This project is licensed under **AGPLv3**:
 
-* ✅ Free to use and modify
-* 🔗 Must credit the original creator (**Lakunake**)
-* ❌ Commercial use is **not allowed**
-* ♻️ Must share any changes **if distributed or hosted publicly**
+*  Free to use and modify
+*  Must credit the original creator (**Lakunake**)
+*  Must share any changes with the same license **if distributed or hosted publicly**
 
 See [LICENSE](LICENSE) for more details.
 
