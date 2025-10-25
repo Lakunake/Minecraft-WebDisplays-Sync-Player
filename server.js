@@ -413,7 +413,8 @@ process.on('SIGINT', () => {
 });
 
 // Server listening
+const LOCAL_IP = process.argv[2] || 'localhost';
 server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`Admin panel available at http://localhost:${PORT}/admin`);
+  console.log(`Server running at http://${LOCAL_IP}:${PORT}`);
+  console.log(`Admin panel available at http://${LOCAL_IP}:${PORT}/admin`);
 });
