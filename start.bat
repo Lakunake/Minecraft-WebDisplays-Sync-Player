@@ -21,9 +21,10 @@ if %errorlevel% neq 0 (
     echo ERROR: Node.js is not installed or not in PATH!
     echo Please download and install Node.js from:
     echo https://nodejs.org/
+    echo Press Enter to download Node.js from here.
+    pause >nul
+    call winget install --id OpenJS.NodeJS.LTS -e
     echo.
-    pause
-    exit /b 1
 )
 
 :: =================================================================
@@ -93,30 +94,30 @@ if %MISSING_DEPS% equ 1 (
     echo.
     echo Installing Node.js dependencies...
     call npm install express@5.1.0 socket.io@4.8.1
+    call
     if %errorlevel% neq 0 (
         echo [ERROR]: Failed to install dependencies.
         echo Please check your internet connection and try again.
-        echo You can also try running: npm install
+        echo You can also try running: npm install express@5.1.0 socket.io@4.8.1
         echo.
         pause
         exit /b 1
-    ) else (
-        echo [SUCCESS]: Dependencies installed successfully.
-        set MISSING_DEPS=0
-    )
+        ) else (
+            echo [SUCCESS]: Dependencies installed successfully.
+            set MISSING_DEPS=0
+            color 0a
+        )
 )
 
 :: Ask user about FFmpeg
 if %MISSING_FFMPEG% equ 1 (
     echo.
-    echo [RECOMMENDED]: FFmpeg is not installed.
+    echo [REQUIRED]: FFmpeg is not installed.
     echo FFmpeg is required for proper video processing and MKV support.
-    echo You can download it from: https://ffmpeg.org/
     echo.
-    echo Press ENTER to continue without FFmpeg, or Ctrl+C to exit and install FFmpeg.
+    echo Press ENTER to download FFmpeg.
     pause >nul
-    echo [WARNING]: Continuing without FFmpeg.
-    echo Some video formats may not work properly.
+    call winget install ffmpeg
     echo.
 )
 
@@ -167,7 +168,7 @@ if "%LOCAL_IP%"=="" set LOCAL_IP=localhost
 :: =================================================================
 title Admin Console
 echo.
-echo Sync-Player Admin Console
+echo Minecraft Video Sync Server
 echo ==========================
 echo.
 echo Settings:
@@ -194,7 +195,7 @@ if not exist server.js (
     exit /b 1
 )
 echo [DEBUG]: Starting server with port %PORT%...
-node server.js
+node server.js %LOCAL_IP%
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR]: Server crashed with exit code %errorlevel%
