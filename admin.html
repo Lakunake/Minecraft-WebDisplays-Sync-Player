@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Control Panel - Video Sync</title>
+  <title>Admin Control Panel</title>
   <style>
     * {
       box-sizing: border-box;
@@ -207,7 +207,7 @@
       border: 1px solid #444;
       border-radius: 4px;
       background: #1e1e1e;
-      color: #e0e0e;
+      color: #e0e0e0;
       width: 100px;
     }
     
@@ -396,7 +396,7 @@
 </head>
 <body>
   <header>
-    <h1>Video Sync Admin Panel</h1>
+    <h1>Sync-Player Admin Panel</h1>
     <p class="subtitle">Manage playlists and control playback</p>
   </header>
   
@@ -450,6 +450,24 @@
         </div>
       </div>
       
+      <!-- Remote track controls (for current playing video) -->
+      <div class="panel track-selection" id="remote-track-controls" style="margin-top: 15px;">
+        <h2 style="margin-top: 0;">Current Video Tracks</h2>
+        <div id="remote-current-file" style="margin-bottom: 10px; color: #aaa;"></div>
+        <div class="track-group">
+          <label>Audio Track:</label>
+          <select id="remote-audio-track" disabled>
+            <option>Loading...</option>
+          </select>
+        </div>
+        <div class="track-group">
+          <label>Subtitle Track:</label>
+          <select id="remote-subtitle-track" disabled>
+            <option>Loading...</option>
+          </select>
+        </div>
+      </div>
+      
       <div class="status-message" id="status-message"></div>
     </div>
   </div>
@@ -460,6 +478,10 @@
     let playlist = [];
     let mainVideoIndex = -1;
     let skipSeconds = 5; // Will be updated from server config
+    
+    // Live server playlist and index for remote controls
+    let serverPlaylist = null;
+    let currentServerIndex = -1;
 
     // Fetch available files from server
     async function loadFiles() {
@@ -934,6 +956,99 @@
       }
     }
 
+    // Render remote track controls for the current playing video
+    function renderRemoteTrackControls() {
+      const container = document.getElementById('remote-track-controls');
+      const audioSelect = document.getElementById('remote-audio-track');
+      const subtitleSelect = document.getElementById('remote-subtitle-track');
+      const currentFileEl = document.getElementById('remote-current-file');
+      
+      if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length === 0 || currentServerIndex < 0 || currentServerIndex >= serverPlaylist.videos.length) {
+        currentFileEl.textContent = 'No active video';
+        audioSelect.innerHTML = '<option>No tracks</option>';
+        audioSelect.disabled = true;
+        subtitleSelect.innerHTML = '<option>No tracks</option>';
+        subtitleSelect.disabled = true;
+        return;
+      }
+      
+      const videoInfo = serverPlaylist.videos[currentServerIndex];
+      currentFileEl.textContent = `Now Playing: ${videoInfo.filename}`;
+      
+      // Populate audio tracks
+      const audioTracks = (videoInfo.tracks && videoInfo.tracks.audio) ? videoInfo.tracks.audio : [];
+      audioSelect.innerHTML = '';
+      if (audioTracks.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '0';
+        opt.textContent = 'Default Audio';
+        audioSelect.appendChild(opt);
+        audioSelect.disabled = true;
+      } else {
+        audioTracks.forEach((track, idx) => {
+          const opt = document.createElement('option');
+          opt.value = String(idx);
+          opt.textContent = `${track.language} - ${track.title || 'Track ' + idx}`;
+          audioSelect.appendChild(opt);
+        });
+        audioSelect.disabled = false;
+      }
+      
+      // Populate subtitle tracks
+      const subtitleTracks = (videoInfo.tracks && videoInfo.tracks.subtitles) ? videoInfo.tracks.subtitles : [];
+      subtitleSelect.innerHTML = '';
+      {
+        const noneOpt = document.createElement('option');
+        noneOpt.value = '-1';
+        noneOpt.textContent = 'None';
+        subtitleSelect.appendChild(noneOpt);
+      }
+      subtitleTracks.forEach((track, idx) => {
+        const opt = document.createElement('option');
+        opt.value = String(idx);
+        opt.textContent = `${track.language} - ${track.title || 'Track ' + idx}`;
+        subtitleSelect.appendChild(opt);
+      });
+      subtitleSelect.disabled = subtitleSelect.options.length === 1; // only None
+      
+      // Set selected values from current selections (fall back to defaults)
+      const selectedAudio = (videoInfo.selectedAudioTrack !== undefined) ? videoInfo.selectedAudioTrack : (audioTracks.findIndex(t => t.default) >= 0 ? audioTracks.findIndex(t => t.default) : 0);
+      const selectedSubtitle = (videoInfo.selectedSubtitleTrack !== undefined) ? videoInfo.selectedSubtitleTrack : -1;
+      
+      if (!audioSelect.disabled) {
+        audioSelect.value = String(Math.max(0, selectedAudio));
+      }
+      subtitleSelect.value = String(selectedSubtitle);
+      
+      // Remove previous listeners by cloning nodes (simple way to avoid duplicate handlers)
+      const audioClone = audioSelect.cloneNode(true);
+      const subtitleClone = subtitleSelect.cloneNode(true);
+      audioSelect.parentNode.replaceChild(audioClone, audioSelect);
+      subtitleSelect.parentNode.replaceChild(subtitleClone, subtitleSelect);
+      
+      // Attach change listeners
+      audioClone.addEventListener('change', () => {
+        const trackIndex = parseInt(audioClone.value);
+        socket.emit('track-change', {
+          videoIndex: currentServerIndex,
+          type: 'audio',
+          trackIndex: trackIndex
+        });
+        showStatus(`Audio track changed to: ${audioClone.options[audioClone.selectedIndex].text}`, 'info');
+      });
+      
+      subtitleClone.addEventListener('change', () => {
+        const trackIndex = parseInt(subtitleClone.value);
+        socket.emit('track-change', {
+          videoIndex: currentServerIndex,
+          type: 'subtitle',
+          trackIndex: trackIndex
+        });
+        const subtitleText = trackIndex >= 0 ? subtitleClone.options[subtitleClone.selectedIndex].text : 'None';
+        showStatus(`Subtitle track changed to: ${subtitleText}`, 'info');
+      });
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       loadFiles();
@@ -966,9 +1081,36 @@
         setTimeout(() => {
           document.getElementById('setup-section').classList.add('hidden');
           document.getElementById('remote-section').classList.remove('hidden');
+          // Remote track controls will render once server sends playlist/update
         }, 2000);
       } else {
         showStatus(data.message || 'Failed to launch playlist!', 'error');
+      }
+    });
+
+    // Receive live playlist state for remote controls
+    socket.on('playlist-update', (playlistObj) => {
+      serverPlaylist = playlistObj;
+      currentServerIndex = playlistObj.currentIndex;
+      renderRemoteTrackControls();
+    });
+    
+    socket.on('playlist-position', (index) => {
+      currentServerIndex = index;
+      renderRemoteTrackControls();
+    });
+    
+    // Keep admin UI selections in sync when changes are broadcast
+    socket.on('track-change', (data) => {
+      if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length <= data.videoIndex) return;
+      const vid = serverPlaylist.videos[data.videoIndex];
+      if (data.type === 'audio') {
+        vid.selectedAudioTrack = data.trackIndex;
+      } else if (data.type === 'subtitle') {
+        vid.selectedSubtitleTrack = data.trackIndex;
+      }
+      if (data.videoIndex === currentServerIndex) {
+        renderRemoteTrackControls();
       }
     });
   </script>
