@@ -61,7 +61,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 > Run "npm install express@5.1.0 socket.io@4.8.1" at cmd in case of the auto install failing.
 
 ### Method 1: LAN or Public IP (Direct Hosting),
-> Best for Many people and Repeated users, complex setup, **may not be safe as in cybersecurity currently**
+> Best for Many people and Repeated users, complex-ish setup, *may not be safe as in cybersecurity currently*
 
 1. Run `start.bat` in your folder
 2. Make sure your selected port is open in your firewall/router
@@ -69,7 +69,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 4. Access admin panel at `http://your-ip:port/admin` and go to `http://your-ip:port` in minecraft
 
 ### Method 2: Tailscale (Virtual LAN) 
-Basic to setup. **Safest way to do it as in cybersecurity.** Takes a bit longer than method one to do a subsequent start
+> Basic to setup. *Safest way to do it as in cybersecurity.* Takes a bit longer than method one to do a subsequent start
 
 1. Download and install [Tailscale](https://tailscale.com/download) on everybody's computers
 2. Invite your friends to your [Tailnet](https://tailscale.com/kb/1136/tailnet)
