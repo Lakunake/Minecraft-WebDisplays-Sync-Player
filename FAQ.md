@@ -1,13 +1,22 @@
-**It just... does not work?**
+**It says that im lacking...**
 
-Open Command Prompt(CMD), and write these commands in order
+Open Command Prompt(CMD), and write these commands in order or whichever ones you need
 
 ```cmd
+winget install ffmpeg
+winget install --id OpenJS.NodeJS.LTS -e
 md (Your path to the code)
 npm install express@5.1.0
 npm install socket.io@4.8.1
 ```
+**My friend can't see the hevc video im sharing and can only hear it**
 
+Thats most likely a hardware related issue, but it could be solved by doing one of these(if not you have almost no way of)
+
+Install HEVC extensions from windows store
+Install ffmpeg or ffprobe on your friend's device
+Convert your video to one of these with HandBrake; AV1, VP9, H.264 (listed in quality order, more quality=harder to encode)
+Make them convert to Windows 11 from 10 (maybe dont)
 
 **How do I properly use the admin panel?**
 
