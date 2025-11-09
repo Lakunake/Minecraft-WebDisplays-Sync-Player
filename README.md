@@ -36,8 +36,8 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 | -------------------------------------- | ------------------------ | ------------- |
 | **Left Edge (≤ 87px)**                 | ⏪ Rewind 5 seconds       | ✅ Synced      |
 | **Right Edge (≥ screen width − 87px)** | ⏩ Skip forward 5 seconds | ✅ Synced      |
-| **Center (±75px from center)**         | ⎯️ Toggle Play / Pause   | ✅ Synced      |
-| **Between Left Edge and Center**       | 🔈 Decrease volume (5%)  | ❌ Local only  |
+| **Center (±75px from center)**         | ▶️ Toggle Play / Pause   | ✅ Synced      |
+| **Between Left Edge and Center**       | 🔉 Decrease volume (5%)  | ❌ Local only  |
 | **Between Center and Right Edge**      | 🔊 Increase volume (5%)  | ❌ Local only  |
 
 ![Controls](https://cdn.modrinth.com/data/N3CzASyr/images/dee2ac0695a18044f60e62bf75c5d3a94de57bd6.png "Visualised Controls (<3 comic sans)")
