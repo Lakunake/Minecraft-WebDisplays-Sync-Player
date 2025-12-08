@@ -1,19 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Synced Video Player</title>
   <style>
-    html, body { margin:0; padding:0; background:black; height:100%; overflow:hidden; }
-    video { width:100%; height:100%; background:black; display: none; }
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      background: black;
+      display: none;
+    }
+
     video::-webkit-media-controls,
-    video::-moz-media-controls { display:none!important; }
+    video::-moz-media-controls {
+      display: none !important;
+    }
+
     #status {
       position: absolute;
       top: 10px;
       left: 10px;
       color: white;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.7);
       padding: 10px 15px;
       border-radius: 5px;
       font-family: Arial, sans-serif;
@@ -24,9 +42,11 @@
       opacity: 0;
       transition: opacity 0.3s;
     }
+
     #status.visible {
       opacity: 1;
     }
+
     #waiting-message {
       position: absolute;
       top: 50%;
@@ -37,19 +57,21 @@
       font-family: Arial, sans-serif;
       text-align: center;
       z-index: 90;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.7);
       padding: 20px 40px;
       border-radius: 10px;
     }
+
     #preload-video {
       display: none;
     }
+
     #current-track-info {
       position: absolute;
       bottom: 10px;
       right: 10px;
-      color: rgba(255,255,255,0.7);
-      background: rgba(0,0,0,0.5);
+      color: rgba(255, 255, 255, 0.7);
+      background: rgba(0, 0, 0, 0.5);
       padding: 5px 10px;
       border-radius: 3px;
       font-family: Arial, sans-serif;
@@ -59,230 +81,203 @@
       opacity: 0;
       transition: opacity 0.3s;
     }
+
     #current-track-info.visible {
       opacity: 1;
     }
   </style>
 </head>
+
 <body>
-  <video id="video" autoplay preload="auto">
-    <!-- Source will be set dynamically -->
-    <!-- Audio and subtitle tracks will be added dynamically -->
-  </video>
-  
-  <!-- Hidden video for preloading main video -->
+  <video id="video" autoplay preload="auto"></video>
   <video id="preload-video" preload="auto"></video>
-  
-  <div id="status">Paused</div>
+
   <div id="waiting-message">Waiting for admin to launch playlist...</div>
-  
-  <!-- Subtle track information display (no controls) -->
+  <div id="status"></div>
   <div id="current-track-info"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const video = document.getElementById('video');
     const preloadVideo = document.getElementById('preload-video');
-    const statusEl = document.getElementById('status');
     const waitingMessage = document.getElementById('waiting-message');
-    const trackInfoEl = document.getElementById('current-track-info');
-    
+    const statusEl = document.getElementById('status');
+    const currentTrackInfoEl = document.getElementById('current-track-info');
+
     const socket = io();
-    
-    // Get config from server
-    socket.on('config', (config) => {
-      skipSeconds = config.skipSeconds || 5;
-      volumeStep = config.volumeStep || 0.05;
-    });
-    
-    // State variables
-    let currentPlaylist = { videos: [], currentIndex: 0, mainVideoIndex: -1 };
-    let mainVideoStartTime = 0;
-    let lastUpdate = 0;
-    let uiTimeout = null;
-    let trackInfoTimeout = null;
-    let skipSeconds = 5; // Default value - will be updated from server config
-    let volumeStep = 0.05; // Default value (5%) - will be updated from server config
-    let currentAudioTrack = 0;
-    let currentSubtitleTrack = -1;
+
+    let currentPlaylist = {
+      videos: [],
+      currentIndex: -1,
+      mainVideoIndex: -1,
+    };
     let currentVideoInfo = null;
+    let mainVideoStartTime = 0;
     let videoLoadAttempts = 0;
     const maxVideoLoadAttempts = 3;
-    
-    video.volume = 0.5;
-    preloadVideo.volume = 0; // Mute preload video
-    
-    // Initially show waiting message and hide video
-    waitingMessage.style.display = 'block';
-    video.style.display = 'none';
-    
-    // UI functions
+    let lastAppliedAudioTrack = null;
+    let lastAppliedSubtitleTrack = null;
+    let currentAudioTrack = null;
+    let currentSubtitleTrack = null;
+
+    const skipSeconds = 10;
+    const volumeStep = 0.05;
+
+    let lastUpdate = Date.now();
+    let hasInitialSync = false; // Prevent new clients from broadcasting until synced
+
     function showTemporaryMessage(message, duration = 2000) {
-      clearTimeout(uiTimeout);
       statusEl.textContent = message;
       statusEl.classList.add('visible');
-      
       if (duration > 0) {
-        uiTimeout = setTimeout(() => {
-          statusEl.classList.remove('visible');
-        }, duration);
+        setTimeout(() => statusEl.classList.remove('visible'), duration);
       }
     }
-    
+
     function showTrackInfo(message, duration = 3000) {
-      clearTimeout(trackInfoTimeout);
-      trackInfoEl.textContent = message;
-      trackInfoEl.classList.add('visible');
-      
-      if (duration > 0) {
-        trackInfoTimeout = setTimeout(() => {
-          trackInfoEl.classList.remove('visible');
-        }, duration);
-      }
+      currentTrackInfoEl.textContent = message;
+      currentTrackInfoEl.classList.add('visible');
+      setTimeout(() => currentTrackInfoEl.classList.remove('visible'), duration);
     }
-    
-    // Send control event to server
+
+    // Send control event to server - ONLY if we have received initial sync
     function sendControlEvent() {
+      if (!hasInitialSync) {
+        console.log('Skipping control event - waiting for initial sync');
+        return;
+      }
       socket.emit('control', {
         isPlaying: !video.paused,
-        currentTime: video.currentTime
+        currentTime: video.currentTime,
+        duration: video.duration,
+        volume: video.volume,
+        currentVideoIndex: currentPlaylist.currentIndex,
       });
     }
-    
-    // Handle playlist updates from server
-    socket.on('playlist-update', (playlist) => {
-      currentPlaylist = playlist;
-      mainVideoStartTime = playlist.mainVideoStartTime || 0;
-      
-      // Preload main video if specified, otherwise preload first video
-      if (playlist.videos.length > 0) {
-        const videoToPreload = (playlist.mainVideoIndex >= 0 && playlist.videos.length > playlist.mainVideoIndex) 
-          ? playlist.videos[playlist.mainVideoIndex] 
-          : playlist.videos[0];
+
+    socket.on('connect', () => {
+      console.log('Connected to server');
+      showTemporaryMessage('Connected', 1000);
+      socket.emit('request-initial-state');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+      showTemporaryMessage('Disconnected', 0);
+      hasInitialSync = false; // Reset on disconnect
+    });
+
+    // Handle initial state from server
+    socket.on('initial-state', (state) => {
+      console.log('Received initial state:', state);
+      currentPlaylist = state.playlist;
+      mainVideoStartTime = state.mainVideoStartTime || 0;
+
+      if (currentPlaylist.videos.length > 0) {
+        const videoToPreload = (currentPlaylist.mainVideoIndex >= 0 && currentPlaylist.videos.length > currentPlaylist.mainVideoIndex)
+          ? currentPlaylist.videos[currentPlaylist.mainVideoIndex]
+          : currentPlaylist.videos[0];
         preloadVideo.src = `/videos/${videoToPreload.filename}`;
         preloadVideo.load();
-        console.log('Preloading video:', videoToPreload.filename);
       }
-      
-      // Only hide waiting message if we have videos to play
+
       if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
-        // Hide waiting message and show video
         waitingMessage.style.display = 'none';
         video.style.display = 'block';
-        
-        // Load the current video
+        hasInitialSync = true;
         loadCurrentVideo();
       } else {
-        // Show waiting message if no videos available
         waitingMessage.style.display = 'block';
         video.style.display = 'none';
       }
     });
 
-    // Handle playlist position updates from server
     socket.on('playlist-position', (index) => {
       currentPlaylist.currentIndex = index;
-      
-      // Only proceed if we have videos
       if (currentPlaylist.videos.length > 0 && index >= 0) {
-        // Hide waiting message if it's still showing
         waitingMessage.style.display = 'none';
         video.style.display = 'block';
-        
+        hasInitialSync = true;
         loadCurrentVideo();
       } else {
-        // Show waiting message if no videos
         waitingMessage.style.display = 'block';
         video.style.display = 'none';
       }
     });
-    
-    // Handle track selection changes from admin
+
+    socket.on('playlist-update', (playlist) => {
+      console.log('Received playlist update:', playlist);
+      currentPlaylist = playlist;
+
+      if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
+        waitingMessage.style.display = 'none';
+        video.style.display = 'block';
+        hasInitialSync = true;
+        loadCurrentVideo();
+      } else {
+        waitingMessage.style.display = 'block';
+        video.style.display = 'none';
+      }
+    });
+
     socket.on('track-change', (data) => {
       if (currentPlaylist.videos.length > 0 && data.videoIndex < currentPlaylist.videos.length) {
-        const video = currentPlaylist.videos[data.videoIndex];
-        
-        // Update the video's track selections
+        const videoItem = currentPlaylist.videos[data.videoIndex];
+
         if (data.type === 'audio') {
-          video.selectedAudioTrack = data.trackIndex;
+          videoItem.selectedAudioTrack = data.trackIndex;
         } else if (data.type === 'subtitle') {
-          video.selectedSubtitleTrack = data.trackIndex;
+          videoItem.selectedSubtitleTrack = data.trackIndex;
         }
-        
-        // If this is the currently playing video, apply the changes immediately
+
         if (data.videoIndex === currentPlaylist.currentIndex) {
-          currentVideoInfo = video;
+          currentVideoInfo = videoItem;
           applyTrackSelectionsDelayed();
-          
-          // Show track change notification
-          const trackInfo = data.type === 'audio' 
-            ? (video.tracks && video.tracks.audio && video.tracks.audio[data.trackIndex] 
-                ? `${video.tracks.audio[data.trackIndex].language} - ${video.tracks.audio[data.trackIndex].title || `Track ${data.trackIndex}`}`
-                : `Audio Track ${data.trackIndex}`)
-            : (data.trackIndex >= 0 && video.tracks && video.tracks.subtitles && video.tracks.subtitles[data.trackIndex]
-                ? `${video.tracks.subtitles[data.trackIndex].language} - ${video.tracks.subtitles[data.trackIndex].title || `Track ${data.trackIndex}`}`
-                : 'Subtitles Off');
-          
+
+          const trackInfo = data.type === 'audio'
+            ? (videoItem.tracks && videoItem.tracks.audio && videoItem.tracks.audio[data.trackIndex]
+              ? `${videoItem.tracks.audio[data.trackIndex].language} - ${videoItem.tracks.audio[data.trackIndex].title || `Track ${data.trackIndex}`}`
+              : `Audio Track ${data.trackIndex}`)
+            : (data.trackIndex >= 0 && videoItem.tracks && videoItem.tracks.subtitles && videoItem.tracks.subtitles[data.trackIndex]
+              ? `${videoItem.tracks.subtitles[data.trackIndex].language} - ${videoItem.tracks.subtitles[data.trackIndex].title || `Track ${data.trackIndex}`}`
+              : 'Subtitles Off');
+
           showTrackInfo(`${data.type === 'audio' ? 'Audio' : 'Subtitles'}: ${trackInfo}`);
         }
       }
     });
 
-    // Handle video ending and move to next in playlist
     video.addEventListener('ended', () => {
       if (currentPlaylist.videos.length > 0) {
-        // Move to next video in playlist
         const nextIndex = (currentPlaylist.currentIndex + 1) % currentPlaylist.videos.length;
-        
-        // Notify server to update playlist position
         socket.emit('playlist-next', nextIndex);
       }
     });
 
-    // Load the current video based on playlist position
     function loadCurrentVideo() {
       if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
-        // Show waiting message if no videos
         waitingMessage.style.display = 'block';
         video.style.display = 'none';
         return;
       }
-      
+
       const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
       currentVideoInfo = currentVideo;
-      
-      // Try to use URL parameters to force track selection
+
       let videoSrc = `/videos/${currentVideo.filename}`;
-      
-      // Add track selection as URL parameters (some browsers support this)
-      if (currentVideo.selectedAudioTrack !== undefined && currentVideo.selectedAudioTrack >= 0) {
-        videoSrc += `#audio=${currentVideo.selectedAudioTrack}`;
-      }
-      if (currentVideo.selectedSubtitleTrack !== undefined && currentVideo.selectedSubtitleTrack >= 0) {
-        videoSrc += `#subtitle=${currentVideo.selectedSubtitleTrack}`;
-      }
-      
-      console.log('Setting video source with track parameters:', videoSrc);
+      console.log('Loading video:', videoSrc);
       video.src = videoSrc;
-      
-      // If this is the main video, set the start time
-      if (currentPlaylist.mainVideoIndex >= 0 && currentPlaylist.currentIndex === currentPlaylist.mainVideoIndex) {
-        video.currentTime = mainVideoStartTime;
-      } else {
-        video.currentTime = 0;
-      }
-      
-      // Clear existing tracks
+
+      // Request sync from server to get the current time
+      socket.emit('request-sync');
+
       clearVideoTracks();
-      
       video.load();
-      
-      video.onloadeddata = function() {
-        videoLoadAttempts = 0; // Reset attempts on successful load
-        
-        console.log('Video loaded, applying tracks IMMEDIATELY');
-        applyTrackSelections(); // Apply immediately, no delay
-        
+
+      video.onloadeddata = function () {
+        videoLoadAttempts = 0;
+        applyTrackSelections();
+
         if (!video.paused) {
           video.play().catch(e => {
             console.log('Playback error:', e);
@@ -290,252 +285,113 @@
           });
         }
       };
-      
-      // Apply tracks at multiple points
-      video.oncanplay = function() {
-        console.log('Video can play, applying tracks');
+
+      video.onloadedmetadata = function () {
         applyTrackSelections();
       };
-      
-      video.oncanplaythrough = function() {
-        console.log('Video can play through, applying tracks');
-        applyTrackSelections();
-      };
-      
-      video.onplay = function() {
-        console.log('Video started playing, applying tracks');
-        applyTrackSelections();
-      };
-      
-      video.onloadedmetadata = function() {
-        console.log('Video metadata loaded, applying tracks');
-        applyTrackSelections();
-      };
-      
-      video.onerror = function() {
+
+      video.onerror = function () {
         console.log('Error loading video:', currentVideo.filename);
         videoLoadAttempts++;
-        
+
         if (videoLoadAttempts < maxVideoLoadAttempts) {
-          // Retry loading the video
           setTimeout(() => {
             console.log('Retrying video load, attempt:', videoLoadAttempts);
             loadCurrentVideo();
           }, 1000);
         } else {
-          // Show waiting message if video fails to load
           waitingMessage.style.display = 'block';
           video.style.display = 'none';
           showTemporaryMessage('Failed to load video. Please check file format.', 5000);
         }
       };
     }
-    
-    // Handle playback errors
+
     function handlePlaybackError(error) {
       console.log('Playback error:', error);
-      
-      // Show waiting message if playback fails
       waitingMessage.style.display = 'block';
       video.style.display = 'none';
       showTemporaryMessage('Playback failed. Please check file format.', 3000);
     }
-    
-    // Clear all video tracks
+
     function clearVideoTracks() {
-      // Remove all existing audio and text tracks
       const audioTracks = video.audioTracks;
       const textTracks = video.textTracks;
-      
-      // Note: We can't directly remove tracks, but we can disable them
-      for (let i = 0; i < audioTracks.length; i++) {
-        audioTracks[i].enabled = false;
+
+      if (audioTracks) {
+        for (let i = 0; i < audioTracks.length; i++) {
+          audioTracks[i].enabled = false;
+        }
       }
-      
-      for (let i = 0; i < textTracks.length; i++) {
-        textTracks[i].mode = 'disabled';
+
+      if (textTracks) {
+        for (let i = 0; i < textTracks.length; i++) {
+          textTracks[i].mode = 'disabled';
+        }
       }
     }
-    
-    // Apply track selections to current video - AGGRESSIVE APPROACH
+
     function applyTrackSelections() {
-      if (!currentVideoInfo) {
-        console.log('No current video info available for track selection');
-        return;
-      }
-      
-      console.log('=== AGGRESSIVE TRACK SELECTION ===');
-      console.log('Video:', currentVideoInfo.filename);
-      console.log('Audio track:', currentVideoInfo.selectedAudioTrack);
-      console.log('Subtitle track:', currentVideoInfo.selectedSubtitleTrack);
-      
-      // Method 1: Direct track manipulation
+      if (!currentVideoInfo) return;
       tryDirectTrackManipulation();
-      
-      // Method 2: Video reload with track parameters
-      tryVideoReload();
-      
-      // Method 3: Multiple timing attempts
-      tryMultipleTimings();
-      
-      // Method 4: Force track change events
-      tryForceTrackEvents();
-      
-      // Method 5: Video attributes approach
       tryVideoAttributes();
     }
-    
+
     function tryDirectTrackManipulation() {
-      console.log('Method 1: Direct track manipulation');
-      
-      // Check if audioTracks API is available
-      if (typeof video.audioTracks !== 'undefined') {
-        console.log('audioTracks API is available');
-        if (currentVideoInfo.selectedAudioTrack !== undefined) {
-          console.log('Audio tracks available:', video.audioTracks.length);
-          console.log('Selected audio track:', currentVideoInfo.selectedAudioTrack);
-          
+      if (typeof video.audioTracks !== 'undefined' && currentVideoInfo.selectedAudioTrack !== undefined) {
+        const targetIndex = Math.max(0, Math.min(currentVideoInfo.selectedAudioTrack, video.audioTracks.length - 1));
+        if (lastAppliedAudioTrack !== targetIndex) {
           for (let i = 0; i < video.audioTracks.length; i++) {
-            const wasEnabled = video.audioTracks[i].enabled;
-            video.audioTracks[i].enabled = (i === currentVideoInfo.selectedAudioTrack);
-            console.log(`Audio track ${i}: ${wasEnabled} -> ${video.audioTracks[i].enabled} (${video.audioTracks[i].enabled ? 'ENABLED' : 'disabled'})`);
+            video.audioTracks[i].enabled = (i === targetIndex);
           }
+          lastAppliedAudioTrack = targetIndex;
         }
-      } else {
-        console.log('❌ audioTracks API is NOT available in this browser');
       }
-      
-      // Check if textTracks API is available
-      if (typeof video.textTracks !== 'undefined') {
-        console.log('textTracks API is available');
-        if (currentVideoInfo.selectedSubtitleTrack !== undefined) {
-          console.log('Text tracks available:', video.textTracks.length);
-          console.log('Selected subtitle track:', currentVideoInfo.selectedSubtitleTrack);
-          
+
+      if (typeof video.textTracks !== 'undefined' && currentVideoInfo.selectedSubtitleTrack !== undefined) {
+        const targetSubIndex = currentVideoInfo.selectedSubtitleTrack;
+        if (lastAppliedSubtitleTrack !== targetSubIndex) {
           for (let i = 0; i < video.textTracks.length; i++) {
-            const oldMode = video.textTracks[i].mode;
-            if (currentVideoInfo.selectedSubtitleTrack >= 0) {
-              video.textTracks[i].mode = (i === currentVideoInfo.selectedSubtitleTrack) ? 'showing' : 'disabled';
+            if (targetSubIndex >= 0) {
+              video.textTracks[i].mode = (i === targetSubIndex) ? 'showing' : 'disabled';
             } else {
               video.textTracks[i].mode = 'disabled';
             }
-            console.log(`Text track ${i}: ${oldMode} -> ${video.textTracks[i].mode}`);
           }
-        }
-      } else {
-        console.log('❌ textTracks API is NOT available in this browser');
-      }
-      
-      // Check browser support
-      console.log('Browser support check:');
-      console.log('- audioTracks:', typeof video.audioTracks !== 'undefined' ? '✅' : '❌');
-      console.log('- textTracks:', typeof video.textTracks !== 'undefined' ? '✅' : '❌');
-      console.log('- audioTracks length:', video.audioTracks ? video.audioTracks.length : 'N/A');
-      console.log('- textTracks length:', video.textTracks ? video.textTracks.length : 'N/A');
-    }
-    
-    function tryVideoReload() {
-      console.log('Method 2: Video reload approach');
-      
-      // Store current time
-      const currentTime = video.currentTime;
-      const wasPlaying = !video.paused;
-      
-      // Reload video
-      video.load();
-      
-      // Restore state after reload
-      video.onloadeddata = () => {
-        video.currentTime = currentTime;
-        if (wasPlaying) {
-          video.play();
-        }
-        // Try track selection again after reload
-        setTimeout(() => {
-          tryDirectTrackManipulation();
-        }, 100);
-      };
-    }
-    
-    function tryMultipleTimings() {
-      console.log('Method 3: Multiple timing attempts');
-      
-      const timings = [0, 50, 100, 200, 500, 1000, 2000];
-      
-      timings.forEach(delay => {
-        setTimeout(() => {
-          console.log(`Trying track selection after ${delay}ms`);
-          tryDirectTrackManipulation();
-        }, delay);
-      });
-    }
-    
-    function tryForceTrackEvents() {
-      console.log('Method 4: Force track change events');
-      
-      // Force audio track change
-      if (currentVideoInfo.selectedAudioTrack !== undefined && video.audioTracks) {
-        const audioTrack = video.audioTracks[currentVideoInfo.selectedAudioTrack];
-        if (audioTrack) {
-          // Try to trigger change event
-          audioTrack.enabled = false;
-          setTimeout(() => {
-            audioTrack.enabled = true;
-            console.log('Forced audio track change');
-          }, 10);
-        }
-      }
-      
-      // Force subtitle track change
-      if (currentVideoInfo.selectedSubtitleTrack !== undefined && video.textTracks) {
-        const textTrack = video.textTracks[currentVideoInfo.selectedSubtitleTrack];
-        if (textTrack) {
-          // Try to trigger change event
-          textTrack.mode = 'disabled';
-          setTimeout(() => {
-            textTrack.mode = 'showing';
-            console.log('Forced subtitle track change');
-          }, 10);
+          lastAppliedSubtitleTrack = targetSubIndex;
         }
       }
     }
-    
-    // Method 5: Try to set video attributes directly
+
     function tryVideoAttributes() {
-      console.log('Method 5: Video attributes approach');
-      
-      // Try setting data attributes
       if (currentVideoInfo.selectedAudioTrack !== undefined) {
         video.setAttribute('data-audio-track', currentVideoInfo.selectedAudioTrack);
-        console.log('Set data-audio-track attribute:', currentVideoInfo.selectedAudioTrack);
       }
-      
       if (currentVideoInfo.selectedSubtitleTrack !== undefined) {
         video.setAttribute('data-subtitle-track', currentVideoInfo.selectedSubtitleTrack);
-        console.log('Set data-subtitle-track attribute:', currentVideoInfo.selectedSubtitleTrack);
       }
-      
-      // Try setting custom properties
-      video._selectedAudioTrack = currentVideoInfo.selectedAudioTrack;
-      video._selectedSubtitleTrack = currentVideoInfo.selectedSubtitleTrack;
-      console.log('Set custom properties on video element');
     }
-    
-    // Apply track selections with a delay to ensure video is ready
+
     function applyTrackSelectionsDelayed() {
-      setTimeout(() => {
-        applyTrackSelections();
-      }, 500); // Increased delay to ensure tracks are fully loaded
+      setTimeout(() => applyTrackSelections(), 500);
     }
-    
+
     // Handle server sync events
     socket.on('sync', (state) => {
-      // Prevent feedback loops
       const now = Date.now();
       if (now - lastUpdate < 100) return;
       lastUpdate = now;
-      
-      // Sync playback state
+
+      // If we receive a sync and have an active playlist, hide waiting message
+      if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
+        if (waitingMessage.style.display !== 'none') {
+          console.log('Hiding waiting message - active playlist detected');
+          waitingMessage.style.display = 'none';
+          video.style.display = 'block';
+          hasInitialSync = true;
+        }
+      }
+
       if (state.isPlaying !== !video.paused) {
         if (state.isPlaying) {
           video.play().catch(e => {
@@ -547,90 +403,78 @@
           showTemporaryMessage("Paused", 0);
         }
       }
-      
-      // Sync time position
+
       if (Math.abs(video.currentTime - state.currentTime) > 0.5) {
         video.currentTime = state.currentTime;
       }
-      
-      // Sync audio track (just display info, no control)
+
       if (state.audioTrack !== undefined && state.audioTrack !== currentAudioTrack) {
         currentAudioTrack = state.audioTrack;
         if (currentVideoInfo && currentVideoInfo.tracks && currentVideoInfo.tracks.audio) {
           const audioTrack = currentVideoInfo.tracks.audio[currentAudioTrack];
           if (audioTrack) {
-            showTrackInfo(`Audio: ${audioTrack.language} ${audioTrack.title ? `- ${audioTrack.title}` : ''}`);
+            showTrackInfo(`Audio: ${audioTrack.language}${audioTrack.title ? ` - ${audioTrack.title}` : ''}`);
           }
         }
       }
-      
-      // Sync subtitle track (just display info, no control)
+
       if (state.subtitleTrack !== undefined && state.subtitleTrack !== currentSubtitleTrack) {
         currentSubtitleTrack = state.subtitleTrack;
         if (currentSubtitleTrack >= 0 && currentVideoInfo && currentVideoInfo.tracks && currentVideoInfo.tracks.subtitles) {
           const subtitleTrack = currentVideoInfo.tracks.subtitles[currentSubtitleTrack];
           if (subtitleTrack) {
-            showTrackInfo(`Subtitles: ${subtitleTrack.language} ${subtitleTrack.title ? `- ${subtitleTrack.title}` : ''}`);
+            showTrackInfo(`Subtitles: ${subtitleTrack.language}${subtitleTrack.title ? ` - ${subtitleTrack.title}` : ''}`);
           }
         } else if (currentSubtitleTrack < 0) {
           showTrackInfo("Subtitles: Off");
         }
       }
     });
-    
-    // Event listeners
+
+    // Event listeners - only send control if we have initial sync
     video.addEventListener('play', () => {
       statusEl.classList.remove('visible');
       sendControlEvent();
     });
-    
+
     video.addEventListener('pause', () => {
       showTemporaryMessage("Paused", 0);
       sendControlEvent();
     });
-    
+
     video.addEventListener('seeked', sendControlEvent);
-    
-    // Control zones
+
+    // Control zones (click on screen)
     document.addEventListener('click', (e) => {
       const w = window.innerWidth;
       const x = e.clientX;
       const center = w / 2;
       const edgeZone = 87;
       const pauseZone = 75;
-      
-      // Left edge: Rewind
+
       if (x <= edgeZone) {
         video.currentTime = Math.max(0, video.currentTime - skipSeconds);
         showTemporaryMessage(`↩ Rewind ${skipSeconds}s`);
         sendControlEvent();
-      } 
-      // Right edge: Skip
-      else if (x >= w - edgeZone) {
+      } else if (x >= w - edgeZone) {
         video.currentTime = Math.min(video.duration, video.currentTime + skipSeconds);
         showTemporaryMessage(`↪ Skip ${skipSeconds}s`);
         sendControlEvent();
-      }
-      // Center: Play/Pause
-      else if (x >= center - pauseZone && x <= center + pauseZone) {
+      } else if (x >= center - pauseZone && x <= center + pauseZone) {
         if (video.paused) {
           video.play();
         } else {
           video.pause();
         }
-      }
-      // Left half: Volume Down
-      else if (x < center) {
+      } else if (x < center) {
         video.volume = Math.max(0, video.volume - volumeStep);
         showTemporaryMessage(`Volume: ${Math.round(video.volume * 100)}%`);
-      }
-      // Right half: Volume Up
-      else {
+      } else {
         video.volume = Math.min(1, video.volume + volumeStep);
         showTemporaryMessage(`Volume: ${Math.round(video.volume * 100)}%`);
       }
     });
-    
+
     // Auto-reconnect
     setInterval(() => {
       if (!socket.connected) {
@@ -640,4 +484,5 @@
     }, 5000);
   </script>
 </body>
+
 </html>
