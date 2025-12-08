@@ -1,12 +1,22 @@
-# Sync-Player Config
+# Minecraft Video Sync Configuration
 # Format: key: value  (space after colon is optional)
 # Lines starting with # are comments
 
 # Server port (1024-49151)
-port: 3000
+port: 3001
 
 # Volume step percentage (1-20)
 volume_step: 5
 
 # Rewind/Skip seconds (5-60)
 skip_seconds: 5
+
+# Join behavior: 'sync' (new user joins current time) or 'reset' (rewind to 0 for everyone)
+join_mode: sync
+
+# HTTPS Configuration (Recommended for DirectHosting)
+# Set use_https to true to enable HTTPS
+use_https: false
+# Paths to SSL key and certificate files (relative to server root)
+ssl_key_file: key.pem
+ssl_cert_file: cert.pem
