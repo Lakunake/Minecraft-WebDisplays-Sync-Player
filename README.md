@@ -63,7 +63,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 > Run "npm install express@5.1.0 socket.io@4.8.1" at cmd in case of the auto install failing.
 
 ### Method 1: LAN or Public IP (Direct Hosting),
-> Best for Many people and Repeated users, complex-ish setup, *may not be safe as in cybersecurity currently*
+> Best for Many people and Repeated users, complex-ish setup, Safe if you enable HTTPS via config if you're direct hosting, otherwise lan is already safe
 
 1. Run `start.bat` in your folder
 2. Make sure your selected port is open in your firewall/router
