@@ -26,6 +26,8 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 * Automatic video preloading for smooth transitions
 * Dynamic Audio/Subtitle track changing
 * Minimal UI in view mode
+* HTTP/HTTPS switch and [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
+* [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
 
 ---
 
