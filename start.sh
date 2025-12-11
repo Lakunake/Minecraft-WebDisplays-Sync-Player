@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#THIS SCRIPT IS NOT YET UPDATED TO MATCH 1.6.0
+#THIS SCRIPT IS NOT YET FUNCTONAL
 
 
 # =================================================================
