@@ -3,7 +3,7 @@
 # Lines starting with # are comments
 
 # Server port (1024-49151)
-port: 3001
+port: 3000
 
 # Volume step percentage (1-20)
 volume_step: 5
@@ -20,3 +20,8 @@ use_https: false
 # Paths to SSL key and certificate files (relative to server root)
 ssl_key_file: key.pem
 ssl_cert_file: cert.pem
+
+# BSL-S² (Both Side Local Sync Stream) Configuration
+# Mode: 'any' = BSL-S² active if ANY client has the local file
+#       'all' = BSL-S² only active if ALL clients have the local file
+bsl_s2_mode: any
