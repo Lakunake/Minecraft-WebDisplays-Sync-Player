@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Admin Control Panel</title>
@@ -9,7 +10,7 @@
       margin: 0;
       padding: 0;
     }
-    
+
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #1a1a1a;
@@ -19,25 +20,25 @@
       max-width: 1200px;
       margin: 0 auto;
     }
-    
+
     header {
       text-align: center;
       margin-bottom: 25px;
       padding-bottom: 15px;
       border-bottom: 1px solid #333;
     }
-    
+
     h1 {
       color: #4CAF50;
       margin-bottom: 5px;
       font-size: 28px;
     }
-    
+
     .subtitle {
       color: #888;
       font-size: 16px;
     }
-    
+
     .panel {
       background: #252525;
       border-radius: 8px;
@@ -45,7 +46,7 @@
       margin-bottom: 20px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    
+
     h2 {
       color: #4CAF50;
       margin-bottom: 15px;
@@ -53,7 +54,7 @@
       border-bottom: 1px solid #333;
       font-size: 20px;
     }
-    
+
     .file-browser {
       max-height: 300px;
       overflow-y: auto;
@@ -62,7 +63,7 @@
       border-radius: 6px;
       padding: 10px;
     }
-    
+
     .file-item {
       display: flex;
       justify-content: space-between;
@@ -71,24 +72,24 @@
       border-bottom: 1px solid #333;
       transition: background 0.2s;
     }
-    
+
     .file-item:hover {
       background: #2a2a2a;
     }
-    
+
     .file-name {
       flex-grow: 1;
       font-size: 16px;
       display: flex;
       align-items: center;
     }
-    
+
     .hevc-warning-icon {
       color: #ff6b6b;
       margin-left: 8px;
       cursor: help;
     }
-    
+
     .file-actions button {
       background: #4CAF50;
       color: white;
@@ -99,11 +100,11 @@
       font-size: 14px;
       transition: background 0.2s;
     }
-    
+
     .file-actions button:hover {
       background: #3e8e41;
     }
-    
+
     .playlist {
       max-height: 400px;
       overflow-y: auto;
@@ -112,24 +113,24 @@
       border-radius: 6px;
       padding: 10px;
     }
-    
+
     .playlist-item {
       padding: 12px 15px;
       border-bottom: 1px solid #333;
       transition: background 0.2s;
     }
-    
+
     .playlist-item.main {
       background: #2c5f2d;
       border-left: 4px solid #4CAF50;
     }
-    
+
     .playlist-info {
       display: flex;
       align-items: center;
       margin-bottom: 8px;
     }
-    
+
     .main-badge {
       background: #4CAF50;
       color: white;
@@ -138,13 +139,13 @@
       font-size: 12px;
       margin-left: 10px;
     }
-    
+
     .playlist-actions {
       display: flex;
       gap: 8px;
       margin-bottom: 10px;
     }
-    
+
     .playlist-actions button {
       padding: 6px 12px;
       border: none;
@@ -152,35 +153,35 @@
       cursor: pointer;
       font-size: 13px;
     }
-    
+
     .btn-set-main {
       background: #2196F3;
       color: white;
     }
-    
+
     .btn-remove {
       background: #f44336;
       color: white;
     }
-    
+
     .track-selection {
       background: #2a2a2a;
       padding: 10px;
       border-radius: 4px;
       margin-top: 10px;
     }
-    
+
     .track-group {
       display: flex;
       align-items: center;
       margin-bottom: 8px;
     }
-    
+
     .track-group label {
       min-width: 100px;
       margin-right: 10px;
     }
-    
+
     .track-group select {
       flex-grow: 1;
       padding: 6px;
@@ -189,19 +190,19 @@
       border: 1px solid #444;
       border-radius: 4px;
     }
-    
+
     .control-group {
       display: flex;
       gap: 15px;
       margin-bottom: 15px;
       align-items: center;
     }
-    
+
     label {
       font-weight: bold;
       min-width: 120px;
     }
-    
+
     input[type="number"] {
       padding: 10px;
       border: 1px solid #444;
@@ -210,13 +211,13 @@
       color: #e0e0e0;
       width: 100px;
     }
-    
+
     .action-buttons {
       display: flex;
       justify-content: center;
       margin-top: 20px;
     }
-    
+
     .btn-launch {
       background: #4CAF50;
       color: white;
@@ -228,18 +229,18 @@
       font-weight: bold;
       transition: background 0.2s;
     }
-    
+
     .btn-launch:hover {
       background: #3e8e41;
     }
-    
+
     .remote-controls {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 15px;
       margin-top: 20px;
     }
-    
+
     .remote-btn {
       padding: 15px;
       border: none;
@@ -251,36 +252,36 @@
       color: #e0e0e0;
       transition: background 0.2s;
     }
-    
+
     .remote-btn:hover {
       background: #444;
     }
-    
+
     .btn-play {
       background: #4CAF50;
       grid-column: 2;
     }
-    
+
     .btn-pause {
       background: #FF9800;
       grid-column: 2;
     }
-    
+
     .btn-skip-back {
       background: #2196F3;
     }
-    
+
     .btn-skip-forward {
       background: #2196F3;
     }
-    
+
     .seek-controls {
       grid-column: 1 / span 3;
       display: flex;
       gap: 10px;
       margin-top: 10px;
     }
-    
+
     .seek-controls input {
       flex-grow: 1;
       padding: 12px;
@@ -290,7 +291,7 @@
       color: #e0e0e0;
       width: 100px;
     }
-    
+
     .btn-seek {
       background: #9C27B0;
       color: white;
@@ -299,7 +300,7 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    
+
     .status-message {
       text-align: center;
       padding: 12px;
@@ -307,43 +308,43 @@
       border-radius: 4px;
       display: none;
     }
-    
+
     .status-success {
       background: #2c5f2d;
       display: block;
     }
-    
+
     .status-error {
       background: #f44336;
       display: block;
     }
-    
+
     .status-warning {
       background: #FF9800;
       color: #333;
       display: block;
     }
-    
+
     .status-info {
       background: #2196F3;
       display: block;
     }
-    
+
     .hidden {
       display: none;
     }
-    
+
     .visible {
       display: block;
     }
-    
+
     .empty-message {
       text-align: center;
       padding: 20px;
       color: #888;
       font-style: italic;
     }
-    
+
     .hevc-warning {
       background: #f44336;
       color: white;
@@ -352,7 +353,7 @@
       margin-bottom: 20px;
       display: none;
     }
-    
+
     .loading-indicator {
       display: inline-block;
       width: 16px;
@@ -363,7 +364,7 @@
       animation: spin 1s linear infinite;
       margin-left: 10px;
     }
-    
+
     .mkv-info {
       background: #2196F3;
       color: white;
@@ -372,21 +373,175 @@
       margin-bottom: 20px;
       display: none;
     }
-    
+
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
     }
-    
+
+    /* BSL-S² Styles */
+    .playlist-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+    }
+
+    .playlist-header h2 {
+      margin: 0;
+      padding: 0;
+      border: none;
+    }
+
+    .btn-bsl-check {
+      background: #9C27B0;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+
+    .btn-bsl-check:hover {
+      background: #7B1FA2;
+    }
+
+    .btn-bsl-check:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+
+    .bsl-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+
+    .bsl-positive {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .bsl-negative {
+      background: #f44336;
+      color: white;
+    }
+
+    .bsl-partial {
+      background: #FF9800;
+      color: #333;
+    }
+
+    .bsl-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .bsl-modal.visible {
+      display: flex;
+    }
+
+    .bsl-modal-content {
+      background: #252525;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 800px;
+      max-height: 80vh;
+      overflow-y: auto;
+      width: 90%;
+    }
+
+    .bsl-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+    }
+
+    .bsl-modal-close {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .bsl-client-card {
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .bsl-client-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .bsl-file-list {
+      max-height: 150px;
+      overflow-y: auto;
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    .bsl-file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .bsl-file-item:last-child {
+      border-bottom: none;
+    }
+
+    .bsl-match-select {
+      padding: 4px;
+      background: #1e1e1e;
+      color: #e0e0e0;
+      border: 1px solid #444;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
     @media (max-width: 768px) {
       .remote-controls {
         grid-template-columns: 1fr;
       }
-      
-      .btn-play, .btn-pause, .btn-skip-back, .btn-skip-forward {
+
+      .btn-play,
+      .btn-pause,
+      .btn-skip-back,
+      .btn-skip-forward {
         grid-column: 1;
       }
-      
+
       .seek-controls {
         grid-column: 1;
         flex-direction: column;
@@ -394,22 +549,26 @@
     }
   </style>
 </head>
+
 <body>
   <header>
     <h1>Sync-Player Admin Panel</h1>
     <p class="subtitle">Manage playlists and control playback</p>
   </header>
-  
+
   <!-- HEVC Warning Banner -->
   <div id="hevc-warning" class="hevc-warning hidden">
-    <strong>⚠️ HEVC Codec Warning:</strong> MKV files often use HEVC (H.265) codecs which cannot be played on browsers without HEVC extensions. This affects all clients including the host. Users may need to install HEVC codecs from the Microsoft Store for proper playback.
+    <strong>⚠️ HEVC Codec Warning:</strong> MKV files often use HEVC (H.265) codecs which cannot be played on browsers
+    without HEVC extensions. This affects all clients including the host. Users may need to install HEVC codecs from the
+    Microsoft Store for proper playback.
   </div>
-  
+
   <!-- MKV Info Banner -->
   <div id="mkv-info" class="mkv-info hidden">
-    <strong>ℹ️ MKV File Information:</strong> MKV files support multiple audio and subtitle tracks. You can select which tracks to use by default for each MKV file in your playlist.
+    <strong>ℹ️ MKV File Information:</strong> MKV files support multiple audio and subtitle tracks. You can select which
+    tracks to use by default for each MKV file in your playlist.
   </div>
-  
+
   <div id="setup-section">
     <div class="panel">
       <h2>Available Media Files</h2>
@@ -417,24 +576,29 @@
         <div class="empty-message">Loading files...</div>
       </div>
     </div>
-    
+
     <div class="panel">
-      <h2>Playlist</h2>
+      <div class="playlist-header">
+        <h2>Playlist</h2>
+        <button class="btn-bsl-check" id="bsl-check-btn"
+          title="BSL-S² = Both Side Local Sync Stream. Checks if clients have matching video files locally to enable bandwidth-saving local playback.">🔍
+          Check for BSL-S²</button>
+      </div>
       <div class="playlist" id="playlist-container">
         <div class="empty-message">No files in playlist yet</div>
       </div>
-      
+
       <div class="control-group">
         <label for="start-time">Main Video Start (s):</label>
         <input type="number" id="start-time" min="0" value="0">
       </div>
-      
+
       <div class="action-buttons">
         <button class="btn-launch" id="launch-btn">Launch Playlist</button>
       </div>
     </div>
   </div>
-  
+
   <div id="remote-section" class="hidden">
     <div class="panel">
       <h2>Remote Control</h2>
@@ -442,14 +606,15 @@
         <button class="remote-btn btn-skip-back" id="skip-back-btn">↩ <span id="skip-back-text">5s</span></button>
         <button class="remote-btn btn-play" id="play-btn">Play</button>
         <button class="remote-btn btn-pause" id="pause-btn">Pause</button>
-        <button class="remote-btn btn-skip-forward" id="skip-forward-btn">↪ <span id="skip-forward-text">5s</span></button>
-        
+        <button class="remote-btn btn-skip-forward" id="skip-forward-btn">↪ <span
+            id="skip-forward-text">5s</span></button>
+
         <div class="seek-controls">
           <input type="number" id="seek-time" placeholder="Time in seconds" min="0">
           <button class="btn-seek" id="seek-btn">Seek</button>
         </div>
       </div>
-      
+
       <!-- Remote track controls (for current playing video) -->
       <div class="panel track-selection" id="remote-track-controls" style="margin-top: 15px;">
         <h2 style="margin-top: 0;">Current Video Tracks</h2>
@@ -467,8 +632,21 @@
           </select>
         </div>
       </div>
-      
+
       <div class="status-message" id="status-message"></div>
+    </div>
+  </div>
+
+  <!-- BSL-S² Modal -->
+  <div id="bsl-modal" class="bsl-modal">
+    <div class="bsl-modal-content">
+      <div class="bsl-modal-header">
+        <h2>BSL-S² Client Status</h2>
+        <button class="bsl-modal-close" id="bsl-modal-close">✕ Close</button>
+      </div>
+      <div id="bsl-modal-body">
+        <div class="empty-message">Waiting for clients to select their local folders...</div>
+      </div>
     </div>
   </div>
 
@@ -478,7 +656,7 @@
     let playlist = [];
     let mainVideoIndex = -1;
     let skipSeconds = 5; // Will be updated from server config
-    
+
     // Live server playlist and index for remote controls
     let serverPlaylist = null;
     let currentServerIndex = -1;
@@ -491,7 +669,7 @@
         displayFiles(files);
       } catch (error) {
         console.error('Error loading files:', error);
-        document.getElementById('file-browser').innerHTML = 
+        document.getElementById('file-browser').innerHTML =
           '<div class="empty-message">Error loading files. Check server connection.</div>';
       }
     }
@@ -499,22 +677,22 @@
     // Display files in the file browser
     function displayFiles(files) {
       const fileBrowser = document.getElementById('file-browser');
-      
+
       if (files.length === 0) {
         fileBrowser.innerHTML = '<div class="empty-message">No media files found in videos folder</div>';
         return;
       }
-      
+
       fileBrowser.innerHTML = '';
-      
+
       files.forEach((file) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
-        
+
         const fileNameDiv = document.createElement('div');
         fileNameDiv.className = 'file-name';
         fileNameDiv.innerHTML = file.filename;
-        
+
         // Show warning for all MKV files (simplified approach)
         if (file.filename.endsWith('.mkv')) {
           const warningIcon = document.createElement('span');
@@ -523,18 +701,18 @@
           warningIcon.innerHTML = '⚠️';
           fileNameDiv.appendChild(warningIcon);
         }
-        
+
         const fileActions = document.createElement('div');
         fileActions.className = 'file-actions';
-        
+
         const addButton = document.createElement('button');
         addButton.textContent = 'Add to Playlist';
         addButton.onclick = () => addToPlaylist(file);
-        
+
         fileActions.appendChild(addButton);
         fileItem.appendChild(fileNameDiv);
         fileItem.appendChild(fileActions);
-        
+
         fileBrowser.appendChild(fileItem);
       });
     }
@@ -543,8 +721,8 @@
     async function addToPlaylist(file) {
       if (!playlist.some(item => item.filename === file.filename)) {
         // Create a copy of the file object to avoid reference issues
-        const fileCopy = {...file};
-        
+        const fileCopy = { ...file };
+
         // For MKV and MP4 files, fetch track information
         if (fileCopy.filename.endsWith('.mkv') || fileCopy.filename.endsWith('.mp4')) {
           try {
@@ -553,7 +731,7 @@
             const originalText = addButton.textContent;
             addButton.disabled = true;
             addButton.innerHTML = 'Adding... <span class="loading-indicator"></span>';
-            
+
             const response = await fetch(`/api/tracks/${encodeURIComponent(fileCopy.filename)}`);
             if (response.ok) {
               const tracks = await response.json();
@@ -566,14 +744,14 @@
               console.error('Error fetching track info:', response.statusText);
               fileCopy.tracks = { audio: [], subtitles: [] };
             }
-            
+
             // Restore button
             addButton.disabled = false;
             addButton.textContent = originalText;
           } catch (error) {
             console.error('Error fetching track info:', error);
             fileCopy.tracks = { audio: [], subtitles: [] };
-            
+
             // Restore button in case of error
             const addButton = event.target;
             addButton.disabled = false;
@@ -583,20 +761,20 @@
           // For non-MKV files, set empty tracks
           fileCopy.tracks = { audio: [], subtitles: [] };
         }
-        
+
         // Mark all MKV files as potentially having HEVC
         if (fileCopy.filename.endsWith('.mkv')) {
           fileCopy.usesHEVC = true;
         } else {
           fileCopy.usesHEVC = false;
         }
-        
+
         playlist.push(fileCopy);
         updatePlaylistDisplay();
-        
+
         // Show warning if there are MKV files
         updateHevcWarning();
-        
+
         // Show MKV info if there are MKV files
         updateMkvInfo();
       }
@@ -611,7 +789,7 @@
         mainVideoIndex--;
       }
       updatePlaylistDisplay();
-      
+
       // Update warning if MKV files were removed
       updateHevcWarning();
       updateMkvInfo();
@@ -623,7 +801,7 @@
         if ((item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4')) && item.tracks) {
           const audioSelect = document.getElementById(`audio-track-${index}`);
           const subtitleSelect = document.getElementById(`subtitle-track-${index}`);
-          
+
           if (audioSelect) {
             item.selectedAudioTrack = parseInt(audioSelect.value);
           }
@@ -633,16 +811,16 @@
         }
       });
     }
-    
+
     // Set a video as the main video
     function setAsMain(index) {
       const item = playlist[index];
-      
+
       // Check if it's an MKV file and show info
       if (item.filename.endsWith('.mkv')) {
         showStatus('Note: MKV files may have limited browser support. Ensure proper codecs are installed.', 'info');
       }
-      
+
       mainVideoIndex = index;
       updatePlaylistDisplay();
     }
@@ -650,28 +828,28 @@
     // Update the playlist display
     function updatePlaylistDisplay() {
       const playlistContainer = document.getElementById('playlist-container');
-      
+
       if (playlist.length === 0) {
         playlistContainer.innerHTML = '<div class="empty-message">No files in playlist yet</div>';
         return;
       }
-      
+
       // Preserve current track selections before regenerating HTML
       preserveTrackSelections();
-      
+
       playlistContainer.innerHTML = '';
-      
+
       playlist.forEach((item, index) => {
         const playlistItem = document.createElement('div');
         playlistItem.className = `playlist-item ${index === mainVideoIndex ? 'main' : ''}`;
-        
+
         // Playlist info section
         const playlistInfo = document.createElement('div');
         playlistInfo.className = 'playlist-info';
-        
+
         const fileName = document.createElement('span');
         fileName.textContent = item.filename;
-        
+
         if (item.filename.endsWith('.mkv')) {
           const warningIcon = document.createElement('span');
           warningIcon.className = 'hevc-warning-icon';
@@ -679,20 +857,20 @@
           warningIcon.innerHTML = '⚠️';
           fileName.appendChild(warningIcon);
         }
-        
+
         playlistInfo.appendChild(fileName);
-        
+
         if (index === mainVideoIndex) {
           const mainBadge = document.createElement('span');
           mainBadge.className = 'main-badge';
           mainBadge.textContent = 'Main';
           playlistInfo.appendChild(mainBadge);
         }
-        
+
         // Playlist actions section
         const playlistActions = document.createElement('div');
         playlistActions.className = 'playlist-actions';
-        
+
         if (index !== mainVideoIndex) {
           const setMainButton = document.createElement('button');
           setMainButton.className = 'btn-set-main';
@@ -700,13 +878,13 @@
           setMainButton.onclick = () => setAsMain(index);
           playlistActions.appendChild(setMainButton);
         }
-        
+
         const removeButton = document.createElement('button');
         removeButton.className = 'btn-remove';
         removeButton.textContent = 'Remove';
         removeButton.onclick = () => removeFromPlaylist(index);
         playlistActions.appendChild(removeButton);
-        
+
         // Track selection section (for MKV and MP4 files)
         let trackSelectionHtml = '';
         if ((item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4')) && item.tracks) {
@@ -715,32 +893,32 @@
               <div class="track-group">
                 <label>Audio Track:</label>
                 <select id="audio-track-${index}" class="audio-track-select">
-                  ${item.tracks.audio && item.tracks.audio.length > 0 ? 
-                    item.tracks.audio.map((track, trackIndex) => 
-                      '<option value="' + trackIndex + '"' + ((item.selectedAudioTrack !== undefined && item.selectedAudioTrack === trackIndex) || (item.selectedAudioTrack === undefined && track.default) ? ' selected' : '') + '>' + track.language + ' - ' + (track.title || 'Track ' + trackIndex) + '</option>'
-                    ).join('') : 
-                    '<option value="0">Default Audio</option>'
-                  }
+                  ${item.tracks.audio && item.tracks.audio.length > 0 ?
+              item.tracks.audio.map((track, trackIndex) =>
+                '<option value="' + trackIndex + '"' + ((item.selectedAudioTrack !== undefined && item.selectedAudioTrack === trackIndex) || (item.selectedAudioTrack === undefined && track.default) ? ' selected' : '') + '>' + track.language + ' - ' + (track.title || 'Track ' + trackIndex) + '</option>'
+              ).join('') :
+              '<option value="0">Default Audio</option>'
+            }
                 </select>
               </div>
               <div class="track-group">
                 <label>Subtitle Track:</label>
                 <select id="subtitle-track-${index}" class="subtitle-track-select">
                   <option value="-1" ${(item.selectedSubtitleTrack === undefined || item.selectedSubtitleTrack === -1) ? 'selected' : ''}>None</option>
-                  ${item.tracks.subtitles && item.tracks.subtitles.length > 0 ? 
-                    item.tracks.subtitles.map((track, trackIndex) => 
-                      '<option value="' + trackIndex + '"' + ((item.selectedSubtitleTrack !== undefined && item.selectedSubtitleTrack === trackIndex) || (item.selectedSubtitleTrack === undefined && track.default) ? ' selected' : '') + '>' + track.language + ' - ' + (track.title || 'Track ' + trackIndex) + '</option>'
-                    ).join('') : ''
-                  }
+                  ${item.tracks.subtitles && item.tracks.subtitles.length > 0 ?
+              item.tracks.subtitles.map((track, trackIndex) =>
+                '<option value="' + trackIndex + '"' + ((item.selectedSubtitleTrack !== undefined && item.selectedSubtitleTrack === trackIndex) || (item.selectedSubtitleTrack === undefined && track.default) ? ' selected' : '') + '>' + track.language + ' - ' + (track.title || 'Track ' + trackIndex) + '</option>'
+              ).join('') : ''
+            }
                 </select>
               </div>
             </div>
           `;
         }
-        
+
         playlistItem.appendChild(playlistInfo);
         playlistItem.appendChild(playlistActions);
-        
+
         if (trackSelectionHtml) {
           // Create a temporary div to parse the HTML
           const tempDiv = document.createElement('div');
@@ -750,47 +928,47 @@
             playlistItem.appendChild(tempDiv.firstChild);
           }
         }
-        
+
         playlistContainer.appendChild(playlistItem);
-        
+
         // Add event listeners for track selection dropdowns (for both MKV and MP4 files)
         if (item.tracks && (item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4'))) {
           const audioSelect = document.getElementById(`audio-track-${index}`);
           const subtitleSelect = document.getElementById(`subtitle-track-${index}`);
-          
+
           if (audioSelect) {
             audioSelect.addEventListener('change', () => {
               const trackIndex = parseInt(audioSelect.value);
-              
+
               // Update the playlist item with the new selection
               playlist[index].selectedAudioTrack = trackIndex;
-              
+
               socket.emit('track-change', {
                 videoIndex: index,
                 type: 'audio',
                 trackIndex: trackIndex
               });
               console.log(`Audio track changed for video ${index} to track ${trackIndex}`);
-              
+
               // Show visual feedback
               showStatus(`Audio track changed to: ${audioSelect.options[audioSelect.selectedIndex].text}`, 'info');
             });
           }
-          
+
           if (subtitleSelect) {
             subtitleSelect.addEventListener('change', () => {
               const trackIndex = parseInt(subtitleSelect.value);
-              
+
               // Update the playlist item with the new selection
               playlist[index].selectedSubtitleTrack = trackIndex;
-              
+
               socket.emit('track-change', {
                 videoIndex: index,
                 type: 'subtitle',
                 trackIndex: trackIndex
               });
               console.log(`Subtitle track changed for video ${index} to track ${trackIndex}`);
-              
+
               // Show visual feedback
               const subtitleText = trackIndex >= 0 ? subtitleSelect.options[subtitleSelect.selectedIndex].text : 'None';
               showStatus(`Subtitle track changed to: ${subtitleText}`, 'info');
@@ -804,7 +982,7 @@
     function updateHevcWarning() {
       const hasMKVFiles = playlist.some(item => item.filename.endsWith('.mkv') && item.usesHEVC);
       const warningElement = document.getElementById('hevc-warning');
-      
+
       if (hasMKVFiles) {
         warningElement.classList.remove('hidden');
       } else {
@@ -816,7 +994,7 @@
     function updateMkvInfo() {
       const hasMKVFiles = playlist.some(item => item.filename.endsWith('.mkv'));
       const infoElement = document.getElementById('mkv-info');
-      
+
       if (hasMKVFiles) {
         infoElement.classList.remove('hidden');
       } else {
@@ -830,41 +1008,41 @@
         showStatus('Playlist is empty!', 'error');
         return;
       }
-      
+
       // Main video is now optional - if none selected, start with first video
       if (mainVideoIndex === -1) {
         mainVideoIndex = 0;
         updatePlaylistDisplay();
         showStatus('No main video selected. Starting with first video in playlist.', 'info');
       }
-      
+
       proceedWithLaunch();
     }
 
     // Proceed with launching the playlist
     async function proceedWithLaunch() {
       const startTime = document.getElementById('start-time').value || 0;
-      
+
       // Collect track selections for MKV and MP4 files
       const playlistWithTracks = playlist.map((item, index) => {
         const playlistItem = { ...item };
-        
+
         if (item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4')) {
           const audioSelect = document.getElementById(`audio-track-${index}`);
           const subtitleSelect = document.getElementById(`subtitle-track-${index}`);
-          
+
           if (audioSelect) {
             playlistItem.selectedAudioTrack = parseInt(audioSelect.value);
           }
-          
+
           if (subtitleSelect) {
             playlistItem.selectedSubtitleTrack = parseInt(subtitleSelect.value);
           }
         }
-        
+
         return playlistItem;
       });
-      
+
       // Debug: Log track selections being sent
       console.log('Track selections being sent to server:');
       playlistWithTracks.forEach((item, index) => {
@@ -872,17 +1050,17 @@
           console.log(`  Video ${index} (${item.filename}): audio=${item.selectedAudioTrack}, subtitle=${item.selectedSubtitleTrack}`);
         }
       });
-      
+
       // Show loading status
       showStatus('Setting up playlist...', 'info');
-      
+
       // Send playlist to server
       socket.emit('set-playlist', {
         playlist: playlistWithTracks,
         mainVideoIndex: parseInt(mainVideoIndex),
         startTime: parseFloat(startTime)
       });
-      
+
       // Send initial track selections for all videos
       playlistWithTracks.forEach((item, index) => {
         if (item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4')) {
@@ -909,7 +1087,7 @@
       const statusEl = document.getElementById('status-message');
       statusEl.textContent = message;
       statusEl.className = `status-message status-${type}`;
-      
+
       setTimeout(() => {
         statusEl.className = 'status-message';
       }, 5000);
@@ -917,41 +1095,41 @@
 
     // Remote control functions
     function playVideo() {
-      socket.emit('control', { 
-        action: 'playpause', 
+      socket.emit('control', {
+        action: 'playpause',
         state: true
       });
     }
 
     function pauseVideo() {
-      socket.emit('control', { 
-        action: 'playpause', 
+      socket.emit('control', {
+        action: 'playpause',
         state: false
       });
     }
 
     function skipBack() {
-      socket.emit('control', { 
-        action: 'skip', 
-        direction: 'back', 
-        seconds: skipSeconds 
+      socket.emit('control', {
+        action: 'skip',
+        direction: 'back',
+        seconds: skipSeconds
       });
     }
 
     function skipForward() {
-      socket.emit('control', { 
-        action: 'skip', 
-        direction: 'forward', 
-        seconds: skipSeconds 
+      socket.emit('control', {
+        action: 'skip',
+        direction: 'forward',
+        seconds: skipSeconds
       });
     }
 
     function seekTo() {
       const time = document.getElementById('seek-time').value;
       if (time) {
-        socket.emit('control', { 
-          action: 'seek', 
-          time: parseFloat(time) 
+        socket.emit('control', {
+          action: 'seek',
+          time: parseFloat(time)
         });
       }
     }
@@ -962,7 +1140,7 @@
       const audioSelect = document.getElementById('remote-audio-track');
       const subtitleSelect = document.getElementById('remote-subtitle-track');
       const currentFileEl = document.getElementById('remote-current-file');
-      
+
       if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length === 0 || currentServerIndex < 0 || currentServerIndex >= serverPlaylist.videos.length) {
         currentFileEl.textContent = 'No active video';
         audioSelect.innerHTML = '<option>No tracks</option>';
@@ -971,10 +1149,10 @@
         subtitleSelect.disabled = true;
         return;
       }
-      
+
       const videoInfo = serverPlaylist.videos[currentServerIndex];
       currentFileEl.textContent = `Now Playing: ${videoInfo.filename}`;
-      
+
       // Populate audio tracks
       const audioTracks = (videoInfo.tracks && videoInfo.tracks.audio) ? videoInfo.tracks.audio : [];
       audioSelect.innerHTML = '';
@@ -993,7 +1171,7 @@
         });
         audioSelect.disabled = false;
       }
-      
+
       // Populate subtitle tracks
       const subtitleTracks = (videoInfo.tracks && videoInfo.tracks.subtitles) ? videoInfo.tracks.subtitles : [];
       subtitleSelect.innerHTML = '';
@@ -1010,22 +1188,22 @@
         subtitleSelect.appendChild(opt);
       });
       subtitleSelect.disabled = subtitleSelect.options.length === 1; // only None
-      
+
       // Set selected values from current selections (fall back to defaults)
       const selectedAudio = (videoInfo.selectedAudioTrack !== undefined) ? videoInfo.selectedAudioTrack : (audioTracks.findIndex(t => t.default) >= 0 ? audioTracks.findIndex(t => t.default) : 0);
       const selectedSubtitle = (videoInfo.selectedSubtitleTrack !== undefined) ? videoInfo.selectedSubtitleTrack : -1;
-      
+
       if (!audioSelect.disabled) {
         audioSelect.value = String(Math.max(0, selectedAudio));
       }
       subtitleSelect.value = String(selectedSubtitle);
-      
+
       // Remove previous listeners by cloning nodes (simple way to avoid duplicate handlers)
       const audioClone = audioSelect.cloneNode(true);
       const subtitleClone = subtitleSelect.cloneNode(true);
       audioSelect.parentNode.replaceChild(audioClone, audioSelect);
       subtitleSelect.parentNode.replaceChild(subtitleClone, subtitleSelect);
-      
+
       // Attach change listeners
       audioClone.addEventListener('change', () => {
         const trackIndex = parseInt(audioClone.value);
@@ -1036,7 +1214,7 @@
         });
         showStatus(`Audio track changed to: ${audioClone.options[audioClone.selectedIndex].text}`, 'info');
       });
-      
+
       subtitleClone.addEventListener('change', () => {
         const trackIndex = parseInt(subtitleClone.value);
         socket.emit('track-change', {
@@ -1052,7 +1230,7 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       loadFiles();
-      
+
       // Setup event listeners
       document.getElementById('launch-btn').addEventListener('click', launchPlaylist);
       document.getElementById('play-btn').addEventListener('click', playVideo);
@@ -1060,7 +1238,7 @@
       document.getElementById('skip-back-btn').addEventListener('click', skipBack);
       document.getElementById('skip-forward-btn').addEventListener('click', skipForward);
       document.getElementById('seek-btn').addEventListener('click', seekTo);
-      
+
       // Get config for skip seconds
       socket.emit('get-config');
     });
@@ -1076,7 +1254,7 @@
     socket.on('playlist-set', (data) => {
       if (data.success) {
         showStatus(data.message || 'Playlist launched successfully!', 'success');
-        
+
         // Switch to remote view after a brief delay
         setTimeout(() => {
           document.getElementById('setup-section').classList.add('hidden');
@@ -1094,12 +1272,12 @@
       currentServerIndex = playlistObj.currentIndex;
       renderRemoteTrackControls();
     });
-    
+
     socket.on('playlist-position', (index) => {
       currentServerIndex = index;
       renderRemoteTrackControls();
     });
-    
+
     // Keep admin UI selections in sync when changes are broadcast
     socket.on('track-change', (data) => {
       if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length <= data.videoIndex) return;
@@ -1113,6 +1291,180 @@
         renderRemoteTrackControls();
       }
     });
+
+    // ==================== BSL-S² (Both Side Local Sync Stream) ====================
+
+    let bslStatus = null; // Stores the latest BSL-S² status from server
+
+    // Register as admin for BSL-S²
+    socket.on('connect', () => {
+      socket.emit('bsl-admin-register');
+    });
+
+    // Also register on page load if already connected
+    if (socket.connected) {
+      socket.emit('bsl-admin-register');
+    }
+
+    // Handle BSL-S² check button click
+    document.getElementById('bsl-check-btn').addEventListener('click', () => {
+      if (playlist.length === 0) {
+        showStatus('Add videos to playlist first before checking BSL-S²', 'warning');
+        return;
+      }
+
+      socket.emit('bsl-check-request');
+      showStatus('Requesting BSL-S² check from all clients...', 'info');
+
+      // Show the modal
+      document.getElementById('bsl-modal').classList.add('visible');
+      document.getElementById('bsl-modal-body').innerHTML =
+        '<div class="empty-message">Waiting for clients to select their local folders...</div>';
+    });
+
+    // Handle BSL-S² check started response
+    socket.on('bsl-check-started', (data) => {
+      if (data.clientCount === 0) {
+        document.getElementById('bsl-modal-body').innerHTML =
+          '<div class="empty-message">No clients connected. Waiting for clients to join...</div>';
+        showStatus('No clients connected yet', 'warning');
+      } else {
+        showStatus(`BSL-S² check sent to ${data.clientCount} client(s)`, 'info');
+      }
+    });
+
+    // Handle BSL-S² status updates from server
+    socket.on('bsl-status-update', (data) => {
+      bslStatus = data;
+      renderBslModal(data);
+      updatePlaylistBslBadges(data.videoBslStatus);
+    });
+
+    // Close BSL-S² modal
+    document.getElementById('bsl-modal-close').addEventListener('click', () => {
+      document.getElementById('bsl-modal').classList.remove('visible');
+    });
+
+    // Render the BSL-S² modal content
+    function renderBslModal(data) {
+      const modalBody = document.getElementById('bsl-modal-body');
+
+      if (!data.clients || data.clients.length === 0) {
+        modalBody.innerHTML = '<div class="empty-message">No clients have selected folders yet</div>';
+        return;
+      }
+
+      let html = `<p style="color:#aaa;margin-bottom:15px;">Mode: <strong>${data.mode === 'all' ? 'All clients must have file' : 'Any client with file'}</strong></p>`;
+
+      data.clients.forEach((client, clientIdx) => {
+        const matchCount = Object.keys(client.matchedVideos).length;
+        html += `
+          <div class="bsl-client-card">
+            <div class="bsl-client-header">
+              <span>Client ${clientIdx + 1} (${client.socketId.substring(0, 8)}...)</span>
+              <span class="bsl-badge ${matchCount > 0 ? 'bsl-positive' : 'bsl-negative'}">
+                ${matchCount}/${playlist.length} matched
+              </span>
+            </div>
+            <div class="bsl-file-list">
+        `;
+
+        if (client.files.length === 0) {
+          html += '<div class="empty-message">No video files found in folder</div>';
+        } else {
+          client.files.forEach(file => {
+            // Check if this file is already matched
+            const matchedPlaylistIdx = Object.entries(client.matchedVideos)
+              .find(([idx, name]) => name === file.name)?.[0];
+
+            html += `
+              <div class="bsl-file-item">
+                <span>${file.name}</span>
+                <select class="bsl-match-select" 
+                        data-client-id="${client.socketId}" 
+                        data-file-name="${file.name}"
+                        onchange="handleManualMatch(this)">
+                  <option value="-1" ${!matchedPlaylistIdx ? 'selected' : ''}>Not matched</option>
+                  ${playlist.map((v, i) => `
+                    <option value="${i}" ${matchedPlaylistIdx == i ? 'selected' : ''}>${v.filename}</option>
+                  `).join('')}
+                </select>
+              </div>
+            `;
+          });
+        }
+
+        html += '</div></div>';
+      });
+
+      modalBody.innerHTML = html;
+    }
+
+    // Handle manual match selection
+    function handleManualMatch(selectEl) {
+      const clientSocketId = selectEl.dataset.clientId;
+      const clientFileName = selectEl.dataset.fileName;
+      const playlistIndex = parseInt(selectEl.value);
+
+      if (playlistIndex >= 0) {
+        socket.emit('bsl-manual-match', {
+          clientSocketId,
+          clientFileName,
+          playlistIndex
+        });
+        showStatus(`Manually matched: ${clientFileName} → ${playlist[playlistIndex].filename}`, 'success');
+      }
+    }
+
+    // Update playlist items with BSL-S² badges
+    function updatePlaylistBslBadges(videoBslStatus) {
+      if (!videoBslStatus) return;
+
+      // Update each playlist item with BSL-S² status
+      playlist.forEach((_, index) => {
+        const status = videoBslStatus[index];
+        if (!status) return;
+
+        // Find the playlist item element
+        const playlistItems = document.querySelectorAll('.playlist-item');
+        if (playlistItems[index]) {
+          // Remove existing BSL badge if any
+          const existingBadge = playlistItems[index].querySelector('.bsl-status-badge');
+          if (existingBadge) existingBadge.remove();
+
+          // Add new badge
+          const badge = document.createElement('span');
+          badge.className = 'bsl-status-badge bsl-badge';
+
+          if (status.totalChecked === 0) {
+            badge.classList.add('bsl-negative');
+            badge.textContent = 'BSL-S²: ✗';
+            badge.title = 'No clients checked yet';
+          } else if (status.bslActive) {
+            badge.classList.add('bsl-positive');
+            badge.textContent = 'BSL-S²: ✓';
+            badge.title = `${status.clientsWithMatch} client(s) have this file locally`;
+          } else if (status.clientsWithMatch > 0) {
+            badge.classList.add('bsl-partial');
+            badge.textContent = `BSL-S²: ${status.clientsWithMatch}/${status.totalChecked}`;
+            badge.title = `${status.clientsWithMatch} of ${status.totalChecked} clients have this file`;
+          } else {
+            badge.classList.add('bsl-negative');
+            badge.textContent = 'BSL-S²: ✗';
+            badge.title = 'No clients have this file locally';
+          }
+
+          const playlistInfo = playlistItems[index].querySelector('.playlist-info');
+          if (playlistInfo) {
+            playlistInfo.appendChild(badge);
+          }
+        }
+      });
+    }
+
+    // Make handleManualMatch available globally
+    window.handleManualMatch = handleManualMatch;
   </script>
 </body>
+
 </html>
