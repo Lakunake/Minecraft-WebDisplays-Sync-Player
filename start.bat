@@ -68,6 +68,11 @@ if not exist config.txt (
         echo use_https: false
         echo ssl_key_file: key.pem
         echo ssl_cert_file: cert.pem
+        echo.
+        echo # BSL-S2 (Both Side Local Sync Stream^) Configuration
+        echo # Mode: 'any' = BSL-S2 active if ANY client has the local file
+        echo #       'all' = BSL-S2 only active if ALL clients have the local file
+        echo bsl_s2_mode: any
     ) > config.txt
     echo Default config created with all available options
 )
@@ -227,12 +232,18 @@ title Admin Console - Reading Config
 set PORT=3000
 set VOLUME_STEP=5
 set SKIP_SECONDS=5
+set JOIN_MODE=sync
+set USE_HTTPS=false
+set BSL_S2_MODE=any
 
 if exist config.txt (
     for /f "tokens=1,* delims=: " %%a in ('type config.txt ^| findstr /v "^#"') do (
         if "%%a"=="port" set PORT=%%b
         if "%%a"=="volume_step" set VOLUME_STEP=%%b
         if "%%a"=="skip_seconds" set SKIP_SECONDS=%%b
+        if "%%a"=="join_mode" set JOIN_MODE=%%b
+        if "%%a"=="use_https" set USE_HTTPS=%%b
+        if "%%a"=="bsl_s2_mode" set BSL_S2_MODE=%%b
     )
 ) else (
     color 06
@@ -269,13 +280,16 @@ if "%LOCAL_IP%"=="" set LOCAL_IP=localhost
 :: =================================================================
 title Admin Console
 echo.
-echo Sync-Player 1.6.0
+echo Sync-Player 1.7.0
 echo ==========================
 echo.
 echo Settings:
 echo - Server Port: %PORT%
 echo - Volume Step: %VOLUME_STEP%%
 echo - Skip Seconds: %SKIP_SECONDS%s
+echo - Join Mode: %JOIN_MODE%
+echo - HTTPS: %USE_HTTPS%
+echo - BSL-S2 Mode: %BSL_S2_MODE%
 echo.
 echo Access URLs:
 echo - Your network: http://%LOCAL_IP%:%PORT%
