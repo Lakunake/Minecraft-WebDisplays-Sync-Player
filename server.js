@@ -88,6 +88,13 @@ const PORT = parseInt(config.port) || 3000;
 const SKIP_SECONDS = parseInt(config.skip_seconds) || 5;
 const VOLUME_STEP = parseInt(config.volume_step) || 5;
 const JOIN_MODE = config.join_mode || 'sync';
+const BSL_S2_MODE = config.bsl_s2_mode || 'any'; // 'any' or 'all'
+
+// BSL-S² (Both Side Local Sync Stream) state tracking
+// Maps socketId -> { folderSelected: bool, files: [{name, size}], matchedVideos: {playlistIndex: localFileName} }
+const clientBslStatus = new Map();
+// Track admin socket for BSL-S² status updates
+let adminSocketId = null;
 
 // Apply helmet security headers with safe configuration
 app.use(helmet({
@@ -408,8 +415,144 @@ io.on('connection', (socket) => {
     }
   });
 
+  // BSL-S² (Both Side Local Sync Stream) handlers
+
+  // Admin registers itself
+  socket.on('bsl-admin-register', () => {
+    adminSocketId = socket.id;
+    console.log(`${colors.green}Admin registered for BSL-S²: ${socket.id}${colors.reset}`);
+  });
+
+  // Admin requests BSL-S² check on all clients
+  socket.on('bsl-check-request', () => {
+    console.log(`${colors.cyan}BSL-S² check requested by admin${colors.reset}`);
+    // Send check request to all non-admin clients
+    socket.broadcast.emit('bsl-check-request', {
+      playlistVideos: PLAYLIST.videos.map(v => ({ filename: v.filename }))
+    });
+    // Also notify admin how many clients are connected
+    const clientCount = io.sockets.sockets.size - 1; // Exclude admin
+    socket.emit('bsl-check-started', { clientCount });
+  });
+
+  // Client reports their local folder files
+  socket.on('bsl-folder-selected', (data) => {
+    console.log(`${colors.cyan}Client ${socket.id} reported ${data.files.length} files${colors.reset}`);
+
+    // Store client's file list
+    const matchedVideos = {};
+
+    // Auto-match by filename
+    if (PLAYLIST.videos.length > 0) {
+      data.files.forEach(clientFile => {
+        PLAYLIST.videos.forEach((playlistVideo, index) => {
+          if (clientFile.name.toLowerCase() === playlistVideo.filename.toLowerCase()) {
+            matchedVideos[index] = clientFile.name;
+            console.log(`${colors.green}  Auto-matched: ${clientFile.name} -> playlist[${index}]${colors.reset}`);
+          }
+        });
+      });
+    }
+
+    clientBslStatus.set(socket.id, {
+      folderSelected: true,
+      files: data.files,
+      matchedVideos: matchedVideos
+    });
+
+    // Send updated status to admin
+    sendBslStatusToAdmin();
+
+    // Send match results back to the client
+    socket.emit('bsl-match-result', {
+      matchedVideos: matchedVideos,
+      totalMatched: Object.keys(matchedVideos).length,
+      totalPlaylist: PLAYLIST.videos.length
+    });
+  });
+
+  // Admin manually matches a client file to a playlist video
+  socket.on('bsl-manual-match', (data) => {
+    const { clientSocketId, clientFileName, playlistIndex } = data;
+    console.log(`${colors.yellow}Manual BSL-S² match: ${clientFileName} -> playlist[${playlistIndex}]${colors.reset}`);
+
+    const clientStatus = clientBslStatus.get(clientSocketId);
+    if (clientStatus) {
+      clientStatus.matchedVideos[playlistIndex] = clientFileName;
+
+      // Notify the specific client about the new match
+      io.to(clientSocketId).emit('bsl-match-result', {
+        matchedVideos: clientStatus.matchedVideos,
+        totalMatched: Object.keys(clientStatus.matchedVideos).length,
+        totalPlaylist: PLAYLIST.videos.length
+      });
+
+      // Update admin
+      sendBslStatusToAdmin();
+    }
+  });
+
+  // Helper: Send BSL-S² status to admin
+  function sendBslStatusToAdmin() {
+    if (!adminSocketId) return;
+
+    const clientStatuses = [];
+    clientBslStatus.forEach((status, socketId) => {
+      clientStatuses.push({
+        socketId,
+        folderSelected: status.folderSelected,
+        files: status.files,
+        matchedVideos: status.matchedVideos
+      });
+    });
+
+    // Calculate overall BSL-S² status per video
+    const videoBslStatus = {};
+    PLAYLIST.videos.forEach((_, index) => {
+      const clientsWithMatch = [];
+      const clientsWithoutMatch = [];
+
+      clientBslStatus.forEach((status, socketId) => {
+        if (status.matchedVideos[index]) {
+          clientsWithMatch.push(socketId);
+        } else if (status.folderSelected) {
+          clientsWithoutMatch.push(socketId);
+        }
+      });
+
+      // Determine if BSL-S² is active based on mode
+      const totalClients = clientBslStatus.size;
+      let bslActive = false;
+      if (BSL_S2_MODE === 'all') {
+        bslActive = totalClients > 0 && clientsWithMatch.length === totalClients;
+      } else { // 'any'
+        bslActive = clientsWithMatch.length > 0;
+      }
+
+      videoBslStatus[index] = {
+        bslActive,
+        clientsWithMatch: clientsWithMatch.length,
+        clientsWithoutMatch: clientsWithoutMatch.length,
+        totalChecked: clientsWithMatch.length + clientsWithoutMatch.length
+      };
+    });
+
+    io.to(adminSocketId).emit('bsl-status-update', {
+      mode: BSL_S2_MODE,
+      clients: clientStatuses,
+      videoBslStatus
+    });
+  }
+
   socket.on('disconnect', () => {
     console.log('A user disconnected');
+    // Clean up BSL-S² status
+    clientBslStatus.delete(socket.id);
+    if (socket.id === adminSocketId) {
+      adminSocketId = null;
+    }
+    // Update admin if still connected
+    sendBslStatusToAdmin();
   });
 });
 
