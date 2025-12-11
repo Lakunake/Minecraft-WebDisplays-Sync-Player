@@ -17,7 +17,8 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 ## Features
 
 * Multi-format streaming (MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM)
-* High Quality streaming with FFmpeg optimization(and bsl-sync stream planned for 1.7)
+* High Quality streaming with FFmpeg optimization
+* Both Side Local Syncronized Stream (BSL-S²) [ⓘ](#35)
 * Playlist support with sequential playback
 * Admin control panel for remote management
 * Real-time playback synchronization using Socket.IO
