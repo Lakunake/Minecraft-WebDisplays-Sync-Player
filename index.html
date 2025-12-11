@@ -85,6 +85,95 @@
     #current-track-info.visible {
       opacity: 1;
     }
+
+    /* BSL-S² Styles */
+    #bsl-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+    }
+
+    #bsl-overlay.visible {
+      display: flex;
+    }
+
+    .bsl-prompt {
+      background: #252525;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      max-width: 500px;
+    }
+
+    .bsl-prompt h2 {
+      color: #9C27B0;
+      margin-bottom: 15px;
+    }
+
+    .bsl-prompt p {
+      color: #aaa;
+      margin-bottom: 20px;
+    }
+
+    .bsl-btn {
+      background: #9C27B0;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.2s;
+    }
+
+    .bsl-btn:hover {
+      background: #7B1FA2;
+    }
+
+    .bsl-result {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .bsl-result.success {
+      background: #2c5f2d;
+    }
+
+    .bsl-result.partial {
+      background: #FF9800;
+      color: #333;
+    }
+
+    .bsl-btn-skip {
+      background: transparent;
+      color: #888;
+      border: 1px solid #555;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 10px;
+      transition: all 0.2s;
+    }
+
+    .bsl-btn-skip:hover {
+      color: #fff;
+      border-color: #888;
+    }
+
+    .bsl-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
   </style>
 </head>
 
@@ -95,6 +184,21 @@
   <div id="waiting-message">Waiting for admin to launch playlist...</div>
   <div id="status"></div>
   <div id="current-track-info"></div>
+
+  <!-- BSL-S² Folder Selection (hidden input + overlay) -->
+  <input type="file" id="bsl-folder-input" webkitdirectory directory multiple hidden>
+  <div id="bsl-overlay">
+    <div class="bsl-prompt">
+      <h2>📁 BSL-S² Local Sync</h2>
+      <p>Admin is checking for local video files. Select your videos folder to enable local playback (saves bandwidth).
+      </p>
+      <div class="bsl-buttons">
+        <button class="bsl-btn" id="bsl-select-btn">Select Videos Folder</button>
+        <button class="bsl-btn-skip" id="bsl-skip-btn">Skip</button>
+      </div>
+      <div id="bsl-result" class="bsl-result" style="display:none;"></div>
+    </div>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -120,8 +224,9 @@
     let currentAudioTrack = null;
     let currentSubtitleTrack = null;
 
-    const skipSeconds = 10;
-    const volumeStep = 0.05;
+    // These will be updated from server config
+    let skipSeconds = 5;
+    let volumeStep = 0.05;
 
     let lastUpdate = Date.now();
     let hasInitialSync = false; // Prevent new clients from broadcasting until synced
@@ -165,6 +270,13 @@
       console.log('Disconnected from server');
       showTemporaryMessage('Disconnected', 0);
       hasInitialSync = false; // Reset on disconnect
+    });
+
+    // Handle config from server
+    socket.on('config', (config) => {
+      skipSeconds = config.skipSeconds || 5;
+      volumeStep = config.volumeStep || 0.05;
+      console.log(`Config received: skipSeconds=${skipSeconds}, volumeStep=${volumeStep}`);
     });
 
     // Handle initial state from server
@@ -482,6 +594,202 @@
         showTemporaryMessage("Reconnecting...");
       }
     }, 5000);
+
+    // ==================== BSL-S² (Both Side Local Sync Stream) ====================
+
+    // BSL-S² state
+    const bslLocalFiles = new Map(); // filename -> File object
+    const bslBlobUrls = new Map();   // filename -> blob URL
+    let bslMatchedVideos = {};       // playlistIndex -> localFileName
+
+    const bslOverlay = document.getElementById('bsl-overlay');
+    const bslFolderInput = document.getElementById('bsl-folder-input');
+    const bslSelectBtn = document.getElementById('bsl-select-btn');
+    const bslResultDiv = document.getElementById('bsl-result');
+
+    // Handle admin BSL-S² check request
+    socket.on('bsl-check-request', (data) => {
+      console.log('BSL-S² check requested by admin', data);
+      showTemporaryMessage('Admin is checking for local videos...', 3000);
+
+      // Show the folder selection overlay
+      bslOverlay.classList.add('visible');
+      bslResultDiv.style.display = 'none';
+    });
+
+    // Handle folder selection button click
+    bslSelectBtn.addEventListener('click', () => {
+      bslFolderInput.click();
+    });
+
+    // Handle skip button click
+    const bslSkipBtn = document.getElementById('bsl-skip-btn');
+    bslSkipBtn.addEventListener('click', () => {
+      console.log('BSL-S²: User skipped folder selection');
+      bslOverlay.classList.remove('visible');
+      showTemporaryMessage('BSL-S²: Skipped - streaming from server', 2000);
+
+      // Notify server that this client declined
+      socket.emit('bsl-folder-selected', {
+        files: [],
+        skipped: true
+      });
+    });
+
+    // Handle folder selection
+    bslFolderInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      console.log(`BSL-S²: Selected folder with ${files.length} files`);
+
+      // Clear previous data
+      bslLocalFiles.clear();
+
+      // Filter for video files and store them
+      const videoExtensions = ['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm'];
+      const videoFiles = [];
+
+      for (const file of files) {
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (videoExtensions.includes(ext)) {
+          bslLocalFiles.set(file.name.toLowerCase(), file);
+          videoFiles.push({
+            name: file.name,
+            size: file.size
+          });
+        }
+      }
+
+      console.log(`BSL-S²: Found ${videoFiles.length} video files`);
+
+      // Send file list to server
+      socket.emit('bsl-folder-selected', {
+        files: videoFiles
+      });
+
+      // Update UI
+      bslSelectBtn.textContent = `${videoFiles.length} videos found`;
+      bslSelectBtn.disabled = true;
+    });
+
+    // Handle match results from server
+    socket.on('bsl-match-result', (data) => {
+      console.log('BSL-S² match results:', data);
+      bslMatchedVideos = data.matchedVideos;
+
+      // Create blob URLs for matched files
+      Object.entries(bslMatchedVideos).forEach(([playlistIdx, localFileName]) => {
+        const file = bslLocalFiles.get(localFileName.toLowerCase());
+        if (file && !bslBlobUrls.has(localFileName.toLowerCase())) {
+          const blobUrl = URL.createObjectURL(file);
+          bslBlobUrls.set(localFileName.toLowerCase(), blobUrl);
+          console.log(`BSL-S²: Created blob URL for ${localFileName}`);
+        }
+      });
+
+      // Update UI with results
+      bslResultDiv.style.display = 'block';
+      if (data.totalMatched === data.totalPlaylist) {
+        bslResultDiv.className = 'bsl-result success';
+        bslResultDiv.textContent = `✓ All ${data.totalMatched} videos matched! Local playback enabled.`;
+      } else if (data.totalMatched > 0) {
+        bslResultDiv.className = 'bsl-result partial';
+        bslResultDiv.textContent = `${data.totalMatched}/${data.totalPlaylist} videos matched locally.`;
+      } else {
+        bslResultDiv.className = 'bsl-result';
+        bslResultDiv.textContent = `No matching videos found. Streaming from server.`;
+      }
+
+      // Auto-hide overlay after a delay
+      setTimeout(() => {
+        bslOverlay.classList.remove('visible');
+        showTemporaryMessage(`BSL-S²: ${data.totalMatched} videos will play locally`, 3000);
+      }, 2000);
+    });
+
+    // Helper: Check if current video should use local playback
+    function getBslLocalUrl(filename) {
+      // Find if this video is matched
+      const playlistIdx = currentPlaylist.currentIndex;
+      const matchedFileName = bslMatchedVideos[playlistIdx];
+
+      if (matchedFileName) {
+        const blobUrl = bslBlobUrls.get(matchedFileName.toLowerCase());
+        if (blobUrl) {
+          console.log(`BSL-S²: Using local file for ${filename}`);
+          return blobUrl;
+        }
+      }
+      return null;
+    }
+
+    // Override video source selection in loadCurrentVideo
+    // This is done by modifying the existing loadCurrentVideo function's behavior
+    const originalLoadCurrentVideo = loadCurrentVideo;
+    loadCurrentVideo = function () {
+      if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
+        waitingMessage.style.display = 'block';
+        video.style.display = 'none';
+        return;
+      }
+
+      const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
+      currentVideoInfo = currentVideo;
+
+      // Check for BSL-S² local playback
+      const localUrl = getBslLocalUrl(currentVideo.filename);
+      let videoSrc;
+
+      if (localUrl) {
+        videoSrc = localUrl;
+        console.log('BSL-S²: Loading from LOCAL file');
+        showTemporaryMessage('📁 Playing local file (BSL-S²)', 2000);
+      } else {
+        videoSrc = `/videos/${currentVideo.filename}`;
+        console.log('Loading video from server:', videoSrc);
+      }
+
+      video.src = videoSrc;
+
+      // Request sync from server to get the current time
+      socket.emit('request-sync');
+
+      clearVideoTracks();
+      video.load();
+
+      video.onloadeddata = function () {
+        videoLoadAttempts = 0;
+        applyTrackSelections();
+
+        if (!video.paused) {
+          video.play().catch(e => {
+            console.log('Playback error:', e);
+            handlePlaybackError(e);
+          });
+        }
+      };
+
+      video.onloadedmetadata = function () {
+        applyTrackSelections();
+      };
+
+      video.onerror = function () {
+        console.log('Error loading video:', currentVideo.filename);
+        videoLoadAttempts++;
+
+        if (videoLoadAttempts < maxVideoLoadAttempts) {
+          setTimeout(() => {
+            console.log('Retrying video load, attempt:', videoLoadAttempts);
+            loadCurrentVideo();
+          }, 1000);
+        } else {
+          waitingMessage.style.display = 'block';
+          video.style.display = 'none';
+          showTemporaryMessage('Failed to load video. Please check file format.', 5000);
+        }
+      };
+    };
   </script>
 </body>
 
