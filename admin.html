@@ -530,7 +530,195 @@
       font-size: 12px;
     }
 
+    /* Remote Section Layout */
+    .remote-section-layout {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 20px;
+      transition: grid-template-columns 0.3s ease;
+    }
+
+    .remote-section-layout.sidebar-collapsed {
+      grid-template-columns: 50px 1fr;
+    }
+
+    .remote-playlist-sidebar {
+      background: #252525;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      max-height: 80vh;
+      overflow-y: auto;
+      width: 350px;
+      min-width: 350px;
+      transition: all 0.3s ease;
+    }
+
+    .remote-playlist-sidebar h3 {
+      color: #4CAF50;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+      font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .remote-playlist-sidebar.collapsed {
+      width: 50px;
+      min-width: 50px;
+      padding: 10px;
+    }
+
+    .remote-playlist-sidebar.collapsed h3 {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .remote-playlist-sidebar.collapsed h3 span,
+    .remote-playlist-sidebar.collapsed .btn-bsl-manager,
+    .remote-playlist-sidebar.collapsed .remote-playlist-list {
+      display: none;
+    }
+
+    .btn-toggle-sidebar {
+      background: #444;
+      color: #e0e0e0;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 8px;
+      transition: background 0.2s;
+    }
+
+    .btn-toggle-sidebar:hover {
+      background: #555;
+    }
+
+    .remote-playlist-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .remote-playlist-item {
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .remote-playlist-item:hover {
+      background: #2a2a2a;
+    }
+
+    .remote-playlist-item.current {
+      background: #2c5f2d;
+      border-left-color: #4CAF50;
+    }
+
+    .remote-playlist-item.main {
+      border-left-color: #2196F3;
+    }
+
+    .remote-playlist-item .item-number {
+      background: #333;
+      color: #888;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      min-width: 30px;
+      text-align: center;
+    }
+
+    .remote-playlist-item.current .item-number {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .remote-playlist-item .item-name {
+      flex-grow: 1;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .remote-playlist-item .item-badges {
+      display: flex;
+      gap: 4px;
+    }
+
+    .remote-playlist-item .item-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: #333;
+      color: #888;
+    }
+
+    .remote-playlist-item .item-badge.main-badge {
+      background: #2196F3;
+      color: white;
+    }
+
+    .move-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .btn-move {
+      background: #444;
+      color: #e0e0e0;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+
+    .btn-move:hover {
+      background: #555;
+    }
+
+    .btn-move:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .btn-bsl-manager {
+      background: #9C27B0;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+
+    .btn-bsl-manager:hover {
+      background: #7B1FA2;
+    }
+
     @media (max-width: 768px) {
+      .remote-section-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .remote-playlist-sidebar {
+        max-height: 300px;
+      }
+
       .remote-controls {
         grid-template-columns: 1fr;
       }
@@ -600,40 +788,55 @@
   </div>
 
   <div id="remote-section" class="hidden">
-    <div class="panel">
-      <h2>Remote Control</h2>
-      <div class="remote-controls">
-        <button class="remote-btn btn-skip-back" id="skip-back-btn">↩ <span id="skip-back-text">5s</span></button>
-        <button class="remote-btn btn-play" id="play-btn">Play</button>
-        <button class="remote-btn btn-pause" id="pause-btn">Pause</button>
-        <button class="remote-btn btn-skip-forward" id="skip-forward-btn">↪ <span
-            id="skip-forward-text">5s</span></button>
-
-        <div class="seek-controls">
-          <input type="number" id="seek-time" placeholder="Time in seconds" min="0">
-          <button class="btn-seek" id="seek-btn">Seek</button>
+    <div class="remote-section-layout">
+      <!-- Playlist Sidebar -->
+      <div class="remote-playlist-sidebar" id="remote-playlist-sidebar">
+        <h3>
+          <button class="btn-toggle-sidebar" id="toggle-sidebar-btn" title="Toggle sidebar">◀</button>
+          <span>Current Playlist</span>
+          <button class="btn-bsl-manager" id="remote-bsl-btn" title="Open BSL-S² Sync Manager">🔄 BSL-S²</button>
+        </h3>
+        <div class="remote-playlist-list" id="remote-playlist-list">
+          <div class="empty-message">No playlist active</div>
         </div>
       </div>
 
-      <!-- Remote track controls (for current playing video) -->
-      <div class="panel track-selection" id="remote-track-controls" style="margin-top: 15px;">
-        <h2 style="margin-top: 0;">Current Video Tracks</h2>
-        <div id="remote-current-file" style="margin-bottom: 10px; color: #aaa;"></div>
-        <div class="track-group">
-          <label>Audio Track:</label>
-          <select id="remote-audio-track" disabled>
-            <option>Loading...</option>
-          </select>
-        </div>
-        <div class="track-group">
-          <label>Subtitle Track:</label>
-          <select id="remote-subtitle-track" disabled>
-            <option>Loading...</option>
-          </select>
-        </div>
-      </div>
+      <!-- Controls Panel -->
+      <div class="panel">
+        <h2>Remote Control</h2>
+        <div class="remote-controls">
+          <button class="remote-btn btn-skip-back" id="skip-back-btn">↩ <span id="skip-back-text">5s</span></button>
+          <button class="remote-btn btn-play" id="play-btn">Play</button>
+          <button class="remote-btn btn-pause" id="pause-btn">Pause</button>
+          <button class="remote-btn btn-skip-forward" id="skip-forward-btn">↪ <span
+              id="skip-forward-text">5s</span></button>
 
-      <div class="status-message" id="status-message"></div>
+          <div class="seek-controls">
+            <input type="number" id="seek-time" placeholder="Time in seconds" min="0">
+            <button class="btn-seek" id="seek-btn">Seek</button>
+          </div>
+        </div>
+
+        <!-- Remote track controls (for current playing video) -->
+        <div class="panel track-selection" id="remote-track-controls" style="margin-top: 15px;">
+          <h2 style="margin-top: 0;">Current Video Tracks</h2>
+          <div id="remote-current-file" style="margin-bottom: 10px; color: #aaa;"></div>
+          <div class="track-group">
+            <label>Audio Track:</label>
+            <select id="remote-audio-track" disabled>
+              <option>Loading...</option>
+            </select>
+          </div>
+          <div class="track-group">
+            <label>Subtitle Track:</label>
+            <select id="remote-subtitle-track" disabled>
+              <option>Loading...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="status-message" id="status-message"></div>
+      </div>
     </div>
   </div>
 
@@ -870,6 +1073,24 @@
         // Playlist actions section
         const playlistActions = document.createElement('div');
         playlistActions.className = 'playlist-actions';
+
+        // Move up button
+        const moveUpBtn = document.createElement('button');
+        moveUpBtn.className = 'btn-move';
+        moveUpBtn.textContent = '▲';
+        moveUpBtn.title = 'Move up';
+        moveUpBtn.disabled = index === 0;
+        moveUpBtn.onclick = () => movePlaylistItem(index, -1);
+        playlistActions.appendChild(moveUpBtn);
+
+        // Move down button
+        const moveDownBtn = document.createElement('button');
+        moveDownBtn.className = 'btn-move';
+        moveDownBtn.textContent = '▼';
+        moveDownBtn.title = 'Move down';
+        moveDownBtn.disabled = index === playlist.length - 1;
+        moveDownBtn.onclick = () => movePlaylistItem(index, 1);
+        playlistActions.appendChild(moveDownBtn);
 
         if (index !== mainVideoIndex) {
           const setMainButton = document.createElement('button');
@@ -1227,6 +1448,119 @@
       });
     }
 
+    // Render the remote playlist sidebar showing current playlist with move buttons
+    function renderRemotePlaylistSidebar() {
+      const container = document.getElementById('remote-playlist-list');
+
+      if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length === 0) {
+        container.innerHTML = '<div class="empty-message">No playlist active</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      serverPlaylist.videos.forEach((video, index) => {
+        const item = document.createElement('div');
+        item.className = 'remote-playlist-item';
+
+        // Add current playing indicator
+        if (index === currentServerIndex) {
+          item.classList.add('current');
+        }
+
+        // Add main video indicator
+        if (index === serverPlaylist.mainVideoIndex) {
+          item.classList.add('main');
+        }
+
+        // Number indicator
+        const numberSpan = document.createElement('span');
+        numberSpan.className = 'item-number';
+        numberSpan.textContent = index + 1;
+        item.appendChild(numberSpan);
+
+        // Video name
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'item-name';
+        nameSpan.textContent = video.filename;
+        nameSpan.title = video.filename;
+        item.appendChild(nameSpan);
+
+        // Badges
+        const badgesDiv = document.createElement('div');
+        badgesDiv.className = 'item-badges';
+
+        if (index === serverPlaylist.mainVideoIndex) {
+          const mainBadge = document.createElement('span');
+          mainBadge.className = 'item-badge main-badge';
+          mainBadge.textContent = 'Main';
+          badgesDiv.appendChild(mainBadge);
+        }
+
+        if (index === currentServerIndex) {
+          const playingBadge = document.createElement('span');
+          playingBadge.className = 'item-badge';
+          playingBadge.style.background = '#4CAF50';
+          playingBadge.style.color = 'white';
+          playingBadge.textContent = '▶ Playing';
+          badgesDiv.appendChild(playingBadge);
+        }
+
+        item.appendChild(badgesDiv);
+
+        // Move buttons
+        const moveDiv = document.createElement('div');
+        moveDiv.className = 'move-buttons';
+
+        const upBtn = document.createElement('button');
+        upBtn.className = 'btn-move';
+        upBtn.textContent = '▲';
+        upBtn.title = 'Move up';
+        upBtn.disabled = index === 0;
+        upBtn.onclick = () => movePlaylistItemRemote(index, -1);
+
+        const downBtn = document.createElement('button');
+        downBtn.className = 'btn-move';
+        downBtn.textContent = '▼';
+        downBtn.title = 'Move down';
+        downBtn.disabled = index === serverPlaylist.videos.length - 1;
+        downBtn.onclick = () => movePlaylistItemRemote(index, 1);
+
+        moveDiv.appendChild(upBtn);
+        moveDiv.appendChild(downBtn);
+        item.appendChild(moveDiv);
+
+        container.appendChild(item);
+      });
+    }
+
+    // Move playlist item up or down (in setup section)
+    function movePlaylistItem(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= playlist.length) return;
+
+      // Swap items
+      [playlist[index], playlist[newIndex]] = [playlist[newIndex], playlist[index]];
+
+      // Update main video index if needed
+      if (mainVideoIndex === index) {
+        mainVideoIndex = newIndex;
+      } else if (mainVideoIndex === newIndex) {
+        mainVideoIndex = index;
+      }
+
+      updatePlaylistDisplay();
+    }
+
+    // Move playlist item in the live/remote section (sends to server)
+    function movePlaylistItemRemote(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= serverPlaylist.videos.length) return;
+
+      socket.emit('playlist-reorder', { fromIndex: index, toIndex: newIndex });
+      showStatus(`Moving video ${index + 1} ${direction > 0 ? 'down' : 'up'}...`, 'info');
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       loadFiles();
@@ -1238,6 +1572,29 @@
       document.getElementById('skip-back-btn').addEventListener('click', skipBack);
       document.getElementById('skip-forward-btn').addEventListener('click', skipForward);
       document.getElementById('seek-btn').addEventListener('click', seekTo);
+
+      // Remote BSL-S² button handler
+      document.getElementById('remote-bsl-btn').addEventListener('click', () => {
+        socket.emit('bsl-check-request');
+        showStatus('Requesting BSL-S² check from all clients...', 'info');
+        document.getElementById('bsl-modal').classList.add('visible');
+        document.getElementById('bsl-modal-body').innerHTML =
+          '<div class="empty-message">Waiting for clients to select their local folders...</div>';
+      });
+
+      // Toggle sidebar button handler
+      document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
+        const sidebar = document.getElementById('remote-playlist-sidebar');
+        const layout = document.querySelector('.remote-section-layout');
+        const toggleBtn = document.getElementById('toggle-sidebar-btn');
+
+        sidebar.classList.toggle('collapsed');
+        layout.classList.toggle('sidebar-collapsed');
+
+        // Update button icon
+        toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+        toggleBtn.title = sidebar.classList.contains('collapsed') ? 'Expand sidebar' : 'Collapse sidebar';
+      });
 
       // Get config for skip seconds
       socket.emit('get-config');
@@ -1271,11 +1628,13 @@
       serverPlaylist = playlistObj;
       currentServerIndex = playlistObj.currentIndex;
       renderRemoteTrackControls();
+      renderRemotePlaylistSidebar();
     });
 
     socket.on('playlist-position', (index) => {
       currentServerIndex = index;
       renderRemoteTrackControls();
+      renderRemotePlaylistSidebar();
     });
 
     // Keep admin UI selections in sync when changes are broadcast
