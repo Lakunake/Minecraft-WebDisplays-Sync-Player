@@ -10,9 +10,6 @@ npm install express@5.1.0
 npm install socket.io@4.8.1
 npm install helmet
 ```
-**What's BSL-S**
-
-
 
 **My friend can't see the hevc video im sharing and can only hear it**
 
