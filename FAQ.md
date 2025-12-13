@@ -8,15 +8,19 @@ winget install --id OpenJS.NodeJS.LTS -e
 md (Your path to the code)
 npm install express@5.1.0
 npm install socket.io@4.8.1
+npm install helmet
 ```
+**What's BSL-S**
+
+
+
 **My friend can't see the hevc video im sharing and can only hear it**
 
 Thats most likely a hardware related issue, but it could be solved by doing one of these(if not you have almost no way of)
 
-- Install HEVC extensions from windows store
-- Install ffmpeg or ffprobe on your friend's device
-- Convert your video to one of these with HandBrake; AV1, VP9, H.264 (listed in quality order, more quality=harder to encode)
-- Make them convert to Windows 11 from 10 (maybe dont)
+- Check [chrome://gpu](chrome://gpu) if it says anything about hevce being true, Install HEVC extensions from windows store and Turn on BSL-S²
+- If no, re-encode the video in H.264 or any chromium supported codec through either Handbrake or FFmpeg
+  
 
 **How do I properly use the admin panel?**
 
