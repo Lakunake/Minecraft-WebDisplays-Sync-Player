@@ -12,7 +12,7 @@ npm install helmet
 ```
 **Subtitle/Audio track changing does not work**
 
-Enable #enable-experimental-web-platform-features through [Chrome Flags](chrome://flags/)
+Enable #enable-experimental-web-platform-features through [Chrome Flags] (chrome://flags/)
 
 
 
