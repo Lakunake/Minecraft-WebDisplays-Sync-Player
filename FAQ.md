@@ -10,12 +10,17 @@ npm install express@5.1.0
 npm install socket.io@4.8.1
 npm install helmet
 ```
+**Subtitle/Audio track changing does not work**
+
+Enable #enable-experimental-web-platform-features through [Chrome Flags](chrome://flags/)
+
+
 
 **My friend can't see the hevc video im sharing and can only hear it**
 
 Thats most likely a hardware related issue, but it could be solved by doing one of these(if not you have almost no way of)
 
-- Check [chrome://gpu](chrome://gpu) if it says anything about hevce being true, Install HEVC extensions from windows store and Turn on BSL-S²
+- Check [chrome://gpu/](chrome://gpu/) if it says anything about hevce being true, Install HEVC extensions from windows store and Turn on BSL-S²
 - If no, re-encode the video in H.264 or any chromium supported codec through either Handbrake or FFmpeg
   
 
