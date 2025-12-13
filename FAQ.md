@@ -12,9 +12,7 @@ npm install helmet
 ```
 **Subtitle/Audio track changing does not work**
 
-Enable #enable-experimental-web-platform-features through [Chrome Flags] (chrome://flags/)
-
-
+Enable #enable-experimental-web-platform-features through Chrome Flags(chrome://flags/) or your browser's config/flags
 
 **My friend can't see the hevc video im sharing and can only hear it**
 
