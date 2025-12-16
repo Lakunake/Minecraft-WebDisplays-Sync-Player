@@ -25,14 +25,3 @@ ssl_cert_file: cert.pem
 # Mode: 'any' = BSL-S² active if ANY client has the local file
 #       'all' = BSL-S² only active if ALL clients have the local file
 bsl_s2_mode: any
-
-# Video Autoplay Configuration
-# Set to true to automatically play videos when loaded
-# Set to false to start videos paused
-video_autoplay: true
-
-# Admin Fingerprint Lock
-# When enabled, only the first machine to access /admin will be allowed
-# The fingerprint is stored in admin_fingerprint.txt
-# Set to true to enable, false to allow any machine to access admin
-admin_fingerprint_lock: true

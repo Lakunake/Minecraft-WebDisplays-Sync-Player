@@ -1,6 +1,6 @@
 {
   "name": "sync-player",
-  "version": "1.8.0",
+  "version": "1.7.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

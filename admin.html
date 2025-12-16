@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Sync-Player Admin Panel</title>
+  <title>Admin Control Panel</title>
   <style>
     * {
       box-sizing: border-box;
@@ -13,311 +13,55 @@
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+      background: #1a1a1a;
       color: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-    }
-
-    /* Glassmorphism Base */
-    .glass {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-    }
-
-    .glass-strong {
-      background: rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 70px;
-      background: rgba(10, 10, 30, 0.8);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-right: 1px solid rgba(255, 255, 255, 0.1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px 0;
-      gap: 10px;
-      position: relative;
-      z-index: 1000;
-    }
-
-    .sidebar-logo {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #2196F3 0%, #1565C0 100%);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 18px;
-      margin-bottom: 20px;
-      box-shadow: 0 0 20px rgba(33, 150, 243, 0.4);
-    }
-
-    .nav-item {
-      width: 50px;
-      height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 22px;
-      color: #888;
-      position: relative;
-    }
-
-    .nav-item:hover {
-      background: rgba(33, 150, 243, 0.2);
-      color: #2196F3;
-    }
-
-    .nav-item.active {
-      background: rgba(33, 150, 243, 0.3);
-      color: #2196F3;
-      box-shadow: 0 0 20px rgba(33, 150, 243, 0.3);
-    }
-
-    /* Sliding nav indicator */
-    .nav-indicator {
-      position: absolute;
-      left: 0;
-      top: 0;
-      /* JavaScript will set the correct position */
-      width: 4px;
-      height: 30px;
-      background: #2196F3;
-      border-radius: 2px;
-      box-shadow: 0 0 10px #2196F3;
-      transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .nav-tooltip {
-      position: absolute;
-      left: 70px;
-      background: rgba(33, 150, 243, 0.95);
-      color: white;
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s;
-      z-index: 9999;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    }
-
-    .nav-item:hover .nav-tooltip {
-      opacity: 1;
-    }
-
-    /* Main Content */
-    .main-content {
-      flex: 1;
+      line-height: 1.6;
       padding: 20px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
-    /* Header */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 15px 20px;
-      position: relative;
-      z-index: 10;
-    }
-
-    .header h1 {
-      font-size: 24px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .header h1 span {
-      color: #2196F3;
-    }
-
-    .connection-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 14px;
-    }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      background: #4CAF50;
-      border-radius: 50%;
-      box-shadow: 0 0 10px #4CAF50;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.5;
-      }
-    }
-
-    /* Dashboard Grid */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-    }
-
-    .stat-card {
-      padding: 20px;
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .stat-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-    }
-
-    .stat-icon.blue {
-      background: rgba(33, 150, 243, 0.2);
-      color: #2196F3;
-      box-shadow: 0 0 20px rgba(33, 150, 243, 0.2);
-    }
-
-    .stat-icon.purple {
-      background: rgba(156, 39, 176, 0.2);
-      color: #9C27B0;
-      box-shadow: 0 0 20px rgba(156, 39, 176, 0.2);
-    }
-
-    .stat-icon.cyan {
-      background: rgba(0, 188, 212, 0.2);
-      color: #00BCD4;
-      box-shadow: 0 0 20px rgba(0, 188, 212, 0.2);
-    }
-
-    .stat-info h3 {
-      font-size: 24px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .stat-info p {
-      font-size: 13px;
-      color: #888;
-    }
-
-    /* Panels */
-    .panel {
-      padding: 20px;
-    }
-
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
+    header {
+      text-align: center;
+      margin-bottom: 25px;
       padding-bottom: 15px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid #333;
     }
 
-    .panel-header h2 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #fff;
+    h1 {
+      color: #4CAF50;
+      margin-bottom: 5px;
+      font-size: 28px;
     }
 
-    /* Content Views - Scroll-like animation, one view at a time */
-    .view {
-      display: none;
-      flex-direction: column;
-      gap: 20px;
-      flex: 1;
+    .subtitle {
+      color: #888;
+      font-size: 16px;
     }
 
-    .view.active {
-      display: flex;
-      animation: scrollIn 0.25s ease-out;
+    .panel {
+      background: #252525;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .view.scroll-down.active {
-      animation: scrollInFromTop 0.15s ease-out;
+    h2 {
+      color: #4CAF50;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+      font-size: 20px;
     }
 
-    .view.scroll-up.active {
-      animation: scrollInFromBottom 0.25s ease-out;
-    }
-
-    @keyframes scrollInFromTop {
-      from {
-        opacity: 0;
-        transform: translateY(-30px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes scrollInFromBottom {
-      from {
-        opacity: 0;
-        transform: translateY(100px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* Media/Playlist Section */
-    .media-playlist-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      flex: 1;
-    }
-
-    .file-list {
-      max-height: 400px;
+    .file-browser {
+      max-height: 300px;
       overflow-y: auto;
-      overflow-x: hidden;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      margin-bottom: 20px;
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 10px;
     }
 
     .file-item {
@@ -325,649 +69,428 @@
       justify-content: space-between;
       align-items: center;
       padding: 12px 15px;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 8px;
-      transition: all 0.2s;
+      border-bottom: 1px solid #333;
+      transition: background 0.2s;
     }
 
     .file-item:hover {
-      background: rgba(33, 150, 243, 0.1);
+      background: #2a2a2a;
     }
 
     .file-name {
+      flex-grow: 1;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+    }
+
+    .hevc-warning-icon {
+      color: #ff6b6b;
+      margin-left: 8px;
+      cursor: help;
+    }
+
+    .file-actions button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
       font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      transition: background 0.2s;
     }
 
-    .file-icon {
-      color: #2196F3;
+    .file-actions button:hover {
+      background: #3e8e41;
     }
 
-    /* Playlist Items */
+    .playlist {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 10px;
+    }
+
     .playlist-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
       padding: 12px 15px;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 8px;
-      transition: all 0.2s;
-      border-left: 3px solid transparent;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .playlist-item.slide-in {
-      animation: slideInFromRight 0.3s ease-out;
-    }
-
-    @keyframes slideInFromRight {
-      from {
-        opacity: 0;
-        transform: translateX(100%);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    .playlist-item.slide-out {
-      animation: slideOutAndCollapse 0.4s ease-out forwards;
-      pointer-events: none;
-    }
-
-    @keyframes slideOutAndCollapse {
-      0% {
-        opacity: 1;
-        transform: translateX(0);
-        max-height: 100px;
-        margin-bottom: 8px;
-        padding: 12px 15px;
-      }
-
-      50% {
-        opacity: 0;
-        transform: translateX(100%);
-        max-height: 100px;
-        margin-bottom: 8px;
-        padding: 12px 15px;
-      }
-
-      100% {
-        opacity: 0;
-        transform: translateX(100%);
-        max-height: 0;
-        margin-bottom: 0;
-        padding: 0 15px;
-      }
-    }
-
-    .playlist-item .thumbnail-bg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-size: cover;
-      background-position: center;
-      opacity: 0;
-      filter: blur(10px);
-      transition: opacity 0.5s ease-out, filter 0.5s ease-out;
-      z-index: 0;
-    }
-
-    .playlist-item .thumbnail-bg.loaded {
-      opacity: 0.5;
-    }
-
-    /* Cached thumbnails appear instantly, no opacity fade */
-    .playlist-item .thumbnail-bg.cached {
-      opacity: 0.5;
-      transition: filter 0.25s ease-out;
-      /* Fast blur-in when deselected */
-    }
-
-    .playlist-item>*:not(.thumbnail-bg) {
-      position: relative;
-      z-index: 1;
-    }
-
-    .playlist-item:hover {
-      background: rgba(33, 150, 243, 0.1);
+      border-bottom: 1px solid #333;
+      transition: background 0.2s;
     }
 
     .playlist-item.main {
-      background: rgba(33, 150, 243, 0.15);
-      border-left-color: #2196F3;
+      background: #2c5f2d;
+      border-left: 4px solid #4CAF50;
     }
 
-    /* Clear blur only when explicitly cleared (allows animation) */
-    .playlist-item.main .thumbnail-bg.cleared {
-      opacity: 0.5;
-      filter: blur(0);
-      transition: filter 0.5s ease-out;
-      /* Slower blur-out when selected */
-    }
-
-    .playlist-item.current {
-      background: rgba(156, 39, 176, 0.15);
-      border-left-color: #9C27B0;
-    }
-
-    .playlist-number {
-      width: 28px;
-      height: 28px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 6px;
+    .playlist-info {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      color: #888;
+      margin-bottom: 8px;
     }
 
-    .playlist-item.current .playlist-number {
-      background: #9C27B0;
+    .main-badge {
+      background: #4CAF50;
       color: white;
-    }
-
-    .playlist-name {
-      flex: 1;
-      font-size: 14px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      position: relative;
-    }
-
-    .playlist-name span {
-      display: inline-block;
-      padding-right: 2em;
-    }
-
-    /* Auto-scroll for currently playing video (slower) */
-    .playlist-item.current .playlist-name span {
-      animation: scroll-text 15s linear infinite;
-      will-change: transform;
-    }
-
-    /* Faster scroll on hover - applies to ALL items including current */
-    .playlist-item:hover .playlist-name span {
-      animation: scroll-text 8s linear infinite !important;
-      will-change: transform;
-    }
-
-    @keyframes scroll-text {
-      0% {
-        transform: translateX(0%);
-      }
-
-      100% {
-        transform: translateX(-50%);
-      }
-    }
-
-    .playlist-badges {
-      display: flex;
-      gap: 6px;
-    }
-
-    .badge {
       padding: 3px 8px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 600;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-left: 10px;
     }
 
-    .badge-main {
-      background: rgba(33, 150, 243, 0.3);
-      color: #2196F3;
-    }
-
-    .badge-playing {
-      background: rgba(156, 39, 176, 0.3);
-      color: #9C27B0;
-    }
-
-    .move-buttons {
+    .playlist-actions {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
+      gap: 8px;
+      margin-bottom: 10px;
     }
 
-    .btn-move {
-      background: rgba(255, 255, 255, 0.1);
+    .playlist-actions button {
+      padding: 6px 12px;
       border: none;
-      color: #888;
-      padding: 4px 8px;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 10px;
-      transition: all 0.2s;
+      font-size: 13px;
     }
 
-    .btn-move:hover {
-      background: rgba(33, 150, 243, 0.3);
-      color: #2196F3;
-    }
-
-    .btn-move:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-
-    /* Buttons */
-    .btn {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #2196F3 0%, #1565C0 100%);
-      color: white;
-      box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
-    }
-
-    .btn-primary:hover {
-      box-shadow: 0 6px 20px rgba(33, 150, 243, 0.5);
-      transform: translateY(-2px);
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.1);
-      color: #e0e0e0;
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .btn-success {
-      background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    .btn-set-main {
+      background: #2196F3;
       color: white;
     }
 
-    .btn-danger {
-      background: rgba(244, 67, 54, 0.2);
-      color: #f44336;
-    }
-
-    .btn-danger:hover {
-      background: rgba(244, 67, 54, 0.3);
-    }
-
-    .btn-sm {
-      padding: 6px 12px;
-      font-size: 12px;
-    }
-
-    /* Remote Control Section - 3 Column Layout */
-    .remote-layout {
-      display: grid;
-      grid-template-columns: 320px 1fr 280px;
-      grid-template-rows: 1fr auto;
-      gap: 20px;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .remote-playlist-panel {
-      grid-row: span 2;
-    }
-
-    .remote-thumbnail-panel {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .remote-controls-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .remote-bottom-panel {
-      grid-column: 2 / 4;
-    }
-
-    .current-video-card {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .video-thumbnail {
-      width: 100%;
-      aspect-ratio: 16/9;
-      background: linear-gradient(135deg, #16213e 0%, #1a1a2e 50%, #0a0a1a 100%);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 15px;
-      position: relative;
-      overflow: hidden;
-      border: 1px solid rgba(33, 150, 243, 0.3);
-    }
-
-    .video-thumbnail-icon {
-      font-size: 56px;
-      opacity: 0.4;
-      z-index: 1;
-    }
-
-    .video-thumbnail::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at center, rgba(33, 150, 243, 0.15) 0%, transparent 70%);
-    }
-
-    .video-thumbnail::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 60%);
-    }
-
-    .video-info {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      right: 10px;
-      z-index: 1;
-    }
-
-    .video-info h3 {
-      font-size: 14px;
-      font-weight: 600;
+    .btn-remove {
+      background: #f44336;
       color: white;
-      margin-bottom: 4px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
-    .video-info p {
-      font-size: 12px;
-      color: #aaa;
-    }
-
-    /* Control Buttons */
-    .control-buttons {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-
-    .control-btn {
-      padding: 15px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: 500;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .control-btn.play {
-      background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
-      color: white;
-      grid-column: span 3;
-    }
-
-    .control-btn.pause {
-      background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
-      color: white;
-      grid-column: span 3;
-    }
-
-    .control-btn.skip {
-      background: rgba(33, 150, 243, 0.2);
-      color: #2196F3;
-    }
-
-    .control-btn:hover {
-      transform: scale(1.02);
-    }
-
-    /* Seek Control */
-    .seek-control {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-    }
-
-    .seek-control input {
-      flex: 1;
-      padding: 12px 15px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      color: #e0e0e0;
-      font-size: 14px;
-    }
-
-    .seek-control input:focus {
-      outline: none;
-      border-color: #2196F3;
-      box-shadow: 0 0 10px rgba(33, 150, 243, 0.2);
-    }
-
-    /* Track Selection */
     .track-selection {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
     }
 
     .track-group {
       display: flex;
       align-items: center;
-      gap: 15px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
     .track-group label {
       min-width: 100px;
-      font-size: 14px;
-      color: #888;
+      margin-right: 10px;
     }
 
     .track-group select {
-      flex: 1;
-      padding: 10px 15px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.05);
+      flex-grow: 1;
+      padding: 6px;
+      background: #1e1e1e;
       color: #e0e0e0;
-      font-size: 14px;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+
+    .control-group {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      align-items: center;
+    }
+
+    label {
+      font-weight: bold;
+      min-width: 120px;
+    }
+
+    input[type="number"] {
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #1e1e1e;
+      color: #e0e0e0;
+      width: 100px;
+    }
+
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .btn-launch {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn-launch:hover {
+      background: #3e8e41;
+    }
+
+    .remote-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .remote-btn {
+      padding: 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      background: #333;
+      color: #e0e0e0;
+      transition: background 0.2s;
+    }
+
+    .remote-btn:hover {
+      background: #444;
+    }
+
+    .btn-play {
+      background: #4CAF50;
+      grid-column: 2;
+    }
+
+    .btn-pause {
+      background: #FF9800;
+      grid-column: 2;
+    }
+
+    .btn-skip-back {
+      background: #2196F3;
+    }
+
+    .btn-skip-forward {
+      background: #2196F3;
+    }
+
+    .seek-controls {
+      grid-column: 1 / span 3;
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .seek-controls input {
+      flex-grow: 1;
+      padding: 12px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #1e1e1e;
+      color: #e0e0e0;
+      width: 100px;
+    }
+
+    .btn-seek {
+      background: #9C27B0;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 4px;
       cursor: pointer;
     }
 
-    .track-group select:focus {
-      outline: none;
-      border-color: #2196F3;
+    .status-message {
+      text-align: center;
+      padding: 12px;
+      margin-top: 20px;
+      border-radius: 4px;
+      display: none;
     }
 
-    /* Playlist in Remote */
-    .remote-playlist {
-      max-height: calc(100vh - 200px);
-      overflow-y: auto;
+    .status-success {
+      background: #2c5f2d;
+      display: block;
     }
 
-    /* BSL Modal */
-    .modal {
+    .status-error {
+      background: #f44336;
+      display: block;
+    }
+
+    .status-warning {
+      background: #FF9800;
+      color: #333;
+      display: block;
+    }
+
+    .status-info {
+      background: #2196F3;
+      display: block;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .visible {
+      display: block;
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+      font-style: italic;
+    }
+
+    .hevc-warning {
+      background: #f44336;
+      color: white;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .loading-indicator {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+    }
+
+    .mkv-info {
+      background: #2196F3;
+      color: white;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* BSL-S² Styles */
+    .playlist-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+    }
+
+    .playlist-header h2 {
+      margin: 0;
+      padding: 0;
+      border: none;
+    }
+
+    .btn-bsl-check {
+      background: #9C27B0;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+
+    .btn-bsl-check:hover {
+      background: #7B1FA2;
+    }
+
+    .btn-bsl-check:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+
+    .bsl-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+
+    .bsl-positive {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .bsl-negative {
+      background: #f44336;
+      color: white;
+    }
+
+    .bsl-partial {
+      background: #FF9800;
+      color: #333;
+    }
+
+    .bsl-modal {
       display: none;
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0);
+      background: rgba(0, 0, 0, 0.8);
       z-index: 1000;
       justify-content: center;
       align-items: center;
-      transition: background 0.3s ease-out;
     }
 
-    .modal.visible {
+    .bsl-modal.visible {
       display: flex;
     }
 
-    .modal.visible.animate {
-      background: rgba(0, 0, 0, 0.8);
-    }
-
-    .modal-content {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
-      padding: 25px;
+    .bsl-modal-content {
+      background: #252525;
+      border-radius: 8px;
+      padding: 20px;
       max-width: 800px;
       max-height: 80vh;
       overflow-y: auto;
       width: 90%;
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.3s ease-out, transform 0.3s ease-out;
     }
 
-    .modal.visible.animate .modal-content {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .modal-header {
+    .bsl-modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
     }
 
-    .modal-header h2 {
-      font-size: 20px;
-      color: #fff;
-    }
-
-    .modal-close {
-      background: rgba(244, 67, 54, 0.2);
-      color: #f44336;
+    .bsl-modal-close {
+      background: #f44336;
+      color: white;
       border: none;
-      padding: 8px 15px;
-      border-radius: 8px;
+      padding: 5px 10px;
+      border-radius: 4px;
       cursor: pointer;
-      transition: all 0.2s;
     }
 
-    .modal-close:hover {
-      background: rgba(244, 67, 54, 0.3);
-    }
-
-    /* Status Messages */
-    .status-message {
-      padding: 12px 20px;
-      border-radius: 8px;
-      margin-top: 15px;
-      opacity: 0;
-      transform: translateY(10px);
-      transition: opacity 0.3s ease, transform 0.3s ease;
-      pointer-events: none;
-    }
-
-    .status-message.visible {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-
-    .status-success {
-      background: rgba(76, 175, 80, 0.2);
-      color: #4CAF50;
-      border: 1px solid rgba(76, 175, 80, 0.3);
-    }
-
-    .status-error {
-      background: rgba(244, 67, 54, 0.2);
-      color: #f44336;
-      border: 1px solid rgba(244, 67, 54, 0.3);
-    }
-
-    .status-info {
-      background: rgba(33, 150, 243, 0.2);
-      color: #2196F3;
-      border: 1px solid rgba(33, 150, 243, 0.3);
-    }
-
-    .status-warning {
-      background: rgba(255, 152, 0, 0.2);
-      color: #FF9800;
-      border: 1px solid rgba(255, 152, 0, 0.3);
-    }
-
-    /* Empty State */
-    .empty-message {
-      text-align: center;
-      padding: 40px 20px;
-      color: #666;
-      font-style: italic;
-    }
-
-    /* Action Bar */
-    .action-bar {
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-      padding: 20px;
-      margin-top: auto;
-    }
-
-    /* BSL Badge */
-    .bsl-badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-size: 10px;
-      margin-left: 8px;
-    }
-
-    .bsl-positive {
-      background: rgba(76, 175, 80, 0.3);
-      color: #4CAF50;
-    }
-
-    .bsl-negative {
-      background: rgba(244, 67, 54, 0.3);
-      color: #f44336;
-    }
-
-    .bsl-partial {
-      background: rgba(255, 152, 0, 0.3);
-      color: #FF9800;
-    }
-
-    /* BSL Client Cards */
     .bsl-client-card {
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 8px;
+      background: #1e1e1e;
+      border-radius: 6px;
       padding: 15px;
       margin-bottom: 15px;
     }
@@ -981,17 +504,17 @@
     .bsl-file-list {
       max-height: 150px;
       overflow-y: auto;
-      background: rgba(0, 0, 0, 0.2);
+      background: #2a2a2a;
       padding: 10px;
-      border-radius: 6px;
+      border-radius: 4px;
     }
 
     .bsl-file-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 5px 0;
+      border-bottom: 1px solid #333;
     }
 
     .bsl-file-item:last-child {
@@ -999,645 +522,347 @@
     }
 
     .bsl-match-select {
-      padding: 4px 8px;
-      background: rgba(255, 255, 255, 0.05);
+      padding: 4px;
+      background: #1e1e1e;
       color: #e0e0e0;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid #444;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 12px;
     }
 
-    /* Loading Indicator */
-    .loading-indicator {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-top-color: #2196F3;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-left: 8px;
+    /* Remote Section Layout */
+    .remote-section-layout {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 20px;
+      transition: grid-template-columns 0.3s ease;
     }
 
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
+    .remote-section-layout.sidebar-collapsed {
+      grid-template-columns: 50px 1fr;
     }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 3px;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: rgba(33, 150, 243, 0.5);
-      border-radius: 3px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(33, 150, 243, 0.7);
-    }
-
-    /* HEVC Warning */
-    .hevc-warning {
-      background: rgba(244, 67, 54, 0.2);
-      border: 1px solid rgba(244, 67, 54, 0.3);
-      color: #f44336;
-      padding: 15px;
+    .remote-playlist-sidebar {
+      background: #252525;
       border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      max-height: 80vh;
+      overflow-y: auto;
+      width: 350px;
+      min-width: 350px;
+      transition: all 0.3s ease;
+    }
+
+    .remote-playlist-sidebar h3 {
+      color: #4CAF50;
       margin-bottom: 15px;
-      opacity: 0;
-      max-height: 0;
-      padding: 0 15px;
-      margin-bottom: 0;
-      overflow: hidden;
-      transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+      font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .hevc-warning.visible {
-      opacity: 1;
-      max-height: 100px;
-      padding: 15px;
-      margin-bottom: 15px;
+    .remote-playlist-sidebar.collapsed {
+      width: 50px;
+      min-width: 50px;
+      padding: 10px;
     }
 
-    /* Hidden */
-    .hidden {
-      display: none !important;
+    .remote-playlist-sidebar.collapsed h3 {
+      flex-direction: column;
+      gap: 10px;
     }
 
-    /* Quick Controls - In Sidebar */
-    .sidebar-spacer {
-      flex: 1;
+    .remote-playlist-sidebar.collapsed h3 span,
+    .remote-playlist-sidebar.collapsed .btn-bsl-manager,
+    .remote-playlist-sidebar.collapsed .remote-playlist-list {
+      display: none;
     }
 
-    .quick-controls-bottom {
-      margin-top: auto;
+    .btn-toggle-sidebar {
+      background: #444;
+      color: #e0e0e0;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 8px;
+      transition: background 0.2s;
+    }
+
+    .btn-toggle-sidebar:hover {
+      background: #555;
+    }
+
+    .remote-playlist-list {
       display: flex;
       flex-direction: column;
+      gap: 8px;
+    }
+
+    .remote-playlist-item {
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
       align-items: center;
-      padding-bottom: 10px;
-    }
-
-    .sidebar-divider {
-      width: 100%;
-      height: 1px;
-      background: rgba(255, 255, 255, 0.1);
-      margin: 10px 0;
-    }
-
-    .quick-btn {
-      width: 45px;
-      height: 45px;
-      border: none;
-      border-radius: 8px;
-      font-size: 18px;
-      cursor: pointer;
+      gap: 10px;
+      border-left: 3px solid transparent;
       transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.05);
-      color: #e0e0e0;
-      margin-bottom: 5px;
     }
 
-    .quick-btn:hover {
-      background: rgba(255, 255, 255, 0.15);
+    .remote-playlist-item:hover {
+      background: #2a2a2a;
     }
 
-    .quick-btn:active {
-      transform: scale(0.95);
+    .remote-playlist-item.current {
+      background: #2c5f2d;
+      border-left-color: #4CAF50;
     }
 
-    /* Auth Screen - shown before verification */
-    #auth-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
+    .remote-playlist-item.main {
+      border-left-color: #2196F3;
     }
 
-    #auth-screen.hidden {
-      display: none;
-    }
-
-    .auth-content {
+    .remote-playlist-item .item-number {
+      background: #333;
+      color: #888;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      min-width: 30px;
       text-align: center;
+    }
+
+    .remote-playlist-item.current .item-number {
+      background: #4CAF50;
       color: white;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    .auth-spinner {
-      width: 50px;
-      height: 50px;
-      border: 4px solid rgba(255, 255, 255, 0.1);
-      border-top-color: #9C27B0;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
+    .remote-playlist-item .item-name {
+      flex-grow: 1;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
+    .remote-playlist-item .item-badges {
+      display: flex;
+      gap: 4px;
+    }
+
+    .remote-playlist-item .item-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: #333;
+      color: #888;
+    }
+
+    .remote-playlist-item .item-badge.main-badge {
+      background: #2196F3;
+      color: white;
+    }
+
+    .move-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .btn-move {
+      background: #444;
+      color: #e0e0e0;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+
+    .btn-move:hover {
+      background: #555;
+    }
+
+    .btn-move:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .btn-bsl-manager {
+      background: #9C27B0;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+
+    .btn-bsl-manager:hover {
+      background: #7B1FA2;
+    }
+
+    @media (max-width: 768px) {
+      .remote-section-layout {
+        grid-template-columns: 1fr;
       }
-    }
 
-    .auth-denied {
-      background: rgba(244, 67, 54, 0.1);
-      border: 1px solid rgba(244, 67, 54, 0.3);
-      border-radius: 16px;
-      padding: 40px;
-      max-width: 500px;
-    }
+      .remote-playlist-sidebar {
+        max-height: 300px;
+      }
 
-    /* Hide main UI until authenticated */
-    #admin-ui {
-      display: none;
-    }
+      .remote-controls {
+        grid-template-columns: 1fr;
+      }
 
-    #admin-ui.authenticated {
-      display: contents;
+      .btn-play,
+      .btn-pause,
+      .btn-skip-back,
+      .btn-skip-forward {
+        grid-column: 1;
+      }
+
+      .seek-controls {
+        grid-column: 1;
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 
 <body>
-  <!-- Auth Screen - Shown while verification is in progress -->
-  <div id="auth-screen">
-    <div class="auth-content" id="auth-content">
-      <div class="auth-spinner"></div>
-      <p>Verifying admin access...</p>
+  <header>
+    <h1>Sync-Player Admin Panel</h1>
+    <p class="subtitle">Manage playlists and control playback</p>
+  </header>
+
+  <!-- HEVC Warning Banner -->
+  <div id="hevc-warning" class="hevc-warning hidden">
+    <strong>⚠️ HEVC Codec Warning:</strong> MKV files often use HEVC (H.265) codecs which cannot be played on browsers
+    without HEVC extensions. This affects all clients including the host. Users may need to install HEVC codecs from the
+    Microsoft Store for proper playback.
+  </div>
+
+  <!-- MKV Info Banner -->
+  <div id="mkv-info" class="mkv-info hidden">
+    <strong>ℹ️ MKV File Information:</strong> MKV files support multiple audio and subtitle tracks. You can select which
+    tracks to use by default for each MKV file in your playlist.
+  </div>
+
+  <div id="setup-section">
+    <div class="panel">
+      <h2>Available Media Files</h2>
+      <div class="file-browser" id="file-browser">
+        <div class="empty-message">Loading files...</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="playlist-header">
+        <h2>Playlist</h2>
+        <button class="btn-bsl-check" id="bsl-check-btn"
+          title="BSL-S² = Both Side Local Sync Stream. Checks if clients have matching video files locally to enable bandwidth-saving local playback.">🔍
+          Check for BSL-S²</button>
+      </div>
+      <div class="playlist" id="playlist-container">
+        <div class="empty-message">No files in playlist yet</div>
+      </div>
+
+      <div class="control-group">
+        <label for="start-time">Main Video Start (s):</label>
+        <input type="number" id="start-time" min="0" value="0">
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn-launch" id="launch-btn">Launch Playlist</button>
+      </div>
     </div>
   </div>
 
-  <!-- Admin UI - Hidden until authenticated -->
-  <div id="admin-ui">
-    <!-- Sidebar Navigation -->
-    <nav class="sidebar">
-      <div class="sidebar-logo">S</div>
-
-      <!-- Sliding active indicator -->
-      <div class="nav-indicator" id="nav-indicator"></div>
-
-      <div class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
-        📊
-        <span class="nav-tooltip">Dashboard</span>
-      </div>
-
-      <div class="nav-item" data-view="media" onclick="switchView('media')">
-        📁
-        <span class="nav-tooltip">Media & Playlist</span>
-      </div>
-
-      <div class="nav-item" data-view="remote" onclick="switchView('remote')">
-        🎮
-        <span class="nav-tooltip">Remote Control</span>
-      </div>
-
-      <!-- Quick Controls - Bottom -->
-      <div class="quick-controls-bottom">
-        <button class="quick-btn" onclick="playVideo()" title="Play">▶</button>
-        <button class="quick-btn" onclick="pauseVideo()" title="Pause">⏸</button>
-      </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- Header -->
-      <header class="header glass">
-        <h1>Sync-<span>Player</span> Admin</h1>
-        <div class="connection-status glass">
-          <div class="status-dot"></div>
-          <span>Connected</span>
-        </div>
-      </header>
-
-      <!-- Dashboard View -->
-      <div id="dashboard-view" class="view active">
-        <div class="dashboard-grid">
-          <div class="stat-card glass" style="cursor: pointer;" onclick="openClientsModal()">
-            <div class="stat-icon blue">👥</div>
-            <div class="stat-info">
-              <h3 id="client-count">0</h3>
-              <p>Connected Clients</p>
-            </div>
-          </div>
-
-          <div class="stat-card glass">
-            <div class="stat-icon purple">🎬</div>
-            <div class="stat-info">
-              <h3 id="playlist-count">0</h3>
-              <p>Videos in Playlist</p>
-            </div>
-          </div>
-
-          <div class="stat-card glass">
-            <div class="stat-icon cyan">⏱️</div>
-            <div class="stat-info">
-              <h3 id="playback-status">Idle</h3>
-              <p>Playback Status</p>
-            </div>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 20px; flex: 1;">
-          <div class="panel glass-strong" style="flex: 1;">
-            <div class="panel-header">
-              <h2>Quick Actions</h2>
-            </div>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-              <button class="btn btn-primary" onclick="switchView('media')"
-                style="padding: 18px 30px; font-size: 16px;">
-                📁 Manage Playlist
-              </button>
-              <button class="btn btn-secondary" onclick="switchView('remote')"
-                style="padding: 18px 30px; font-size: 16px;">
-                🎮 Remote Control
-              </button>
-              <button class="btn btn-secondary" id="dashboard-bsl-btn" style="padding: 18px 30px; font-size: 16px;">
-                🔄 BSL-S² Check
-              </button>
-              <button class="btn btn-secondary" onclick="window.open('/', '_blank')"
-                style="padding: 18px 30px; font-size: 16px;">
-                📺 Open Client View
-              </button>
-            </div>
-
-            <div class="status-message" id="dashboard-status"></div>
-          </div>
-
-          <!-- Logs Panel -->
-          <div class="panel glass-strong" style="min-width: 320px; flex: 1;">
-            <div class="panel-header">
-              <h2>📋 Logs</h2>
-              <button class="btn btn-sm btn-secondary" onclick="clearLogs()">Clear</button>
-            </div>
-            <div id="logs-container"
-              style="max-height: 570px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-family: monospace; padding-bottom: 10px;">
-              <div class="log-entry" style="color: #888;">Waiting for events...</div>
-            </div>
-          </div>
-
-          <div class="panel glass-strong" style="min-width: 280px;">
-            <div class="panel-header">
-              <h2>⚙️ Config</h2>
-            </div>
-            <div id="config-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-              <div
-                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-                <span style="color: #888;">Port</span>
-                <span id="cfg-port">-</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-                <span style="color: #888;">Skip Seconds</span>
-                <span id="cfg-skip">-</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-                <span style="color: #888;">Volume Step</span>
-                <span id="cfg-volume">-</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-                <span style="color: #888;">Video Autoplay</span>
-                <span id="cfg-autoplay">-</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-                <span style="color: #888;">Join Mode</span>
-                <span id="cfg-join-mode">-</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-                <span style="color: #888;">HTTPS</span>
-                <span id="cfg-https">-</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-                <span style="color: #888;">BSL-S² Mode</span>
-                <span id="cfg-bsl-mode">-</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
-                <span style="color: #888;">Admin Lock</span>
-                <span id="cfg-admin-lock">-</span>
-              </div>
-            </div>
-          </div>
+  <div id="remote-section" class="hidden">
+    <div class="remote-section-layout">
+      <!-- Playlist Sidebar -->
+      <div class="remote-playlist-sidebar" id="remote-playlist-sidebar">
+        <h3>
+          <button class="btn-toggle-sidebar" id="toggle-sidebar-btn" title="Toggle sidebar">◀</button>
+          <span>Current Playlist</span>
+          <button class="btn-bsl-manager" id="remote-bsl-btn" title="Open BSL-S² Sync Manager">🔄 BSL-S²</button>
+        </h3>
+        <div class="remote-playlist-list" id="remote-playlist-list">
+          <div class="empty-message">No playlist active</div>
         </div>
       </div>
 
-      <!-- Media & Playlist View -->
-      <div id="media-view" class="view">
-        <div id="hevc-warning" class="hevc-warning">
-          <strong>⚠️ HEVC Codec Warning:</strong> MKV files often use HEVC (H.265) codecs which may require HEVC
-          extensions for browser playback. Consider using <a
-            href="https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35" target="_blank"
-            style="color: #2196F3;">BSL-S² (Local Sync)</a> for better compatibility!
-        </div>
+      <!-- Controls Panel -->
+      <div class="panel">
+        <h2>Remote Control</h2>
+        <div class="remote-controls">
+          <button class="remote-btn btn-skip-back" id="skip-back-btn">↩ <span id="skip-back-text">5s</span></button>
+          <button class="remote-btn btn-play" id="play-btn">Play</button>
+          <button class="remote-btn btn-pause" id="pause-btn">Pause</button>
+          <button class="remote-btn btn-skip-forward" id="skip-forward-btn">↪ <span
+              id="skip-forward-text">5s</span></button>
 
-        <div class="media-playlist-layout">
-          <!-- Available Files -->
-          <div class="panel glass-strong">
-            <div class="panel-header">
-              <h2>📂 Available Files</h2>
-              <span style="visibility: hidden;" class="btn btn-sm btn-secondary">Spacer</span>
-            </div>
-            <div class="file-list" id="file-browser">
-              <div class="empty-message">Loading files...</div>
-            </div>
-          </div>
-
-          <!-- Playlist -->
-          <div class="panel glass-strong">
-            <div class="panel-header">
-              <h2>📋 Playlist</h2>
-              <button class="btn btn-sm btn-secondary" id="bsl-check-btn">🔍 BSL-S²</button>
-            </div>
-            <div class="file-list" id="playlist-container">
-              <div class="empty-message">No files in playlist yet</div>
-            </div>
+          <div class="seek-controls">
+            <input type="number" id="seek-time" placeholder="Time in seconds" min="0">
+            <button class="btn-seek" id="seek-btn">Seek</button>
           </div>
         </div>
 
-        <div class="panel glass" style="padding: 15px;">
-          <div style="display: flex; align-items: center; gap: 20px;">
-            <label style="font-size: 14px;">Main Video Start Time (seconds):</label>
-            <input type="number" id="start-time" min="0" value="0"
-              style="width: 100px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; background: rgba(255,255,255,0.05); color: #e0e0e0;">
+        <!-- Remote track controls (for current playing video) -->
+        <div class="panel track-selection" id="remote-track-controls" style="margin-top: 15px;">
+          <h2 style="margin-top: 0;">Current Video Tracks</h2>
+          <div id="remote-current-file" style="margin-bottom: 10px; color: #aaa;"></div>
+          <div class="track-group">
+            <label>Audio Track:</label>
+            <select id="remote-audio-track" disabled>
+              <option>Loading...</option>
+            </select>
+          </div>
+          <div class="track-group">
+            <label>Subtitle Track:</label>
+            <select id="remote-subtitle-track" disabled>
+              <option>Loading...</option>
+            </select>
           </div>
         </div>
 
-        <div class="action-bar">
-          <button class="btn btn-primary" id="launch-btn" style="padding: 15px 40px; font-size: 16px;">
-            🚀 Launch Playlist
-          </button>
-        </div>
-      </div>
-
-      <!-- Remote Control View -->
-      <div id="remote-view" class="view">
-        <div class="remote-layout">
-          <!-- Left: Playlist Sidebar -->
-          <div class="panel glass-strong remote-playlist-panel">
-            <div class="panel-header">
-              <h2>📋 Playlist</h2>
-            </div>
-            <div class="file-list remote-playlist" id="remote-playlist-list">
-              <div class="empty-message">No playlist active</div>
-            </div>
-          </div>
-
-          <!-- Center: Large Thumbnail -->
-          <div class="panel glass-strong remote-thumbnail-panel">
-            <div class="video-thumbnail" style="flex: 1; margin-bottom: 0; aspect-ratio: auto;">
-              <span class="video-thumbnail-icon">🎬</span>
-              <div class="video-info">
-                <h3 id="current-video-name">No video playing</h3>
-                <p id="current-video-status">Waiting for playlist...</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right: Control Buttons -->
-          <div class="panel glass-strong remote-controls-panel">
-            <div class="panel-header" style="margin-bottom: 10px;">
-              <h2>🎮 Controls</h2>
-            </div>
-
-            <button class="control-btn play" id="play-btn" style="width: 100%;">▶ Play</button>
-            <button class="control-btn pause" id="pause-btn" style="width: 100%;">⏸ Pause</button>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <button class="control-btn skip" id="skip-back-btn">↩ <span id="skip-back-text">5s</span></button>
-              <button class="control-btn skip" id="skip-forward-btn"><span id="skip-forward-text">5s</span> ↪</button>
-            </div>
-
-            <div class="seek-control" style="margin-top: 10px;">
-              <input type="number" id="seek-time" placeholder="Seconds" min="0" style="width: 80px;">
-              <button class="btn btn-primary" id="seek-btn" style="flex: 1;">Seek</button>
-            </div>
-
-            <button class="btn btn-secondary" id="get-time-btn" style="width: 100%; margin-top: 10px;">⏱️ Get Current
-              Time</button>
-            <div id="current-time-display"
-              style="text-align: center; margin-top: 8px; font-size: 14px; color: #2196F3; font-family: monospace;">
-            </div>
-          </div>
-
-          <!-- Bottom: Other Stuff (Track Selection, BSL, Relaunch) -->
-          <div class="panel glass-strong remote-bottom-panel" style="padding: 15px;">
-            <div style="display: flex; gap: 30px; align-items: center; flex-wrap: wrap;">
-              <!-- Track Selection -->
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <label style="color: #888; font-size: 13px;">Audio:</label>
-                <select id="remote-audio-track" disabled
-                  style="padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #e0e0e0; min-width: 150px;">
-                  <option>No tracks available</option>
-                </select>
-              </div>
-
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <label style="color: #888; font-size: 13px;">Subtitles:</label>
-                <select id="remote-subtitle-track" disabled
-                  style="padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #e0e0e0; min-width: 150px;">
-                  <option>No tracks available</option>
-                </select>
-              </div>
-
-              <!-- Status message bubble between track selection and buttons -->
-              <div class="status-message" id="status-message" style="flex: 1; margin: 0; padding: 8px 16px;"></div>
-
-              <div style="margin-left: auto; display: flex; gap: 10px;">
-                <button class="btn btn-secondary" id="remote-bsl-btn">🔄 BSL-S²</button>
-                <button class="btn btn-primary" id="relaunch-btn">🚀 Relaunch</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <!-- BSL-S² Modal -->
-    <div id="bsl-modal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>🔄 BSL-S² Client Status</h2>
-          <button class="modal-close" id="bsl-modal-close">✕ Close</button>
-        </div>
-        <div id="bsl-modal-body">
-          <div class="empty-message">Waiting for clients to select their local folders...</div>
-        </div>
+        <div class="status-message" id="status-message"></div>
       </div>
     </div>
+  </div>
 
-    <!-- Clients Modal -->
-    <div id="clients-modal" class="modal">
-      <div class="modal-content" style="max-width: 600px;">
-        <div class="modal-header">
-          <h2>👥 Connected Clients</h2>
-          <button class="modal-close" id="clients-modal-close">✕ Close</button>
-        </div>
-        <div id="clients-modal-body">
-          <div class="empty-message">Loading clients...</div>
-        </div>
+  <!-- BSL-S² Modal -->
+  <div id="bsl-modal" class="bsl-modal">
+    <div class="bsl-modal-content">
+      <div class="bsl-modal-header">
+        <h2>BSL-S² Client Status</h2>
+        <button class="bsl-modal-close" id="bsl-modal-close">✕ Close</button>
+      </div>
+      <div id="bsl-modal-body">
+        <div class="empty-message">Waiting for clients to select their local folders...</div>
       </div>
     </div>
-  </div> <!-- Close admin-ui -->
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
     let playlist = [];
     let mainVideoIndex = -1;
-    let skipSeconds = 5;
-    const thumbnailCache = {}; // Cache for loaded thumbnails
-
-    // Generate admin fingerprint for device identification
-    function generateAdminFingerprint() {
-      const components = [
-        navigator.userAgent,
-        navigator.language,
-        navigator.platform,
-        navigator.hardwareConcurrency || 'unknown',
-        navigator.deviceMemory || 'unknown',
-        screen.width + 'x' + screen.height,
-        screen.colorDepth,
-        new Date().getTimezoneOffset(),
-        (() => {
-          try {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.textBaseline = 'top';
-            ctx.font = '14px Arial';
-            ctx.fillText('Admin fingerprint', 2, 2);
-            return canvas.toDataURL().slice(-50);
-          } catch (e) {
-            return 'no-canvas';
-          }
-        })()
-      ];
-
-      const str = components.join('|');
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-      }
-      return 'admin-' + Math.abs(hash).toString(36);
-    }
-
-    // Get or store admin fingerprint
-    function getAdminFingerprint() {
-      let stored = localStorage.getItem('admin-fingerprint');
-      if (stored) {
-        return stored;
-      }
-      const fp = generateAdminFingerprint();
-      localStorage.setItem('admin-fingerprint', fp);
-      return fp;
-    }
-
-    const adminFingerprint = getAdminFingerprint();
-    console.log('Admin fingerprint:', adminFingerprint);
-
-    // Config display
-    socket.on('config', (cfg) => {
-      if (cfg.port) document.getElementById('cfg-port').textContent = cfg.port;
-      if (cfg.skipSeconds) document.getElementById('cfg-skip').textContent = cfg.skipSeconds + 's';
-      if (cfg.volumeStep) document.getElementById('cfg-volume').textContent = Math.round(cfg.volumeStep * 100) + '%';
-      document.getElementById('cfg-autoplay').textContent = cfg.videoAutoplay ? 'On' : 'Off';
-      document.getElementById('cfg-join-mode').textContent = cfg.joinMode || 'sync';
-      document.getElementById('cfg-https').textContent = cfg.useHttps ? 'On' : 'Off';
-      document.getElementById('cfg-bsl-mode').textContent = cfg.bslS2Mode || 'any';
-      document.getElementById('cfg-admin-lock').textContent = cfg.adminFingerprintLock ? 'On' : 'Off';
-      skipSeconds = cfg.skipSeconds || 5;
-    });
-
-    // Request config on load
-    socket.on('connect', () => {
-      socket.emit('get-config');
-    });
-    if (socket.connected) {
-      socket.emit('get-config');
-    }
+    let skipSeconds = 5; // Will be updated from server config
 
     // Live server playlist and index for remote controls
     let serverPlaylist = null;
     let currentServerIndex = -1;
-
-    // View order for nav indicator tracking
-    const viewOrder = ['dashboard', 'media', 'remote'];
-    let currentViewName = 'dashboard';
-
-    // View switching with scroll-like animation
-    function switchView(viewName) {
-      const oldIndex = viewOrder.indexOf(currentViewName);
-      const newIndex = viewOrder.indexOf(viewName);
-      const goingDown = newIndex > oldIndex;
-
-      // Update nav active states
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      document.querySelectorAll('.view').forEach(v => {
-        v.classList.remove('active', 'scroll-up', 'scroll-down');
-      });
-
-      const targetView = document.getElementById(`${viewName}-view`);
-
-      // Apply direction class for animation
-      if (goingDown) {
-        targetView.classList.add('scroll-up'); // Content scrolls up (comes from bottom)
-      } else {
-        targetView.classList.add('scroll-down'); // Content scrolls down (comes from top)
-      }
-
-      targetView.classList.add('active');
-      currentViewName = viewName;
-
-      const activeNavItem = document.querySelector(`.nav-item[data-view="${viewName}"]`);
-      activeNavItem.classList.add('active');
-
-      // Move the indicator to the active nav item
-      const indicator = document.getElementById('nav-indicator');
-      if (indicator && activeNavItem) {
-        const navTop = activeNavItem.offsetTop + (activeNavItem.offsetHeight / 2) - 15;
-        indicator.style.top = navTop + 'px';
-      }
-    }
-
-    // Initialize indicator position on load
-    function initNavIndicator() {
-      requestAnimationFrame(() => {
-        const activeNavItem = document.querySelector('.nav-item.active');
-        const indicator = document.getElementById('nav-indicator');
-        if (indicator && activeNavItem) {
-          // Disable transition for initial positioning
-          indicator.style.transition = 'none';
-          const navTop = activeNavItem.offsetTop + (activeNavItem.offsetHeight / 2) - 15;
-          indicator.style.top = navTop + 'px';
-          // Re-enable transition after a frame
-          requestAnimationFrame(() => {
-            indicator.style.transition = 'top 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-          });
-        }
-      });
-    }
 
     // Fetch available files from server
     async function loadFiles() {
@@ -1667,21 +892,30 @@
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
 
-        const fileName = document.createElement('span');
-        fileName.className = 'file-name';
-        fileName.innerHTML = `<span class="file-icon">🎬</span> ${file.filename}`;
+        const fileNameDiv = document.createElement('div');
+        fileNameDiv.className = 'file-name';
+        fileNameDiv.innerHTML = file.filename;
 
+        // Show warning for all MKV files (simplified approach)
         if (file.filename.endsWith('.mkv')) {
-          fileName.innerHTML += ' <span style="color: #FF9800;">⚠️</span>';
+          const warningIcon = document.createElement('span');
+          warningIcon.className = 'hevc-warning-icon';
+          warningIcon.title = 'MKV files may contain HEVC codec which may not play on all devices';
+          warningIcon.innerHTML = '⚠️';
+          fileNameDiv.appendChild(warningIcon);
         }
 
-        const addBtn = document.createElement('button');
-        addBtn.className = 'btn btn-sm btn-primary';
-        addBtn.textContent = '+ Add';
-        addBtn.onclick = () => addToPlaylist(file);
+        const fileActions = document.createElement('div');
+        fileActions.className = 'file-actions';
 
-        fileItem.appendChild(fileName);
-        fileItem.appendChild(addBtn);
+        const addButton = document.createElement('button');
+        addButton.textContent = 'Add to Playlist';
+        addButton.onclick = () => addToPlaylist(file);
+
+        fileActions.appendChild(addButton);
+        fileItem.appendChild(fileNameDiv);
+        fileItem.appendChild(fileActions);
+
         fileBrowser.appendChild(fileItem);
       });
     }
@@ -1689,435 +923,532 @@
     // Add a file to the playlist
     async function addToPlaylist(file) {
       if (!playlist.some(item => item.filename === file.filename)) {
+        // Create a copy of the file object to avoid reference issues
         const fileCopy = { ...file };
 
+        // For MKV and MP4 files, fetch track information
         if (fileCopy.filename.endsWith('.mkv') || fileCopy.filename.endsWith('.mp4')) {
           try {
+            // Show loading indicator
+            const addButton = event.target;
+            const originalText = addButton.textContent;
+            addButton.disabled = true;
+            addButton.innerHTML = 'Adding... <span class="loading-indicator"></span>';
+
             const response = await fetch(`/api/tracks/${encodeURIComponent(fileCopy.filename)}`);
             if (response.ok) {
               const tracks = await response.json();
+              // Ensure tracks has the expected structure
               fileCopy.tracks = {
                 audio: tracks.audio || [],
                 subtitles: tracks.subtitles || []
               };
             } else {
+              console.error('Error fetching track info:', response.statusText);
               fileCopy.tracks = { audio: [], subtitles: [] };
             }
+
+            // Restore button
+            addButton.disabled = false;
+            addButton.textContent = originalText;
           } catch (error) {
+            console.error('Error fetching track info:', error);
             fileCopy.tracks = { audio: [], subtitles: [] };
+
+            // Restore button in case of error
+            const addButton = event.target;
+            addButton.disabled = false;
+            addButton.textContent = 'Add to Playlist';
           }
         } else {
+          // For non-MKV files, set empty tracks
           fileCopy.tracks = { audio: [], subtitles: [] };
         }
 
+        // Mark all MKV files as potentially having HEVC
         if (fileCopy.filename.endsWith('.mkv')) {
           fileCopy.usesHEVC = true;
+        } else {
+          fileCopy.usesHEVC = false;
         }
 
-        fileCopy.isNew = true; // Flag for slide-in animation
         playlist.push(fileCopy);
         updatePlaylistDisplay();
+
+        // Show warning if there are MKV files
         updateHevcWarning();
-        updateDashboardStats();
-        // Clear the isNew flag after animation
-        setTimeout(() => { fileCopy.isNew = false; }, 300);
+
+        // Show MKV info if there are MKV files
+        updateMkvInfo();
       }
     }
 
     // Remove a file from the playlist
     function removeFromPlaylist(index) {
-      const container = document.getElementById('playlist-container');
-      const item = container.children[index];
-
-      if (item) {
-        // Add slide-out animation
-        item.classList.add('slide-out');
-
-        // Wait for animation then remove
-        setTimeout(() => {
-          playlist.splice(index, 1);
-          if (mainVideoIndex === index) {
-            mainVideoIndex = -1;
-          } else if (mainVideoIndex > index) {
-            mainVideoIndex--;
-          }
-          updatePlaylistDisplay();
-          updateHevcWarning();
-          updateDashboardStats();
-        }, 400);
-      } else {
-        // Fallback if no element found
-        playlist.splice(index, 1);
-        if (mainVideoIndex === index) {
-          mainVideoIndex = -1;
-        } else if (mainVideoIndex > index) {
-          mainVideoIndex--;
-        }
-        updatePlaylistDisplay();
-        updateHevcWarning();
-        updateDashboardStats();
+      playlist.splice(index, 1);
+      if (mainVideoIndex === index) {
+        mainVideoIndex = -1;
+      } else if (mainVideoIndex > index) {
+        mainVideoIndex--;
       }
+      updatePlaylistDisplay();
+
+      // Update warning if MKV files were removed
+      updateHevcWarning();
+      updateMkvInfo();
     }
 
-    // Move playlist item
-    function movePlaylistItem(index, direction) {
-      const newIndex = index + direction;
-      if (newIndex < 0 || newIndex >= playlist.length) return;
+    // Preserve track selections before regenerating HTML
+    function preserveTrackSelections() {
+      playlist.forEach((item, index) => {
+        if ((item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4')) && item.tracks) {
+          const audioSelect = document.getElementById(`audio-track-${index}`);
+          const subtitleSelect = document.getElementById(`subtitle-track-${index}`);
 
-      [playlist[index], playlist[newIndex]] = [playlist[newIndex], playlist[index]];
+          if (audioSelect) {
+            item.selectedAudioTrack = parseInt(audioSelect.value);
+          }
+          if (subtitleSelect) {
+            item.selectedSubtitleTrack = parseInt(subtitleSelect.value);
+          }
+        }
+      });
+    }
 
-      if (mainVideoIndex === index) {
-        mainVideoIndex = newIndex;
-      } else if (mainVideoIndex === newIndex) {
-        mainVideoIndex = index;
+    // Set a video as the main video
+    function setAsMain(index) {
+      const item = playlist[index];
+
+      // Check if it's an MKV file and show info
+      if (item.filename.endsWith('.mkv')) {
+        showStatus('Note: MKV files may have limited browser support. Ensure proper codecs are installed.', 'info');
       }
 
+      mainVideoIndex = index;
       updatePlaylistDisplay();
     }
 
-    // Set as main video
-    function setAsMain(index) {
-      const container = document.getElementById('playlist-container');
-      const items = container.querySelectorAll('.playlist-item');
-
-      // Update classes on existing elements (enables CSS transitions)
-      items.forEach((item, i) => {
-        const thumbnailBg = item.querySelector('.thumbnail-bg');
-
-        if (i === mainVideoIndex) {
-          // Old main - remove main class and blur the thumbnail
-          item.classList.remove('main');
-          if (thumbnailBg) thumbnailBg.classList.remove('cleared');
-
-          // Add back the Set Main button
-          const existingBtn = item.querySelector('.btn-secondary');
-          if (!existingBtn) {
-            const setMainBtn = document.createElement('button');
-            setMainBtn.className = 'btn btn-sm btn-secondary';
-            setMainBtn.textContent = 'Set Main';
-            setMainBtn.onclick = () => setAsMain(i);
-            item.insertBefore(setMainBtn, item.querySelector('.btn-danger'));
-          }
-
-          // Remove Main badge
-          const badge = item.querySelector('.badge-main');
-          if (badge) badge.remove();
-        }
-
-        if (i === index) {
-          // New main - add main class and clear the thumbnail blur
-          item.classList.add('main');
-          if (thumbnailBg) {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                thumbnailBg.classList.add('cleared');
-              });
-            });
-          }
-
-          // Remove Set Main button for this item
-          const setMainBtn = item.querySelector('.btn-secondary');
-          if (setMainBtn && setMainBtn.textContent === 'Set Main') {
-            setMainBtn.remove();
-          }
-
-          // Add Main badge
-          const badges = item.querySelector('.playlist-badges');
-          if (badges && !badges.querySelector('.badge-main')) {
-            const badge = document.createElement('span');
-            badge.className = 'badge badge-main';
-            badge.textContent = 'Main';
-            badges.appendChild(badge);
-          }
-        }
-      });
-
-      mainVideoIndex = index;
-    }
-
-    // Update playlist display
+    // Update the playlist display
     function updatePlaylistDisplay() {
-      const container = document.getElementById('playlist-container');
+      const playlistContainer = document.getElementById('playlist-container');
 
       if (playlist.length === 0) {
-        container.innerHTML = '<div class="empty-message">No files in playlist yet</div>';
+        playlistContainer.innerHTML = '<div class="empty-message">No files in playlist yet</div>';
         return;
       }
 
-      container.innerHTML = '';
+      // Preserve current track selections before regenerating HTML
+      preserveTrackSelections();
+
+      playlistContainer.innerHTML = '';
 
       playlist.forEach((item, index) => {
         const playlistItem = document.createElement('div');
-        playlistItem.className = `playlist-item ${index === mainVideoIndex ? 'main' : ''} ${item.isNew ? 'slide-in' : ''}`;
+        playlistItem.className = `playlist-item ${index === mainVideoIndex ? 'main' : ''}`;
 
-        // Add thumbnail background for all videos (blurred, clears when main)
-        const thumbnailBg = document.createElement('div');
-        thumbnailBg.className = 'thumbnail-bg';
-        playlistItem.appendChild(thumbnailBg);
+        // Playlist info section
+        const playlistInfo = document.createElement('div');
+        playlistInfo.className = 'playlist-info';
 
-        // Check if thumbnail is already cached
-        if (thumbnailCache[item.filename]) {
-          thumbnailBg.style.backgroundImage = `url('${thumbnailCache[item.filename]}')`;
-          // Use 'cached' class - appears instantly with opacity 0.5
-          thumbnailBg.classList.add('cached');
+        const fileName = document.createElement('span');
+        fileName.textContent = item.filename;
 
-          // If this is the main video, animate the blur removal
-          if (index === mainVideoIndex) {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                thumbnailBg.classList.add('cleared');
+        if (item.filename.endsWith('.mkv')) {
+          const warningIcon = document.createElement('span');
+          warningIcon.className = 'hevc-warning-icon';
+          warningIcon.title = 'MKV files may contain HEVC codec which may not play on all devices';
+          warningIcon.innerHTML = '⚠️';
+          fileName.appendChild(warningIcon);
+        }
+
+        playlistInfo.appendChild(fileName);
+
+        if (index === mainVideoIndex) {
+          const mainBadge = document.createElement('span');
+          mainBadge.className = 'main-badge';
+          mainBadge.textContent = 'Main';
+          playlistInfo.appendChild(mainBadge);
+        }
+
+        // Playlist actions section
+        const playlistActions = document.createElement('div');
+        playlistActions.className = 'playlist-actions';
+
+        // Move up button
+        const moveUpBtn = document.createElement('button');
+        moveUpBtn.className = 'btn-move';
+        moveUpBtn.textContent = '▲';
+        moveUpBtn.title = 'Move up';
+        moveUpBtn.disabled = index === 0;
+        moveUpBtn.onclick = () => movePlaylistItem(index, -1);
+        playlistActions.appendChild(moveUpBtn);
+
+        // Move down button
+        const moveDownBtn = document.createElement('button');
+        moveDownBtn.className = 'btn-move';
+        moveDownBtn.textContent = '▼';
+        moveDownBtn.title = 'Move down';
+        moveDownBtn.disabled = index === playlist.length - 1;
+        moveDownBtn.onclick = () => movePlaylistItem(index, 1);
+        playlistActions.appendChild(moveDownBtn);
+
+        if (index !== mainVideoIndex) {
+          const setMainButton = document.createElement('button');
+          setMainButton.className = 'btn-set-main';
+          setMainButton.textContent = 'Set Main';
+          setMainButton.onclick = () => setAsMain(index);
+          playlistActions.appendChild(setMainButton);
+        }
+
+        const removeButton = document.createElement('button');
+        removeButton.className = 'btn-remove';
+        removeButton.textContent = 'Remove';
+        removeButton.onclick = () => removeFromPlaylist(index);
+        playlistActions.appendChild(removeButton);
+
+        // Track selection section (for MKV and MP4 files)
+        let trackSelectionHtml = '';
+        if ((item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4')) && item.tracks) {
+          trackSelectionHtml = `
+            <div class="track-selection">
+              <div class="track-group">
+                <label>Audio Track:</label>
+                <select id="audio-track-${index}" class="audio-track-select">
+                  ${item.tracks.audio && item.tracks.audio.length > 0 ?
+              item.tracks.audio.map((track, trackIndex) =>
+                '<option value="' + trackIndex + '"' + ((item.selectedAudioTrack !== undefined && item.selectedAudioTrack === trackIndex) || (item.selectedAudioTrack === undefined && track.default) ? ' selected' : '') + '>' + track.language + ' - ' + (track.title || 'Track ' + trackIndex) + '</option>'
+              ).join('') :
+              '<option value="0">Default Audio</option>'
+            }
+                </select>
+              </div>
+              <div class="track-group">
+                <label>Subtitle Track:</label>
+                <select id="subtitle-track-${index}" class="subtitle-track-select">
+                  <option value="-1" ${(item.selectedSubtitleTrack === undefined || item.selectedSubtitleTrack === -1) ? 'selected' : ''}>None</option>
+                  ${item.tracks.subtitles && item.tracks.subtitles.length > 0 ?
+              item.tracks.subtitles.map((track, trackIndex) =>
+                '<option value="' + trackIndex + '"' + ((item.selectedSubtitleTrack !== undefined && item.selectedSubtitleTrack === trackIndex) || (item.selectedSubtitleTrack === undefined && track.default) ? ' selected' : '') + '>' + track.language + ' - ' + (track.title || 'Track ' + trackIndex) + '</option>'
+              ).join('') : ''
+            }
+                </select>
+              </div>
+            </div>
+          `;
+        }
+
+        playlistItem.appendChild(playlistInfo);
+        playlistItem.appendChild(playlistActions);
+
+        if (trackSelectionHtml) {
+          // Create a temporary div to parse the HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = trackSelectionHtml;
+          // Append the parsed content to the playlist item
+          while (tempDiv.firstChild) {
+            playlistItem.appendChild(tempDiv.firstChild);
+          }
+        }
+
+        playlistContainer.appendChild(playlistItem);
+
+        // Add event listeners for track selection dropdowns (for both MKV and MP4 files)
+        if (item.tracks && (item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4'))) {
+          const audioSelect = document.getElementById(`audio-track-${index}`);
+          const subtitleSelect = document.getElementById(`subtitle-track-${index}`);
+
+          if (audioSelect) {
+            audioSelect.addEventListener('change', () => {
+              const trackIndex = parseInt(audioSelect.value);
+
+              // Update the playlist item with the new selection
+              playlist[index].selectedAudioTrack = trackIndex;
+
+              socket.emit('track-change', {
+                videoIndex: index,
+                type: 'audio',
+                trackIndex: trackIndex
               });
+              console.log(`Audio track changed for video ${index} to track ${trackIndex}`);
+
+              // Show visual feedback
+              showStatus(`Audio track changed to: ${audioSelect.options[audioSelect.selectedIndex].text}`, 'info');
             });
           }
-        } else {
-          // Fetch and set thumbnail
-          fetch(`/api/thumbnail/${encodeURIComponent(item.filename)}`)
-            .then(response => response.json())
-            .then(data => {
-              if (data.thumbnail) {
-                thumbnailCache[item.filename] = data.thumbnail;
-                thumbnailBg.style.backgroundImage = `url('${data.thumbnail}')`;
 
-                // Trigger transition after image loads
-                const img = new Image();
-                img.onload = () => {
-                  thumbnailBg.classList.add('loaded');
-                  if (index === mainVideoIndex) {
-                    thumbnailBg.classList.add('cleared');
-                  }
-                };
-                img.src = data.thumbnail;
-              }
-            })
-            .catch(err => console.log('Could not load thumbnail:', err));
+          if (subtitleSelect) {
+            subtitleSelect.addEventListener('change', () => {
+              const trackIndex = parseInt(subtitleSelect.value);
+
+              // Update the playlist item with the new selection
+              playlist[index].selectedSubtitleTrack = trackIndex;
+
+              socket.emit('track-change', {
+                videoIndex: index,
+                type: 'subtitle',
+                trackIndex: trackIndex
+              });
+              console.log(`Subtitle track changed for video ${index} to track ${trackIndex}`);
+
+              // Show visual feedback
+              const subtitleText = trackIndex >= 0 ? subtitleSelect.options[subtitleSelect.selectedIndex].text : 'None';
+              showStatus(`Subtitle track changed to: ${subtitleText}`, 'info');
+            });
+          }
         }
-
-        // Number
-        const number = document.createElement('span');
-        number.className = 'playlist-number';
-        number.textContent = index + 1;
-        playlistItem.appendChild(number);
-
-        // Name
-        const name = document.createElement('span');
-        name.className = 'playlist-name';
-        name.textContent = item.filename;
-        name.title = item.filename;
-        playlistItem.appendChild(name);
-
-        // Badges
-        const badges = document.createElement('div');
-        badges.className = 'playlist-badges';
-        if (index === mainVideoIndex) {
-          const badge = document.createElement('span');
-          badge.className = 'badge badge-main';
-          badge.textContent = 'Main';
-          badges.appendChild(badge);
-        }
-        playlistItem.appendChild(badges);
-
-        // Move buttons
-        const moveDiv = document.createElement('div');
-        moveDiv.className = 'move-buttons';
-
-        const upBtn = document.createElement('button');
-        upBtn.className = 'btn-move';
-        upBtn.textContent = '▲';
-        upBtn.disabled = index === 0;
-        upBtn.onclick = () => movePlaylistItem(index, -1);
-        moveDiv.appendChild(upBtn);
-
-        const downBtn = document.createElement('button');
-        downBtn.className = 'btn-move';
-        downBtn.textContent = '▼';
-        downBtn.disabled = index === playlist.length - 1;
-        downBtn.onclick = () => movePlaylistItem(index, 1);
-        moveDiv.appendChild(downBtn);
-        playlistItem.appendChild(moveDiv);
-
-        // Actions
-        if (index !== mainVideoIndex) {
-          const setMainBtn = document.createElement('button');
-          setMainBtn.className = 'btn btn-sm btn-secondary';
-          setMainBtn.textContent = 'Set Main';
-          setMainBtn.onclick = () => setAsMain(index);
-          playlistItem.appendChild(setMainBtn);
-        }
-
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'btn btn-sm btn-danger';
-        removeBtn.textContent = '✕';
-        removeBtn.onclick = () => removeFromPlaylist(index);
-        playlistItem.appendChild(removeBtn);
-
-        container.appendChild(playlistItem);
       });
     }
 
-    // Update HEVC warning
+    // Update HEVC warning visibility
     function updateHevcWarning() {
-      const hasMKV = playlist.some(item => item.filename.endsWith('.mkv'));
-      const warning = document.getElementById('hevc-warning');
-      if (hasMKV) {
-        warning.classList.add('visible');
+      const hasMKVFiles = playlist.some(item => item.filename.endsWith('.mkv') && item.usesHEVC);
+      const warningElement = document.getElementById('hevc-warning');
+
+      if (hasMKVFiles) {
+        warningElement.classList.remove('hidden');
       } else {
-        warning.classList.remove('visible');
+        warningElement.classList.add('hidden');
       }
     }
 
-    // Update dashboard stats
-    function updateDashboardStats() {
-      document.getElementById('playlist-count').textContent = playlist.length;
+    // Update MKV info visibility
+    function updateMkvInfo() {
+      const hasMKVFiles = playlist.some(item => item.filename.endsWith('.mkv'));
+      const infoElement = document.getElementById('mkv-info');
+
+      if (hasMKVFiles) {
+        infoElement.classList.remove('hidden');
+      } else {
+        infoElement.classList.add('hidden');
+      }
     }
 
-    // Launch playlist
+    // Launch the playlist
     function launchPlaylist() {
       if (playlist.length === 0) {
         showStatus('Playlist is empty!', 'error');
         return;
       }
 
+      // Main video is now optional - if none selected, start with first video
       if (mainVideoIndex === -1) {
         mainVideoIndex = 0;
         updatePlaylistDisplay();
+        showStatus('No main video selected. Starting with first video in playlist.', 'info');
       }
 
+      proceedWithLaunch();
+    }
+
+    // Proceed with launching the playlist
+    async function proceedWithLaunch() {
       const startTime = document.getElementById('start-time').value || 0;
 
-      const playlistWithTracks = playlist.map((item, index) => ({ ...item }));
+      // Collect track selections for MKV and MP4 files
+      const playlistWithTracks = playlist.map((item, index) => {
+        const playlistItem = { ...item };
 
+        if (item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4')) {
+          const audioSelect = document.getElementById(`audio-track-${index}`);
+          const subtitleSelect = document.getElementById(`subtitle-track-${index}`);
+
+          if (audioSelect) {
+            playlistItem.selectedAudioTrack = parseInt(audioSelect.value);
+          }
+
+          if (subtitleSelect) {
+            playlistItem.selectedSubtitleTrack = parseInt(subtitleSelect.value);
+          }
+        }
+
+        return playlistItem;
+      });
+
+      // Debug: Log track selections being sent
+      console.log('Track selections being sent to server:');
+      playlistWithTracks.forEach((item, index) => {
+        if (item.selectedAudioTrack !== undefined || item.selectedSubtitleTrack !== undefined) {
+          console.log(`  Video ${index} (${item.filename}): audio=${item.selectedAudioTrack}, subtitle=${item.selectedSubtitleTrack}`);
+        }
+      });
+
+      // Show loading status
       showStatus('Setting up playlist...', 'info');
 
+      // Send playlist to server
       socket.emit('set-playlist', {
         playlist: playlistWithTracks,
         mainVideoIndex: parseInt(mainVideoIndex),
         startTime: parseFloat(startTime)
       });
 
-      // Rename button to Relaunch after first launch
-      document.getElementById('launch-btn').innerHTML = '🔄 Relaunch Playlist';
+      // Send initial track selections for all videos
+      playlistWithTracks.forEach((item, index) => {
+        if (item.filename.endsWith('.mkv') || item.filename.endsWith('.mp4')) {
+          if (item.selectedAudioTrack !== undefined) {
+            socket.emit('track-change', {
+              videoIndex: index,
+              type: 'audio',
+              trackIndex: item.selectedAudioTrack
+            });
+          }
+          if (item.selectedSubtitleTrack !== undefined) {
+            socket.emit('track-change', {
+              videoIndex: index,
+              type: 'subtitle',
+              trackIndex: item.selectedSubtitleTrack
+            });
+          }
+        }
+      });
     }
 
+    // Show status message
     function showStatus(message, type) {
       const statusEl = document.getElementById('status-message');
       statusEl.textContent = message;
-      statusEl.className = `status-message visible status-${type}`;
-      // Keep inline flex styles
-      statusEl.style.flex = '1';
-      statusEl.style.margin = '0';
-      statusEl.style.padding = '8px 16px';
+      statusEl.className = `status-message status-${type}`;
 
       setTimeout(() => {
-        statusEl.classList.remove('visible');
+        statusEl.className = 'status-message';
       }, 5000);
-    }
-
-    // Logging functions
-    function addLog(message, type = 'info') {
-      const container = document.getElementById('logs-container');
-      if (!container) return;
-
-      // Remove "Waiting for events..." message if present
-      const waitingMsg = container.querySelector('.log-entry');
-      if (waitingMsg && waitingMsg.textContent === 'Waiting for events...') {
-        waitingMsg.remove();
-      }
-
-      const entry = document.createElement('div');
-      entry.className = 'log-entry';
-
-      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-      const colors = {
-        info: '#2196F3',
-        success: '#4CAF50',
-        warning: '#FF9800',
-        error: '#f44336',
-        client: '#9C27B0'
-      };
-
-      entry.style.color = colors[type] || '#e0e0e0';
-      entry.innerHTML = `<span style="color:#666">[${time}]</span> ${message}`;
-
-      container.appendChild(entry);
-      container.scrollTop = container.scrollHeight;
-
-      // Limit to 50 entries
-      while (container.children.length > 50) {
-        container.removeChild(container.firstChild);
-      }
-    }
-
-    function clearLogs() {
-      const container = document.getElementById('logs-container');
-      if (container) {
-        container.innerHTML = '<div class="log-entry" style="color: #888;">Logs cleared</div>';
-      }
     }
 
     // Remote control functions
     function playVideo() {
-      socket.emit('control', { action: 'playpause', state: true });
-      document.getElementById('playback-status').textContent = 'Playing';
+      socket.emit('control', {
+        action: 'playpause',
+        state: true
+      });
     }
 
     function pauseVideo() {
-      socket.emit('control', { action: 'playpause', state: false });
-      document.getElementById('playback-status').textContent = 'Paused';
+      socket.emit('control', {
+        action: 'playpause',
+        state: false
+      });
     }
 
     function skipBack() {
-      socket.emit('control', { action: 'skip', direction: 'back', seconds: skipSeconds });
+      socket.emit('control', {
+        action: 'skip',
+        direction: 'back',
+        seconds: skipSeconds
+      });
     }
 
     function skipForward() {
-      socket.emit('control', { action: 'skip', direction: 'forward', seconds: skipSeconds });
+      socket.emit('control', {
+        action: 'skip',
+        direction: 'forward',
+        seconds: skipSeconds
+      });
     }
 
     function seekTo() {
       const time = document.getElementById('seek-time').value;
       if (time) {
-        socket.emit('control', { action: 'seek', time: parseFloat(time) });
+        socket.emit('control', {
+          action: 'seek',
+          time: parseFloat(time)
+        });
       }
     }
 
-    // Move playlist item in remote (sends to server)
-    function movePlaylistItemRemote(index, direction) {
-      const newIndex = index + direction;
-      if (newIndex < 0 || newIndex >= serverPlaylist.videos.length) return;
-      socket.emit('playlist-reorder', { fromIndex: index, toIndex: newIndex });
-    }
+    // Render remote track controls for the current playing video
+    function renderRemoteTrackControls() {
+      const container = document.getElementById('remote-track-controls');
+      const audioSelect = document.getElementById('remote-audio-track');
+      const subtitleSelect = document.getElementById('remote-subtitle-track');
+      const currentFileEl = document.getElementById('remote-current-file');
 
-    // Fetch and display video thumbnail
-    let currentThumbnailFilename = null;
-    async function fetchThumbnail(filename) {
-      // Avoid refetching same thumbnail
-      if (currentThumbnailFilename === filename) return;
-      currentThumbnailFilename = filename;
-
-      const thumbnailEl = document.querySelector('.video-thumbnail');
-      const thumbnailIcon = document.querySelector('.video-thumbnail-icon');
-
-      if (!thumbnailEl) return;
-
-      try {
-        const response = await fetch(`/api/thumbnail/${encodeURIComponent(filename)}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.thumbnail) {
-            thumbnailEl.style.backgroundImage = `url('${data.thumbnail}')`;
-            thumbnailEl.style.backgroundSize = 'cover';
-            thumbnailEl.style.backgroundPosition = 'center';
-            if (thumbnailIcon) thumbnailIcon.style.display = 'none';
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching thumbnail:', error);
-        // Keep showing the icon on error
-        if (thumbnailIcon) thumbnailIcon.style.display = '';
+      if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length === 0 || currentServerIndex < 0 || currentServerIndex >= serverPlaylist.videos.length) {
+        currentFileEl.textContent = 'No active video';
+        audioSelect.innerHTML = '<option>No tracks</option>';
+        audioSelect.disabled = true;
+        subtitleSelect.innerHTML = '<option>No tracks</option>';
+        subtitleSelect.disabled = true;
+        return;
       }
+
+      const videoInfo = serverPlaylist.videos[currentServerIndex];
+      currentFileEl.textContent = `Now Playing: ${videoInfo.filename}`;
+
+      // Populate audio tracks
+      const audioTracks = (videoInfo.tracks && videoInfo.tracks.audio) ? videoInfo.tracks.audio : [];
+      audioSelect.innerHTML = '';
+      if (audioTracks.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '0';
+        opt.textContent = 'Default Audio';
+        audioSelect.appendChild(opt);
+        audioSelect.disabled = true;
+      } else {
+        audioTracks.forEach((track, idx) => {
+          const opt = document.createElement('option');
+          opt.value = String(idx);
+          opt.textContent = `${track.language} - ${track.title || 'Track ' + idx}`;
+          audioSelect.appendChild(opt);
+        });
+        audioSelect.disabled = false;
+      }
+
+      // Populate subtitle tracks
+      const subtitleTracks = (videoInfo.tracks && videoInfo.tracks.subtitles) ? videoInfo.tracks.subtitles : [];
+      subtitleSelect.innerHTML = '';
+      {
+        const noneOpt = document.createElement('option');
+        noneOpt.value = '-1';
+        noneOpt.textContent = 'None';
+        subtitleSelect.appendChild(noneOpt);
+      }
+      subtitleTracks.forEach((track, idx) => {
+        const opt = document.createElement('option');
+        opt.value = String(idx);
+        opt.textContent = `${track.language} - ${track.title || 'Track ' + idx}`;
+        subtitleSelect.appendChild(opt);
+      });
+      subtitleSelect.disabled = subtitleSelect.options.length === 1; // only None
+
+      // Set selected values from current selections (fall back to defaults)
+      const selectedAudio = (videoInfo.selectedAudioTrack !== undefined) ? videoInfo.selectedAudioTrack : (audioTracks.findIndex(t => t.default) >= 0 ? audioTracks.findIndex(t => t.default) : 0);
+      const selectedSubtitle = (videoInfo.selectedSubtitleTrack !== undefined) ? videoInfo.selectedSubtitleTrack : -1;
+
+      if (!audioSelect.disabled) {
+        audioSelect.value = String(Math.max(0, selectedAudio));
+      }
+      subtitleSelect.value = String(selectedSubtitle);
+
+      // Remove previous listeners by cloning nodes (simple way to avoid duplicate handlers)
+      const audioClone = audioSelect.cloneNode(true);
+      const subtitleClone = subtitleSelect.cloneNode(true);
+      audioSelect.parentNode.replaceChild(audioClone, audioSelect);
+      subtitleSelect.parentNode.replaceChild(subtitleClone, subtitleSelect);
+
+      // Attach change listeners
+      audioClone.addEventListener('change', () => {
+        const trackIndex = parseInt(audioClone.value);
+        socket.emit('track-change', {
+          videoIndex: currentServerIndex,
+          type: 'audio',
+          trackIndex: trackIndex
+        });
+        showStatus(`Audio track changed to: ${audioClone.options[audioClone.selectedIndex].text}`, 'info');
+      });
+
+      subtitleClone.addEventListener('change', () => {
+        const trackIndex = parseInt(subtitleClone.value);
+        socket.emit('track-change', {
+          videoIndex: currentServerIndex,
+          type: 'subtitle',
+          trackIndex: trackIndex
+        });
+        const subtitleText = trackIndex >= 0 ? subtitleClone.options[subtitleClone.selectedIndex].text : 'None';
+        showStatus(`Subtitle track changed to: ${subtitleText}`, 'info');
+      });
     }
 
-    // Render remote playlist sidebar
+    // Render the remote playlist sidebar showing current playlist with move buttons
     function renderRemotePlaylistSidebar() {
       const container = document.getElementById('remote-playlist-list');
 
@@ -2130,62 +1461,72 @@
 
       serverPlaylist.videos.forEach((video, index) => {
         const item = document.createElement('div');
-        item.className = 'playlist-item';
-        item.style.cursor = 'pointer';
-        if (index === currentServerIndex) item.classList.add('current');
-        if (index === serverPlaylist.mainVideoIndex) item.classList.add('main');
+        item.className = 'remote-playlist-item';
 
-        // Click to jump to this video
-        item.addEventListener('click', () => {
-          socket.emit('playlist-jump', index);
-          showStatus(`Jumping to video ${index + 1}...`, 'info');
-        });
-
-        const number = document.createElement('span');
-        number.className = 'playlist-number';
-        number.textContent = index + 1;
-        item.appendChild(number);
-
-        const name = document.createElement('span');
-        name.className = 'playlist-name';
-        name.title = video.filename;
-        // Wrap text in span for scroll animation
-        const nameText = document.createElement('span');
-        nameText.textContent = video.filename + '          ' + video.filename;  // Duplicate with spacing for seamless scroll
-        name.appendChild(nameText);
-        item.appendChild(name);
-
-        const badges = document.createElement('div');
-        badges.className = 'playlist-badges';
-        if (index === serverPlaylist.mainVideoIndex) {
-          const badge = document.createElement('span');
-          badge.className = 'badge badge-main';
-          badge.textContent = 'Main';
-          badges.appendChild(badge);
-        }
+        // Add current playing indicator
         if (index === currentServerIndex) {
-          const badge = document.createElement('span');
-          badge.className = 'badge badge-playing';
-          badge.textContent = '▶ Playing';
-          badges.appendChild(badge);
+          item.classList.add('current');
         }
-        item.appendChild(badges);
 
+        // Add main video indicator
+        if (index === serverPlaylist.mainVideoIndex) {
+          item.classList.add('main');
+        }
+
+        // Number indicator
+        const numberSpan = document.createElement('span');
+        numberSpan.className = 'item-number';
+        numberSpan.textContent = index + 1;
+        item.appendChild(numberSpan);
+
+        // Video name
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'item-name';
+        nameSpan.textContent = video.filename;
+        nameSpan.title = video.filename;
+        item.appendChild(nameSpan);
+
+        // Badges
+        const badgesDiv = document.createElement('div');
+        badgesDiv.className = 'item-badges';
+
+        if (index === serverPlaylist.mainVideoIndex) {
+          const mainBadge = document.createElement('span');
+          mainBadge.className = 'item-badge main-badge';
+          mainBadge.textContent = 'Main';
+          badgesDiv.appendChild(mainBadge);
+        }
+
+        if (index === currentServerIndex) {
+          const playingBadge = document.createElement('span');
+          playingBadge.className = 'item-badge';
+          playingBadge.style.background = '#4CAF50';
+          playingBadge.style.color = 'white';
+          playingBadge.textContent = '▶ Playing';
+          badgesDiv.appendChild(playingBadge);
+        }
+
+        item.appendChild(badgesDiv);
+
+        // Move buttons
         const moveDiv = document.createElement('div');
         moveDiv.className = 'move-buttons';
 
         const upBtn = document.createElement('button');
         upBtn.className = 'btn-move';
         upBtn.textContent = '▲';
+        upBtn.title = 'Move up';
         upBtn.disabled = index === 0;
         upBtn.onclick = () => movePlaylistItemRemote(index, -1);
-        moveDiv.appendChild(upBtn);
 
         const downBtn = document.createElement('button');
         downBtn.className = 'btn-move';
         downBtn.textContent = '▼';
+        downBtn.title = 'Move down';
         downBtn.disabled = index === serverPlaylist.videos.length - 1;
         downBtn.onclick = () => movePlaylistItemRemote(index, 1);
+
+        moveDiv.appendChild(upBtn);
         moveDiv.appendChild(downBtn);
         item.appendChild(moveDiv);
 
@@ -2193,76 +1534,38 @@
       });
     }
 
-    // Render remote track controls
-    function renderRemoteTrackControls() {
-      const audioSelect = document.getElementById('remote-audio-track');
-      const subtitleSelect = document.getElementById('remote-subtitle-track');
-      const thumbnailEl = document.querySelector('.video-thumbnail');
-      const thumbnailIcon = document.querySelector('.video-thumbnail-icon');
+    // Move playlist item up or down (in setup section)
+    function movePlaylistItem(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= playlist.length) return;
 
-      if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length === 0 || currentServerIndex < 0) {
-        document.getElementById('current-video-name').textContent = 'No video playing';
-        document.getElementById('current-video-status').textContent = 'Waiting for playlist...';
-        audioSelect.innerHTML = '<option>No tracks available</option>';
-        audioSelect.disabled = true;
-        subtitleSelect.innerHTML = '<option>No tracks available</option>';
-        subtitleSelect.disabled = true;
-        // Reset thumbnail
-        if (thumbnailEl) {
-          thumbnailEl.style.backgroundImage = '';
-          if (thumbnailIcon) thumbnailIcon.style.display = '';
-        }
-        return;
+      // Swap items
+      [playlist[index], playlist[newIndex]] = [playlist[newIndex], playlist[index]];
+
+      // Update main video index if needed
+      if (mainVideoIndex === index) {
+        mainVideoIndex = newIndex;
+      } else if (mainVideoIndex === newIndex) {
+        mainVideoIndex = index;
       }
 
-      const videoInfo = serverPlaylist.videos[currentServerIndex];
-      document.getElementById('current-video-name').textContent = videoInfo.filename;
-      document.getElementById('current-video-status').textContent = `Video ${currentServerIndex + 1} of ${serverPlaylist.videos.length}`;
+      updatePlaylistDisplay();
+    }
 
-      // Fetch and display thumbnail
-      fetchThumbnail(videoInfo.filename);
+    // Move playlist item in the live/remote section (sends to server)
+    function movePlaylistItemRemote(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= serverPlaylist.videos.length) return;
 
-      // Audio tracks
-      const audioTracks = (videoInfo.tracks && videoInfo.tracks.audio) ? videoInfo.tracks.audio : [];
-      audioSelect.innerHTML = '';
-      if (audioTracks.length === 0) {
-        audioSelect.innerHTML = '<option value="0">Default Audio</option>';
-        audioSelect.disabled = true;
-      } else {
-        audioTracks.forEach((track, idx) => {
-          const opt = document.createElement('option');
-          opt.value = idx;
-          opt.textContent = `${track.language} - ${track.title || 'Track ' + idx}`;
-          audioSelect.appendChild(opt);
-        });
-        audioSelect.disabled = false;
-      }
-
-      // Subtitle tracks
-      const subtitleTracks = (videoInfo.tracks && videoInfo.tracks.subtitles) ? videoInfo.tracks.subtitles : [];
-      subtitleSelect.innerHTML = '<option value="-1">None</option>';
-      subtitleTracks.forEach((track, idx) => {
-        const opt = document.createElement('option');
-        opt.value = idx;
-        opt.textContent = `${track.language} - ${track.title || 'Track ' + idx}`;
-        subtitleSelect.appendChild(opt);
-      });
-      subtitleSelect.disabled = false;
-
-      // Set selected values
-      if (videoInfo.selectedAudioTrack !== undefined) {
-        audioSelect.value = videoInfo.selectedAudioTrack;
-      }
-      if (videoInfo.selectedSubtitleTrack !== undefined) {
-        subtitleSelect.value = videoInfo.selectedSubtitleTrack;
-      }
+      socket.emit('playlist-reorder', { fromIndex: index, toIndex: newIndex });
+      showStatus(`Moving video ${index + 1} ${direction > 0 ? 'down' : 'up'}...`, 'info');
     }
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       loadFiles();
-      initNavIndicator();
 
+      // Setup event listeners
       document.getElementById('launch-btn').addEventListener('click', launchPlaylist);
       document.getElementById('play-btn').addEventListener('click', playVideo);
       document.getElementById('pause-btn').addEventListener('click', pauseVideo);
@@ -2270,202 +1573,74 @@
       document.getElementById('skip-forward-btn').addEventListener('click', skipForward);
       document.getElementById('seek-btn').addEventListener('click', seekTo);
 
-      // Get current time button
-      document.getElementById('get-time-btn').addEventListener('click', () => {
-        socket.emit('request-sync');
-      });
-
-      // Relaunch button - relaunches the current playlist
-      document.getElementById('relaunch-btn').addEventListener('click', () => {
-        if (playlist.length === 0 && serverPlaylist && serverPlaylist.videos.length > 0) {
-          // Use server playlist if local is empty
-          socket.emit('set-playlist', {
-            playlist: serverPlaylist.videos,
-            mainVideoIndex: serverPlaylist.mainVideoIndex,
-            startTime: 0
-          });
-          showStatus('Relaunching playlist...', 'info');
-        } else if (playlist.length > 0) {
-          // Use local playlist
-          if (mainVideoIndex === -1) mainVideoIndex = 0;
-          socket.emit('set-playlist', {
-            playlist: playlist,
-            mainVideoIndex: mainVideoIndex,
-            startTime: 0
-          });
-          showStatus('Relaunching playlist...', 'info');
-        }
-      });
-
-      // Track selection handlers
-      document.getElementById('remote-audio-track').addEventListener('change', (e) => {
-        socket.emit('track-change', {
-          videoIndex: currentServerIndex,
-          type: 'audio',
-          trackIndex: parseInt(e.target.value)
-        });
-      });
-
-      document.getElementById('remote-subtitle-track').addEventListener('change', (e) => {
-        socket.emit('track-change', {
-          videoIndex: currentServerIndex,
-          type: 'subtitle',
-          trackIndex: parseInt(e.target.value)
-        });
-      });
-
-      // BSL buttons
-      // Trigger new BSL check (prompts clients who haven't selected folder)
-      const triggerBslCheck = () => {
+      // Remote BSL-S² button handler
+      document.getElementById('remote-bsl-btn').addEventListener('click', () => {
         socket.emit('bsl-check-request');
-        const modal = document.getElementById('bsl-modal');
-        modal.classList.add('visible');
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            modal.classList.add('animate');
-          });
-        });
+        showStatus('Requesting BSL-S² check from all clients...', 'info');
+        document.getElementById('bsl-modal').classList.add('visible');
         document.getElementById('bsl-modal-body').innerHTML =
           '<div class="empty-message">Waiting for clients to select their local folders...</div>';
-      };
-
-      // View stored BSL status (no new prompts)
-      const viewBslStatus = () => {
-        socket.emit('bsl-get-status');
-        const modal = document.getElementById('bsl-modal');
-        modal.classList.add('visible');
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            modal.classList.add('animate');
-          });
-        });
-      };
-
-      document.getElementById('bsl-check-btn').addEventListener('click', triggerBslCheck);
-      document.getElementById('dashboard-bsl-btn').addEventListener('click', triggerBslCheck);
-      document.getElementById('remote-bsl-btn').addEventListener('click', viewBslStatus);
-      document.getElementById('bsl-modal-close').addEventListener('click', () => {
-        const modal = document.getElementById('bsl-modal');
-        modal.classList.remove('animate');
-        setTimeout(() => modal.classList.remove('visible'), 300);
       });
 
-      // Clients modal close
-      document.getElementById('clients-modal-close').addEventListener('click', () => {
-        const modal = document.getElementById('clients-modal');
-        modal.classList.remove('animate');
-        setTimeout(() => modal.classList.remove('visible'), 300);
+      // Toggle sidebar button handler
+      document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
+        const sidebar = document.getElementById('remote-playlist-sidebar');
+        const layout = document.querySelector('.remote-section-layout');
+        const toggleBtn = document.getElementById('toggle-sidebar-btn');
+
+        sidebar.classList.toggle('collapsed');
+        layout.classList.toggle('sidebar-collapsed');
+
+        // Update button icon
+        toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+        toggleBtn.title = sidebar.classList.contains('collapsed') ? 'Expand sidebar' : 'Collapse sidebar';
       });
 
+      // Get config for skip seconds
       socket.emit('get-config');
     });
 
-    // Open Clients Modal
-    function openClientsModal() {
-      const modal = document.getElementById('clients-modal');
-      modal.classList.add('visible');
-      // Trigger animation after display change
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          modal.classList.add('animate');
-        });
-      });
-      document.getElementById('clients-modal-body').innerHTML = '<div class="empty-message">Loading clients...</div>';
-      socket.emit('get-client-list');
-    }
-
-    // Render connected clients in modal
-    function renderClientsModal(clients) {
-      const body = document.getElementById('clients-modal-body');
-
-      if (!clients || clients.length === 0) {
-        body.innerHTML = '<div class="empty-message">No clients connected</div>';
-        return;
-      }
-
-      let html = '';
-      clients.forEach(client => {
-        html += `
-          <div class="bsl-client-card">
-            <div class="bsl-client-header">
-              <strong style="color: #2196F3;">${client.displayName || 'Unnamed'}</strong>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-family: monospace;">
-              <div style="display: flex; justify-content: space-between;">
-                <span style="color: #888;">Socket ID:</span>
-                <span style="color: #9C27B0;">${client.socketId.slice(-8)}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between;">
-                <span style="color: #888;">Fingerprint:</span>
-                <span style="color: #FF9800;">${client.fingerprint || 'Unknown'}</span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
-                <label style="color: #888;">Display Name:</label>
-                <input type="text" value="${client.displayName || ''}" 
-                  data-fingerprint="${client.fingerprint || ''}"
-                  placeholder="Enter name..."
-                  onchange="updateClientName(this)"
-                  style="flex: 1; padding: 6px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: #e0e0e0; font-size: 12px;">
-              </div>
-            </div>
-          </div>
-        `;
-      });
-
-      body.innerHTML = html;
-    }
-
-    // Update client display name
-    function updateClientName(inputEl) {
-      const fingerprint = inputEl.dataset.fingerprint;
-      const displayName = inputEl.value.trim();
-      if (fingerprint) {
-        socket.emit('set-client-display-name', { fingerprint, displayName });
-        addLog(`Set client name: ${displayName}`, 'info');
-      }
-    }
-
-    // Handle client list response
-    socket.on('client-list', (clients) => {
-      renderClientsModal(clients);
-    });
-
-    // Socket handlers
+    // Handle config from server
     socket.on('config', (config) => {
       skipSeconds = config.skipSeconds || 5;
       document.getElementById('skip-back-text').textContent = `${skipSeconds}s`;
       document.getElementById('skip-forward-text').textContent = `${skipSeconds}s`;
     });
 
-    socket.on('playlist-update', (playlistObj) => {
-      serverPlaylist = playlistObj;
-      currentServerIndex = playlistObj.currentIndex;
-      renderRemotePlaylistSidebar();
-      renderRemoteTrackControls();
+    // Handle playlist confirmation
+    socket.on('playlist-set', (data) => {
+      if (data.success) {
+        showStatus(data.message || 'Playlist launched successfully!', 'success');
 
-      // Sync server playlist to media tab if we have videos
-      if (playlistObj.videos && playlistObj.videos.length > 0) {
-        playlist = [...playlistObj.videos];
-        mainVideoIndex = playlistObj.mainVideoIndex >= 0 ? playlistObj.mainVideoIndex : 0;
-        updatePlaylistDisplay();
-        updateHevcWarning();
-        updateDashboardStats();
-        // Change Launch button to Relaunch since playlist is already active
-        document.getElementById('launch-btn').innerHTML = '🔄 Relaunch Playlist';
+        // Switch to remote view after a brief delay
+        setTimeout(() => {
+          document.getElementById('setup-section').classList.add('hidden');
+          document.getElementById('remote-section').classList.remove('hidden');
+          // Remote track controls will render once server sends playlist/update
+        }, 2000);
+      } else {
+        showStatus(data.message || 'Failed to launch playlist!', 'error');
       }
     });
 
-    socket.on('playlist-position', (index) => {
-      addLog(`Jumped to video ${index + 1}`, 'info');
-      currentServerIndex = index;
-      renderRemotePlaylistSidebar();
+    // Receive live playlist state for remote controls
+    socket.on('playlist-update', (playlistObj) => {
+      serverPlaylist = playlistObj;
+      currentServerIndex = playlistObj.currentIndex;
       renderRemoteTrackControls();
+      renderRemotePlaylistSidebar();
     });
 
+    socket.on('playlist-position', (index) => {
+      currentServerIndex = index;
+      renderRemoteTrackControls();
+      renderRemotePlaylistSidebar();
+    });
+
+    // Keep admin UI selections in sync when changes are broadcast
     socket.on('track-change', (data) => {
-      if (!serverPlaylist || !serverPlaylist.videos) return;
+      if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length <= data.videoIndex) return;
       const vid = serverPlaylist.videos[data.videoIndex];
-      if (!vid) return;
       if (data.type === 'audio') {
         vid.selectedAudioTrack = data.trackIndex;
       } else if (data.type === 'subtitle') {
@@ -2476,105 +1651,60 @@
       }
     });
 
-    // Client count update handler
-    socket.on('client-count', (count) => {
-      const prevCount = parseInt(document.getElementById('client-count').textContent) || 0;
-      document.getElementById('client-count').textContent = count;
-      if (count > prevCount) {
-        addLog(`Client connected (total: ${count})`, 'client');
-      } else if (count < prevCount) {
-        addLog(`Client disconnected (total: ${count})`, 'warning');
-      }
-    });
+    // ==================== BSL-S² (Both Side Local Sync Stream) ====================
 
-    // Log playlist events
-    socket.on('playlist-set', (data) => {
-      if (data.success) {
-        addLog('Playlist launched successfully', 'success');
-        showStatus(data.message || 'Playlist launched!', 'success');
-        document.getElementById('playback-status').textContent = 'Playing';
-        setTimeout(() => switchView('remote'), 1500);
-      } else {
-        addLog('Failed to launch playlist: ' + (data.message || 'Unknown error'), 'error');
-        showStatus(data.message || 'Failed to launch!', 'error');
-      }
-    });
+    let bslStatus = null; // Stores the latest BSL-S² status from server
 
-    // Log sync events and update time display
-    socket.on('sync', (state) => {
-      if (state.isPlaying !== undefined) {
-        addLog(`Playback: ${state.isPlaying ? 'Playing' : 'Paused'}`, 'info');
-      }
-      // Update time display
-      if (state.currentTime !== undefined) {
-        const totalSecs = Math.floor(state.currentTime);
-        const hours = Math.floor(totalSecs / 3600);
-        const mins = Math.floor((totalSecs % 3600) / 60);
-        const secs = totalSecs % 60;
-        const timeStr = hours > 0
-          ? `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-          : `${mins}:${secs.toString().padStart(2, '0')}`;
-        document.getElementById('current-time-display').textContent = `Current: ${timeStr} (${totalSecs}s)`;
-      }
-    });
-
-    // Admin authentication handlers
+    // Register as admin for BSL-S²
     socket.on('connect', () => {
-      socket.emit('bsl-admin-register', { fingerprint: adminFingerprint });
+      socket.emit('bsl-admin-register');
     });
 
+    // Also register on page load if already connected
     if (socket.connected) {
-      socket.emit('bsl-admin-register', { fingerprint: adminFingerprint });
+      socket.emit('bsl-admin-register');
     }
 
-    // Handle admin auth result
-    socket.on('admin-auth-result', (result) => {
-      const authScreen = document.getElementById('auth-screen');
-      const authContent = document.getElementById('auth-content');
-      const adminUI = document.getElementById('admin-ui');
-
-      if (result.success) {
-        // Hide auth screen and show admin UI
-        authScreen.classList.add('hidden');
-        adminUI.classList.add('authenticated');
-        // Initialize nav indicator now that UI is visible
-        initNavIndicator();
-      } else {
-        // Show access denied message in auth screen
-        authContent.innerHTML = `
-          <div class="auth-denied">
-            <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
-            <h1 style="color: #f44336; margin-bottom: 15px;">Access Denied</h1>
-            <p style="color: #ccc; margin-bottom: 20px;">${result.reason}</p>
-            <p style="color: #888; font-size: 14px;">
-              If you need to reset admin access, delete the file:<br>
-              <code style="background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 4px;">memory.json</code>
-            </p>
-          </div>
-        `;
+    // Handle BSL-S² check button click
+    document.getElementById('bsl-check-btn').addEventListener('click', () => {
+      if (playlist.length === 0) {
+        showStatus('Add videos to playlist first before checking BSL-S²', 'warning');
+        return;
       }
+
+      socket.emit('bsl-check-request');
+      showStatus('Requesting BSL-S² check from all clients...', 'info');
+
+      // Show the modal
+      document.getElementById('bsl-modal').classList.add('visible');
+      document.getElementById('bsl-modal-body').innerHTML =
+        '<div class="empty-message">Waiting for clients to select their local folders...</div>';
     });
 
-    let bslStatus = null;
-
+    // Handle BSL-S² check started response
     socket.on('bsl-check-started', (data) => {
-      addLog(`BSL-S² check started (${data.clientCount} clients)`, 'info');
       if (data.clientCount === 0) {
         document.getElementById('bsl-modal-body').innerHTML =
-          '<div class="empty-message">No clients connected yet.</div>';
+          '<div class="empty-message">No clients connected. Waiting for clients to join...</div>';
+        showStatus('No clients connected yet', 'warning');
+      } else {
+        showStatus(`BSL-S² check sent to ${data.clientCount} client(s)`, 'info');
       }
     });
 
+    // Handle BSL-S² status updates from server
     socket.on('bsl-status-update', (data) => {
       bslStatus = data;
       renderBslModal(data);
-      // Log BSL status summary
-      if (data.clients && data.clients.length > 0) {
-        const totalMatches = data.clients.reduce((sum, c) => sum + Object.keys(c.matchedVideos).length, 0);
-        addLog(`BSL-S² update: ${data.clients.length} clients, ${totalMatches} total matches`, 'success');
-      }
+      updatePlaylistBslBadges(data.videoBslStatus);
     });
 
+    // Close BSL-S² modal
+    document.getElementById('bsl-modal-close').addEventListener('click', () => {
+      document.getElementById('bsl-modal').classList.remove('visible');
+    });
+
+    // Render the BSL-S² modal content
     function renderBslModal(data) {
       const modalBody = document.getElementById('bsl-modal-body');
 
@@ -2583,27 +1713,14 @@
         return;
       }
 
-      let html = `<p style="color:#888;margin-bottom:15px;">Mode: <strong>${data.mode === 'all' ? 'All clients must have file' : 'Any client with file'}</strong></p>`;
+      let html = `<p style="color:#aaa;margin-bottom:15px;">Mode: <strong>${data.mode === 'all' ? 'All clients must have file' : 'Any client with file'}</strong></p>`;
 
       data.clients.forEach((client, clientIdx) => {
         const matchCount = Object.keys(client.matchedVideos).length;
-        const displayName = client.clientName || `Client ${clientIdx + 1}`;
-        const fingerprintShort = (client.clientId || '').slice(-4);
         html += `
           <div class="bsl-client-card">
             <div class="bsl-client-header">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="text" 
-                       class="client-name-input" 
-                       value="${displayName}" 
-                       data-client-id="${client.clientId}"
-                       title="Fingerprint: ${client.clientId}"
-                       style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
-                              border-radius: 4px; padding: 4px 8px; color: white; width: 150px; font-size: 13px;"
-                       onchange="setClientName(this)"
-                       onkeypress="if(event.key==='Enter') this.blur()">
-                <span style="color: #666; font-size: 11px;">(${fingerprintShort})</span>
-              </div>
+              <span>Client ${clientIdx + 1} (${client.socketId.substring(0, 8)}...)</span>
               <span class="bsl-badge ${matchCount > 0 ? 'bsl-positive' : 'bsl-negative'}">
                 ${matchCount}/${playlist.length} matched
               </span>
@@ -2612,10 +1729,11 @@
         `;
 
         if (client.files.length === 0) {
-          html += '<div class="empty-message">No video files found</div>';
+          html += '<div class="empty-message">No video files found in folder</div>';
         } else {
           client.files.forEach(file => {
-            const matchedIdx = Object.entries(client.matchedVideos)
+            // Check if this file is already matched
+            const matchedPlaylistIdx = Object.entries(client.matchedVideos)
               .find(([idx, name]) => name === file.name)?.[0];
 
             html += `
@@ -2625,9 +1743,9 @@
                         data-client-id="${client.socketId}" 
                         data-file-name="${file.name}"
                         onchange="handleManualMatch(this)">
-                  <option value="-1" ${!matchedIdx ? 'selected' : ''}>Not matched</option>
+                  <option value="-1" ${!matchedPlaylistIdx ? 'selected' : ''}>Not matched</option>
                   ${playlist.map((v, i) => `
-                    <option value="${i}" ${matchedIdx == i ? 'selected' : ''}>${v.filename}</option>
+                    <option value="${i}" ${matchedPlaylistIdx == i ? 'selected' : ''}>${v.filename}</option>
                   `).join('')}
                 </select>
               </div>
@@ -2641,6 +1759,7 @@
       modalBody.innerHTML = html;
     }
 
+    // Handle manual match selection
     function handleManualMatch(selectEl) {
       const clientSocketId = selectEl.dataset.clientId;
       const clientFileName = selectEl.dataset.fileName;
@@ -2652,19 +1771,58 @@
           clientFileName,
           playlistIndex
         });
+        showStatus(`Manually matched: ${clientFileName} → ${playlist[playlistIndex].filename}`, 'success');
       }
     }
 
-    function setClientName(inputEl) {
-      const clientId = inputEl.dataset.clientId;
-      const displayName = inputEl.value.trim();
-      if (clientId && displayName) {
-        socket.emit('set-client-name', { clientId, displayName });
-      }
+    // Update playlist items with BSL-S² badges
+    function updatePlaylistBslBadges(videoBslStatus) {
+      if (!videoBslStatus) return;
+
+      // Update each playlist item with BSL-S² status
+      playlist.forEach((_, index) => {
+        const status = videoBslStatus[index];
+        if (!status) return;
+
+        // Find the playlist item element
+        const playlistItems = document.querySelectorAll('.playlist-item');
+        if (playlistItems[index]) {
+          // Remove existing BSL badge if any
+          const existingBadge = playlistItems[index].querySelector('.bsl-status-badge');
+          if (existingBadge) existingBadge.remove();
+
+          // Add new badge
+          const badge = document.createElement('span');
+          badge.className = 'bsl-status-badge bsl-badge';
+
+          if (status.totalChecked === 0) {
+            badge.classList.add('bsl-negative');
+            badge.textContent = 'BSL-S²: ✗';
+            badge.title = 'No clients checked yet';
+          } else if (status.bslActive) {
+            badge.classList.add('bsl-positive');
+            badge.textContent = 'BSL-S²: ✓';
+            badge.title = `${status.clientsWithMatch} client(s) have this file locally`;
+          } else if (status.clientsWithMatch > 0) {
+            badge.classList.add('bsl-partial');
+            badge.textContent = `BSL-S²: ${status.clientsWithMatch}/${status.totalChecked}`;
+            badge.title = `${status.clientsWithMatch} of ${status.totalChecked} clients have this file`;
+          } else {
+            badge.classList.add('bsl-negative');
+            badge.textContent = 'BSL-S²: ✗';
+            badge.title = 'No clients have this file locally';
+          }
+
+          const playlistInfo = playlistItems[index].querySelector('.playlist-info');
+          if (playlistInfo) {
+            playlistInfo.appendChild(badge);
+          }
+        }
+      });
     }
 
+    // Make handleManualMatch available globally
     window.handleManualMatch = handleManualMatch;
-    window.setClientName = setClientName;
   </script>
 </body>
 
