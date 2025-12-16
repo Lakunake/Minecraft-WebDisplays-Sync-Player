@@ -55,6 +55,8 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 - Remote play/pause/skip/seek controls to eliminate desync
 - Main video selection with custom start time
 - File browser for media management
+- FFmpeg generated thumbnail for video from the first third of the video
+<img width="1919" height="907" alt="image" src="https://github.com/user-attachments/assets/03b9b377-24c5-4ea3-a851-ab3386ddbc75" />
 <img width="1919" height="902" alt="image" src="https://github.com/user-attachments/assets/dcd825b6-322f-45aa-969e-b434a133a821" />
 
 > [!NOTE]
