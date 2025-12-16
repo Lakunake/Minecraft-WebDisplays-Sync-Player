@@ -32,7 +32,6 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 * [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
 * Client Remembering
 * Machine fingerprint based locking
-* 
 
 ---
 
