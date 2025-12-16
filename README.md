@@ -30,6 +30,9 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 * Modernized UI with Glassmorphism in admin panel
 * HTTP/HTTPS switch and [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
 * [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
+* Client Remembering
+* Machine fingerprint based locking
+* 
 
 ---
 
@@ -52,6 +55,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 - Remote play/pause/skip/seek controls to eliminate desync
 - Main video selection with custom start time
 - File browser for media management
+<img width="1919" height="902" alt="image" src="https://github.com/user-attachments/assets/dcd825b6-322f-45aa-969e-b434a133a821" />
 
 > [!NOTE]
 >  All users will see the same video at the same time except for **volume**, which is controlled individually per client.
