@@ -655,41 +655,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle playlist reordering from admin
-  socket.on('playlist-reorder', (data) => {
-    const { fromIndex, toIndex } = data;
-
-    // Validate indices
-    if (fromIndex < 0 || fromIndex >= PLAYLIST.videos.length ||
-      toIndex < 0 || toIndex >= PLAYLIST.videos.length) {
-      console.error('Invalid indices for playlist reorder');
-      return;
-    }
-
-    console.log(`${colors.yellow}Reordering playlist: ${fromIndex} -> ${toIndex}${colors.reset}`);
-
-    // Swap the videos
-    [PLAYLIST.videos[fromIndex], PLAYLIST.videos[toIndex]] =
-      [PLAYLIST.videos[toIndex], PLAYLIST.videos[fromIndex]];
-
-    // Update mainVideoIndex if it was affected
-    if (PLAYLIST.mainVideoIndex === fromIndex) {
-      PLAYLIST.mainVideoIndex = toIndex;
-    } else if (PLAYLIST.mainVideoIndex === toIndex) {
-      PLAYLIST.mainVideoIndex = fromIndex;
-    }
-
-    // Update currentIndex if it was affected
-    if (PLAYLIST.currentIndex === fromIndex) {
-      PLAYLIST.currentIndex = toIndex;
-    } else if (PLAYLIST.currentIndex === toIndex) {
-      PLAYLIST.currentIndex = fromIndex;
-    }
-
-    // Broadcast updated playlist to all clients
-    io.emit('playlist-update', PLAYLIST);
-  });
-
   // BSL-S² (Both Side Local Sync Stream) handlers
 
   // Helper: Check if socket is a verified admin
