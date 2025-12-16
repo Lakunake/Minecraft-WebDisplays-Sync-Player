@@ -7,6 +7,7 @@ A FULLY synchronized HTML5 video player for Minecraft's WebDisplays mod using No
 ---
 
 ## Requirements
+> these are auto-installed with console.ps1/run.bat
 
 * [Node.js](https://nodejs.org/) installed on your machine (v16+ recommended)
 * [ffmpeg](https://ffmpeg.org/) installed for high bitrate support and video optimization
