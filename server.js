@@ -89,12 +89,115 @@ const SKIP_SECONDS = parseInt(config.skip_seconds) || 5;
 const VOLUME_STEP = parseInt(config.volume_step) || 5;
 const JOIN_MODE = config.join_mode || 'sync';
 const BSL_S2_MODE = config.bsl_s2_mode || 'any'; // 'any' or 'all'
+const VIDEO_AUTOPLAY = config.video_autoplay === 'true'; // defaults to false
 
 // BSL-S² (Both Side Local Sync Stream) state tracking
 // Maps socketId -> { folderSelected: bool, files: [{name, size}], matchedVideos: {playlistIndex: localFileName} }
 const clientBslStatus = new Map();
 // Track admin socket for BSL-S² status updates
 let adminSocketId = null;
+// Track verified admin sockets (for fingerprint lock security)
+const verifiedAdminSockets = new Set();
+// Track connected clients with their fingerprints
+const connectedClients = new Map(); // socketId -> { fingerprint, connectedAt }
+
+// BSL-S² Persistent matches file
+const BSL_MATCHES_FILE = path.join(__dirname, 'bsl_matches.json');
+
+// ==================== Unified Memory Storage ====================
+const MEMORY_FILE = path.join(__dirname, 'memory.json');
+
+// Load unified memory (contains all persistent data)
+function loadMemory() {
+  try {
+    if (fs.existsSync(MEMORY_FILE)) {
+      const data = fs.readFileSync(MEMORY_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+    // Check for legacy files and migrate
+    const legacy = {
+      adminFingerprint: null,
+      clientNames: {},
+      bslMatches: {}
+    };
+
+    // Migrate from old files if they exist
+    if (fs.existsSync(path.join(__dirname, 'admin_fingerprint.txt'))) {
+      legacy.adminFingerprint = fs.readFileSync(path.join(__dirname, 'admin_fingerprint.txt'), 'utf8').trim();
+    }
+    if (fs.existsSync(path.join(__dirname, 'client_names.json'))) {
+      legacy.clientNames = JSON.parse(fs.readFileSync(path.join(__dirname, 'client_names.json'), 'utf8'));
+    }
+    if (fs.existsSync(BSL_MATCHES_FILE)) {
+      legacy.bslMatches = JSON.parse(fs.readFileSync(BSL_MATCHES_FILE, 'utf8'));
+    }
+
+    // Save migrated data if any legacy data found
+    if (legacy.adminFingerprint || Object.keys(legacy.clientNames).length > 0 || Object.keys(legacy.bslMatches).length > 0) {
+      saveMemory(legacy);
+      console.log(`${colors.green}Migrated legacy storage files to memory.json${colors.reset}`);
+    }
+
+    return legacy;
+  } catch (error) {
+    console.error('Error loading memory:', error);
+  }
+  return { adminFingerprint: null, clientNames: {}, bslMatches: {} };
+}
+
+// Save unified memory
+function saveMemory(mem) {
+  try {
+    fs.writeFileSync(MEMORY_FILE, JSON.stringify(mem, null, 2));
+  } catch (error) {
+    console.error('Error saving memory:', error);
+  }
+}
+
+// Load memory at startup
+let memory = loadMemory();
+
+// Convenience accessors
+function getAdminFingerprint() {
+  return memory.adminFingerprint;
+}
+
+function setAdminFingerprint(fp) {
+  memory.adminFingerprint = fp;
+  saveMemory(memory);
+  console.log(`${colors.green}Admin fingerprint registered: ${fp}${colors.reset}`);
+}
+
+function getClientNames() {
+  return memory.clientNames || {};
+}
+
+function setClientName(clientId, name) {
+  if (!memory.clientNames) memory.clientNames = {};
+  memory.clientNames[clientId] = name;
+  saveMemory(memory);
+  console.log(`${colors.green}Client name saved: ${clientId} -> ${name}${colors.reset}`);
+}
+
+function getBslMatches() {
+  return memory.bslMatches || {};
+}
+
+function setBslMatch(clientId, clientFileName, playlistFileName) {
+  if (!memory.bslMatches) memory.bslMatches = {};
+  if (!memory.bslMatches[clientId]) memory.bslMatches[clientId] = {};
+  memory.bslMatches[clientId][clientFileName] = playlistFileName;
+  saveMemory(memory);
+  console.log(`${colors.green}BSL match saved: ${clientId}/${clientFileName} -> ${playlistFileName}${colors.reset}`);
+}
+
+// Legacy compatibility aliases
+let persistentBslMatches = getBslMatches();
+let clientDisplayNames = getClientNames();
+
+// Admin Fingerprint Lock Configuration
+const ADMIN_FINGERPRINT_LOCK = config.admin_fingerprint_lock === 'true';
+let registeredAdminFingerprint = ADMIN_FINGERPRINT_LOCK ? getAdminFingerprint() : null;
 
 // Apply helmet security headers with safe configuration
 app.use(helmet({
@@ -213,9 +316,106 @@ app.get('/api/tracks/:filename', async (req, res) => {
   }
 });
 
+// Get Windows temp directory for thumbnails (cleared on reboot)
+const os = require('os');
+const THUMBNAIL_DIR = path.join(os.tmpdir(), 'sync-player-thumbnails');
+
+// Ensure thumbnail directory exists
+if (!fs.existsSync(THUMBNAIL_DIR)) {
+  fs.mkdirSync(THUMBNAIL_DIR, { recursive: true });
+}
+
+// Serve thumbnails from temp directory
+app.use('/thumbnails', express.static(THUMBNAIL_DIR));
+
+// Get video duration using ffprobe
+function getVideoDuration(videoPath) {
+  return new Promise((resolve, reject) => {
+    const command = `ffprobe -v quiet -print_format json -show_format "${videoPath}"`;
+    exec(command, (error, stdout) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      try {
+        const data = JSON.parse(stdout);
+        const duration = parseFloat(data.format.duration) || 0;
+        resolve(duration);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
+}
+
+// Generate thumbnail from video using FFmpeg (720p, random frame from first third)
+app.get('/api/thumbnail/:filename', async (req, res) => {
+  const filename = req.params.filename;
+  const safeFilename = path.basename(filename);
+  const videoPath = path.join(__dirname, 'videos', safeFilename);
+  const thumbnailFilename = safeFilename.replace(/\.[^.]+$/, '.jpg');
+  const thumbnailPath = path.join(THUMBNAIL_DIR, thumbnailFilename);
+
+  // Check if thumbnail already exists (cached)
+  if (fs.existsSync(thumbnailPath)) {
+    return res.json({ thumbnail: `/thumbnails/${thumbnailFilename}` });
+  }
+
+  // Check if video exists
+  if (!fs.existsSync(videoPath)) {
+    return res.status(404).json({ error: 'Video not found' });
+  }
+
+  try {
+    // Get video duration
+    const duration = await getVideoDuration(videoPath);
+
+    // Calculate random position in first third of video (minimum 1 second)
+    const firstThird = Math.max(duration / 3, 1);
+    const randomTime = Math.random() * firstThird;
+    const seekTime = Math.max(1, Math.floor(randomTime)); // At least 1 second in
+
+    console.log(`${colors.cyan}Generating 720p thumbnail for ${safeFilename} at ${seekTime}s (duration: ${duration}s)${colors.reset}`);
+
+    // Generate 720p thumbnail (-vf scale=-1:720 maintains aspect ratio with 720 height)
+    const command = `ffmpeg -ss ${seekTime} -i "${videoPath}" -vframes 1 -vf "scale=-1:720" -q:v 2 -y "${thumbnailPath}"`;
+
+    exec(command, (error) => {
+      if (error) {
+        console.error('FFmpeg thumbnail error:', error.message);
+        // Fallback to 1 second
+        const fallbackCommand = `ffmpeg -ss 1 -i "${videoPath}" -vframes 1 -vf "scale=-1:720" -q:v 2 -y "${thumbnailPath}"`;
+        exec(fallbackCommand, (err2) => {
+          if (err2) {
+            console.error('FFmpeg fallback error:', err2.message);
+            return res.status(500).json({ error: 'Failed to generate thumbnail' });
+          }
+          res.json({ thumbnail: `/thumbnails/${thumbnailFilename}` });
+        });
+        return;
+      }
+      console.log(`${colors.green}Generated 720p thumbnail for: ${safeFilename}${colors.reset}`);
+      res.json({ thumbnail: `/thumbnails/${thumbnailFilename}` });
+    });
+  } catch (error) {
+    console.error('Error getting video duration:', error);
+    // Fallback: just try at 10 seconds
+    const fallbackCommand = `ffmpeg -ss 10 -i "${videoPath}" -vframes 1 -vf "scale=-1:720" -q:v 2 -y "${thumbnailPath}"`;
+    exec(fallbackCommand, (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to generate thumbnail' });
+      }
+      res.json({ thumbnail: `/thumbnails/${thumbnailFilename}` });
+    });
+  }
+});
+
 // Socket.io handling
 io.on('connection', (socket) => {
   console.log(`${colors.cyan}A user connected: ${socket.id}${colors.reset}`);
+
+  // Broadcast updated client count to all (excluding admin)
+  broadcastClientCount();
 
   const currentTracks = getCurrentTrackSelections();
   videoState.audioTrack = currentTracks.audioTrack;
@@ -224,7 +424,8 @@ io.on('connection', (socket) => {
   // Send config values to client
   socket.emit('config', {
     skipSeconds: SKIP_SECONDS,
-    volumeStep: VOLUME_STEP / 100
+    volumeStep: VOLUME_STEP / 100,
+    videoAutoplay: VIDEO_AUTOPLAY
   });
 
   // Send playlist to client
@@ -343,17 +544,35 @@ io.on('connection', (socket) => {
     // Notify all clients about the new playlist
     io.emit('playlist-update', PLAYLIST);
 
+    // Set initial play state based on autoplay config
+    videoState.isPlaying = VIDEO_AUTOPLAY;
+    io.emit('sync', videoState);
+
+    // Extra pause to make sure if autoplay is off
+    if (!VIDEO_AUTOPLAY) {
+      setTimeout(() => {
+        videoState.isPlaying = false;
+        io.emit('sync', videoState);
+      }, 500);
+    }
+
     socket.emit('playlist-set', {
       success: true,
-      message: 'Playlist launched successfully!'
+      message: VIDEO_AUTOPLAY ? 'Playlist launched - playing!' : 'Playlist launched - paused (autoplay disabled)'
     });
   });
 
   // Get config (for admin)
   socket.on('get-config', () => {
     socket.emit('config', {
+      port: PORT,
       skipSeconds: SKIP_SECONDS,
-      volumeStep: VOLUME_STEP / 100
+      volumeStep: VOLUME_STEP / 100,
+      joinMode: JOIN_MODE,
+      bslS2Mode: BSL_S2_MODE,
+      useHttps: config.use_https === 'true',
+      videoAutoplay: VIDEO_AUTOPLAY,
+      adminFingerprintLock: ADMIN_FINGERPRINT_LOCK
     });
   });
 
@@ -368,6 +587,27 @@ io.on('connection', (socket) => {
 
     io.emit('sync', videoState);
     io.emit('playlist-position', nextIndex);
+  });
+
+  // Jump to specific video in playlist (from admin)
+  socket.on('playlist-jump', (index) => {
+    if (index < 0 || index >= PLAYLIST.videos.length) {
+      console.log('Invalid playlist jump index:', index);
+      return;
+    }
+
+    console.log(`${colors.yellow}Jumping to playlist position ${index}${colors.reset}`);
+    PLAYLIST.currentIndex = index;
+
+    const currentTracks = getCurrentTrackSelections();
+    videoState.audioTrack = currentTracks.audioTrack;
+    videoState.subtitleTrack = currentTracks.subtitleTrack;
+    videoState.currentTime = 0;  // Reset to start of video
+    videoState.lastUpdate = Date.now();
+
+    io.emit('sync', videoState);
+    io.emit('playlist-position', index);
+    io.emit('playlist-update', PLAYLIST);
   });
 
   // Handle track selection changes from admin
@@ -415,46 +655,152 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle playlist reordering from admin
+  socket.on('playlist-reorder', (data) => {
+    const { fromIndex, toIndex } = data;
+
+    // Validate indices
+    if (fromIndex < 0 || fromIndex >= PLAYLIST.videos.length ||
+      toIndex < 0 || toIndex >= PLAYLIST.videos.length) {
+      console.error('Invalid indices for playlist reorder');
+      return;
+    }
+
+    console.log(`${colors.yellow}Reordering playlist: ${fromIndex} -> ${toIndex}${colors.reset}`);
+
+    // Swap the videos
+    [PLAYLIST.videos[fromIndex], PLAYLIST.videos[toIndex]] =
+      [PLAYLIST.videos[toIndex], PLAYLIST.videos[fromIndex]];
+
+    // Update mainVideoIndex if it was affected
+    if (PLAYLIST.mainVideoIndex === fromIndex) {
+      PLAYLIST.mainVideoIndex = toIndex;
+    } else if (PLAYLIST.mainVideoIndex === toIndex) {
+      PLAYLIST.mainVideoIndex = fromIndex;
+    }
+
+    // Update currentIndex if it was affected
+    if (PLAYLIST.currentIndex === fromIndex) {
+      PLAYLIST.currentIndex = toIndex;
+    } else if (PLAYLIST.currentIndex === toIndex) {
+      PLAYLIST.currentIndex = fromIndex;
+    }
+
+    // Broadcast updated playlist to all clients
+    io.emit('playlist-update', PLAYLIST);
+  });
+
   // BSL-S² (Both Side Local Sync Stream) handlers
 
-  // Admin registers itself
-  socket.on('bsl-admin-register', () => {
+  // Helper: Check if socket is a verified admin
+  function isVerifiedAdmin(socketId) {
+    // If fingerprint lock is disabled, all admins are verified
+    if (!ADMIN_FINGERPRINT_LOCK) return true;
+    return verifiedAdminSockets.has(socketId);
+  }
+
+  // Admin registers itself with optional fingerprint
+  socket.on('bsl-admin-register', (data) => {
+    const fingerprint = data?.fingerprint;
+
+    // Check fingerprint if lock is enabled
+    if (ADMIN_FINGERPRINT_LOCK) {
+      if (!fingerprint) {
+        console.log(`${colors.red}Admin registration rejected: No fingerprint provided${colors.reset}`);
+        socket.emit('admin-auth-result', { success: false, reason: 'No fingerprint provided' });
+        return;
+      }
+
+      if (registeredAdminFingerprint === null) {
+        // First admin - register their fingerprint
+        registeredAdminFingerprint = fingerprint;
+        setAdminFingerprint(fingerprint);
+      } else if (registeredAdminFingerprint !== fingerprint) {
+        // Fingerprint mismatch - reject and disconnect
+        console.log(`${colors.red}Admin rejected: Fingerprint mismatch (expected: ${registeredAdminFingerprint}, got: ${fingerprint})${colors.reset}`);
+        socket.emit('admin-auth-result', {
+          success: false,
+          reason: 'Unauthorized device. This admin panel is locked to a different machine.'
+        });
+        // Disconnect the unauthorized socket after a brief delay
+        setTimeout(() => socket.disconnect(true), 1000);
+        return;
+      }
+
+      // Add to verified admins
+      verifiedAdminSockets.add(socket.id);
+    }
+
     adminSocketId = socket.id;
-    console.log(`${colors.green}Admin registered for BSL-S²: ${socket.id}${colors.reset}`);
+    console.log(`${colors.green}Admin registered for BSL-S²: ${socket.id}${fingerprint ? ` (fingerprint: ${fingerprint})` : ''}${colors.reset}`);
+    socket.emit('admin-auth-result', { success: true });
   });
 
   // Admin requests BSL-S² check on all clients
   socket.on('bsl-check-request', () => {
     console.log(`${colors.cyan}BSL-S² check requested by admin${colors.reset}`);
-    // Send check request to all non-admin clients
-    socket.broadcast.emit('bsl-check-request', {
-      playlistVideos: PLAYLIST.videos.map(v => ({ filename: v.filename }))
+
+    // Only send to clients who haven't already selected a folder
+    let promptedCount = 0;
+    io.sockets.sockets.forEach((clientSocket, socketId) => {
+      // Skip admin
+      if (socketId === adminSocketId) return;
+
+      // Skip clients who already have folder selected
+      const status = clientBslStatus.get(socketId);
+      if (status && status.folderSelected) {
+        console.log(`  Skipping ${socketId} - already has folder selected`);
+        return;
+      }
+
+      // Send check request to this client
+      clientSocket.emit('bsl-check-request', {
+        playlistVideos: PLAYLIST.videos.map(v => ({ filename: v.filename }))
+      });
+      promptedCount++;
     });
-    // Also notify admin how many clients are connected
-    const clientCount = io.sockets.sockets.size - 1; // Exclude admin
-    socket.emit('bsl-check-started', { clientCount });
+
+    console.log(`${colors.cyan}BSL-S² check sent to ${promptedCount} clients${colors.reset}`);
+    socket.emit('bsl-check-started', { clientCount: promptedCount });
+  });
+
+  // Admin requests stored BSL-S² status (without triggering check)
+  socket.on('bsl-get-status', () => {
+    sendBslStatusToAdmin();
   });
 
   // Client reports their local folder files
   socket.on('bsl-folder-selected', (data) => {
-    console.log(`${colors.cyan}Client ${socket.id} reported ${data.files.length} files${colors.reset}`);
+    const clientId = data.clientId || socket.id; // Fallback to socket.id if no clientId
+    console.log(`${colors.cyan}Client ${clientId} (${socket.id}) reported ${data.files.length} files${colors.reset}`);
 
     // Store client's file list
     const matchedVideos = {};
 
-    // Auto-match by filename
+    // Get this client's persistent matches
+    const clientMatches = persistentBslMatches[clientId] || {};
+
+    // Auto-match by filename + apply persistent matches
     if (PLAYLIST.videos.length > 0) {
       data.files.forEach(clientFile => {
         PLAYLIST.videos.forEach((playlistVideo, index) => {
+          // Check auto-match (exact filename)
           if (clientFile.name.toLowerCase() === playlistVideo.filename.toLowerCase()) {
             matchedVideos[index] = clientFile.name;
             console.log(`${colors.green}  Auto-matched: ${clientFile.name} -> playlist[${index}]${colors.reset}`);
+          }
+          // Check persistent match for this client (previously saved)
+          else if (clientMatches[clientFile.name.toLowerCase()] === playlistVideo.filename.toLowerCase()) {
+            matchedVideos[index] = clientFile.name;
+            console.log(`${colors.cyan}  Persistent match applied: ${clientFile.name} -> playlist[${index}]${colors.reset}`);
           }
         });
       });
     }
 
     clientBslStatus.set(socket.id, {
+      clientId: clientId, // Store clientId for manual match persistence
+      clientName: data.clientName || clientId.slice(-6), // Display name
       folderSelected: true,
       files: data.files,
       matchedVideos: matchedVideos
@@ -480,6 +826,16 @@ io.on('connection', (socket) => {
     if (clientStatus) {
       clientStatus.matchedVideos[playlistIndex] = clientFileName;
 
+      // Save persistent match using the client's persistent ID
+      if (PLAYLIST.videos[playlistIndex] && clientStatus.clientId) {
+        const playlistFileName = PLAYLIST.videos[playlistIndex].filename;
+        const clientId = clientStatus.clientId;
+
+        setBslMatch(clientId, clientFileName.toLowerCase(), playlistFileName.toLowerCase());
+        // Refresh local cache
+        persistentBslMatches = getBslMatches();
+      }
+
       // Notify the specific client about the new match
       io.to(clientSocketId).emit('bsl-match-result', {
         matchedVideos: clientStatus.matchedVideos,
@@ -492,14 +848,70 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Admin sets a client's display name
+  socket.on('set-client-name', (data) => {
+    const { clientId, displayName } = data;
+    if (clientId && displayName) {
+      setClientName(clientId, displayName);
+      // Refresh local cache
+      clientDisplayNames = getClientNames();
+      // Update admin with new names
+      sendBslStatusToAdmin();
+    }
+  });
+
+  // Client registers with their fingerprint
+  socket.on('client-register', (data) => {
+    const fingerprint = data?.fingerprint || 'unknown';
+    connectedClients.set(socket.id, {
+      fingerprint,
+      connectedAt: Date.now()
+    });
+    console.log(`${colors.cyan}Client registered: ${socket.id} (fingerprint: ${fingerprint})${colors.reset}`);
+  });
+
+  // Admin requests the list of connected clients
+  socket.on('get-client-list', () => {
+    const clients = [];
+    connectedClients.forEach((info, socketId) => {
+      // Skip admin sockets
+      if (verifiedAdminSockets.has(socketId)) return;
+
+      const displayName = clientDisplayNames[info.fingerprint] || '';
+      clients.push({
+        socketId,
+        fingerprint: info.fingerprint,
+        displayName,
+        connectedAt: info.connectedAt
+      });
+    });
+    socket.emit('client-list', clients);
+  });
+
+  // Admin sets a client's display name (via clients modal)
+  socket.on('set-client-display-name', (data) => {
+    const { fingerprint, displayName } = data;
+    if (fingerprint) {
+      setClientName(fingerprint, displayName);
+      // Refresh local cache
+      clientDisplayNames = getClientNames();
+      console.log(`${colors.green}Client display name set: ${fingerprint} -> ${displayName}${colors.reset}`);
+    }
+  });
+
   // Helper: Send BSL-S² status to admin
   function sendBslStatusToAdmin() {
     if (!adminSocketId) return;
 
     const clientStatuses = [];
     clientBslStatus.forEach((status, socketId) => {
+      const fingerprint = status.clientId;
+      // Use admin-set name, or fallback to fingerprint prefix
+      const displayName = clientDisplayNames[fingerprint] || fingerprint.slice(-4);
       clientStatuses.push({
         socketId,
+        clientId: fingerprint,
+        clientName: displayName,
         folderSelected: status.folderSelected,
         files: status.files,
         matchedVideos: status.matchedVideos
@@ -548,13 +960,29 @@ io.on('connection', (socket) => {
     console.log('A user disconnected');
     // Clean up BSL-S² status
     clientBslStatus.delete(socket.id);
+    // Clean up verified admin status
+    verifiedAdminSockets.delete(socket.id);
+    // Clean up connected clients tracking
+    connectedClients.delete(socket.id);
     if (socket.id === adminSocketId) {
       adminSocketId = null;
     }
     // Update admin if still connected
     sendBslStatusToAdmin();
+    // Broadcast updated client count
+    broadcastClientCount();
   });
 });
+
+// Helper: Broadcast client count to all clients
+function broadcastClientCount() {
+  // Count all connected sockets, excluding admin
+  let count = io.sockets.sockets.size;
+  if (adminSocketId && io.sockets.sockets.has(adminSocketId)) {
+    count--; // Exclude admin from count
+  }
+  io.emit('client-count', count);
+}
 
 // Global time synchronization interval
 const syncInterval = setInterval(() => {

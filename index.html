@@ -194,6 +194,8 @@
       </p>
       <div class="bsl-buttons">
         <button class="bsl-btn" id="bsl-select-btn">Select Videos Folder</button>
+        <button class="bsl-btn" id="bsl-use-previous-btn"
+          style="display: none; background: linear-gradient(135deg, #2196F3, #1976D2);">Use Previous Folder</button>
         <button class="bsl-btn-skip" id="bsl-skip-btn">Skip</button>
       </div>
       <div id="bsl-result" class="bsl-result" style="display:none;"></div>
@@ -260,10 +262,37 @@
       });
     }
 
+    // Generate a client fingerprint for identification
+    function getClientFingerprint() {
+      let stored = localStorage.getItem('client-fingerprint');
+      if (stored) return stored;
+
+      const components = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width + 'x' + screen.height,
+        new Date().getTimezoneOffset(),
+        Math.random().toString(36).slice(2, 8)
+      ];
+      const str = components.join('|');
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash = hash & hash;
+      }
+      const fp = 'client-' + Math.abs(hash).toString(36);
+      localStorage.setItem('client-fingerprint', fp);
+      return fp;
+    }
+
+    const clientFingerprint = getClientFingerprint();
+
     socket.on('connect', () => {
       console.log('Connected to server');
       showTemporaryMessage('Connected', 1000);
       socket.emit('request-initial-state');
+      // Register with server (for client management)
+      socket.emit('client-register', { fingerprint: clientFingerprint });
     });
 
     socket.on('disconnect', () => {
@@ -597,6 +626,84 @@
 
     // ==================== BSL-S² (Both Side Local Sync Stream) ====================
 
+    // Generate machine fingerprint based on hardware/browser characteristics
+    function generateMachineFingerprint() {
+      const components = [
+        navigator.userAgent,
+        navigator.language,
+        navigator.platform,
+        navigator.hardwareConcurrency || 'unknown',
+        navigator.deviceMemory || 'unknown',
+        screen.width + 'x' + screen.height,
+        screen.colorDepth,
+        new Date().getTimezoneOffset(),
+        // Canvas fingerprint for additional uniqueness
+        (() => {
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('BSL-S² fingerprint', 2, 2);
+            return canvas.toDataURL().slice(-50);
+          } catch (e) {
+            return 'no-canvas';
+          }
+        })()
+      ];
+
+      // Simple hash function
+      const str = components.join('|');
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      return 'machine-' + Math.abs(hash).toString(36);
+    }
+
+    // Get or generate client fingerprint and display name
+    function getClientIdentity() {
+      // Generate fingerprint (may change slightly across browsers but stable within same browser)
+      const fingerprint = generateMachineFingerprint();
+
+      // Get stored fingerprint - use it if exists, otherwise use new one
+      let storedFingerprint = localStorage.getItem('bsl-machine-fingerprint');
+      let clientId;
+
+      if (storedFingerprint) {
+        // Use stored fingerprint for consistency
+        clientId = storedFingerprint;
+        console.log('BSL-S²: Using stored machine fingerprint:', clientId);
+      } else {
+        // Store the new fingerprint
+        clientId = fingerprint;
+        localStorage.setItem('bsl-machine-fingerprint', clientId);
+        console.log('BSL-S²: Generated new machine fingerprint:', clientId);
+      }
+
+      // Get or set default display name
+      let displayName = localStorage.getItem('bsl-client-name');
+      if (!displayName) {
+        displayName = 'Client-' + clientId.slice(-6);
+        localStorage.setItem('bsl-client-name', displayName);
+      }
+
+      return { clientId, displayName };
+    }
+
+    const bslIdentity = getClientIdentity();
+    const bslClientId = bslIdentity.clientId;
+    let bslClientName = bslIdentity.displayName;
+
+    // Allow updating client name
+    function setBslClientName(newName) {
+      bslClientName = newName;
+      localStorage.setItem('bsl-client-name', newName);
+      console.log('BSL-S²: Client name updated to:', newName);
+    }
+
     // BSL-S² state
     const bslLocalFiles = new Map(); // filename -> File object
     const bslBlobUrls = new Map();   // filename -> blob URL
@@ -605,16 +712,71 @@
     const bslOverlay = document.getElementById('bsl-overlay');
     const bslFolderInput = document.getElementById('bsl-folder-input');
     const bslSelectBtn = document.getElementById('bsl-select-btn');
+    const bslUsePreviousBtn = document.getElementById('bsl-use-previous-btn');
     const bslResultDiv = document.getElementById('bsl-result');
+
+    // Get cached BSL folder data from localStorage
+    function getCachedBslFiles() {
+      try {
+        const cached = localStorage.getItem('bsl-cached-files');
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (e) {
+        console.error('Error reading cached BSL files:', e);
+      }
+      return null;
+    }
+
+    // Save BSL files to localStorage
+    function cacheBslFiles(files) {
+      try {
+        localStorage.setItem('bsl-cached-files', JSON.stringify(files));
+        console.log('BSL-S²: Cached file list for future sessions');
+      } catch (e) {
+        console.error('Error caching BSL files:', e);
+      }
+    }
 
     // Handle admin BSL-S² check request
     socket.on('bsl-check-request', (data) => {
       console.log('BSL-S² check requested by admin', data);
       showTemporaryMessage('Admin is checking for local videos...', 3000);
 
+      // Check if we have cached files from previous session
+      const cachedFiles = getCachedBslFiles();
+      if (cachedFiles && cachedFiles.length > 0) {
+        bslUsePreviousBtn.style.display = 'inline-block';
+        bslUsePreviousBtn.textContent = `Use Previous (${cachedFiles.length} files)`;
+      } else {
+        bslUsePreviousBtn.style.display = 'none';
+      }
+
       // Show the folder selection overlay
       bslOverlay.classList.add('visible');
       bslResultDiv.style.display = 'none';
+    });
+
+    // Handle Use Previous Folder button
+    bslUsePreviousBtn.addEventListener('click', () => {
+      const cachedFiles = getCachedBslFiles();
+      if (cachedFiles && cachedFiles.length > 0) {
+        console.log(`BSL-S²: Using ${cachedFiles.length} cached files from previous session`);
+
+        // Send cached file list to server
+        socket.emit('bsl-folder-selected', {
+          clientId: bslClientId,
+          clientName: bslClientName,
+          files: cachedFiles,
+          fromCache: true
+        });
+
+        // Update UI
+        bslSelectBtn.textContent = `${cachedFiles.length} videos (cached)`;
+        bslSelectBtn.disabled = true;
+        bslUsePreviousBtn.style.display = 'none';
+        showTemporaryMessage(`Using ${cachedFiles.length} cached files`, 2000);
+      }
     });
 
     // Handle folder selection button click
@@ -631,6 +793,8 @@
 
       // Notify server that this client declined
       socket.emit('bsl-folder-selected', {
+        clientId: bslClientId,
+        clientName: bslClientName,
         files: [],
         skipped: true
       });
@@ -663,14 +827,20 @@
 
       console.log(`BSL-S²: Found ${videoFiles.length} video files`);
 
-      // Send file list to server
+      // Send file list to server with client ID and name
       socket.emit('bsl-folder-selected', {
+        clientId: bslClientId,
+        clientName: bslClientName,
         files: videoFiles
       });
+
+      // Cache file list for future sessions
+      cacheBslFiles(videoFiles);
 
       // Update UI
       bslSelectBtn.textContent = `${videoFiles.length} videos found`;
       bslSelectBtn.disabled = true;
+      bslUsePreviousBtn.style.display = 'none';
     });
 
     // Handle match results from server
