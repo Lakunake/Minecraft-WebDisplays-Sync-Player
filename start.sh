@@ -1,106 +1,341 @@
 #!/bin/bash
-
-#THIS SCRIPT IS NOT YET FUNCTONAL
-
+# Sync-Player Bash Startup Script
+# Linux/Mac equivalent of console.ps1
 
 # =================================================================
-# Set up the script
+# Retry Counter (resets on computer reboot via /tmp folder)
 # =================================================================
-clear
-echo -e "\033]0;Admin Console\007"
-printf '\033[0;32m\033[40m'
+RETRY_FILE="/tmp/sync_player_retry_count.txt"
+MAX_RETRIES=2
+RETRY_COUNT=0
 
+if [ -f "$RETRY_FILE" ]; then
+    RETRY_COUNT=$(cat "$RETRY_FILE")
+fi
+
+# =================================================================
+# Get script location and set working directory
+# =================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-echo "Running from: $(pwd)"
+echo "Running from: $PWD"
+
+# =================================================================
+# Helper function for colored output
+# =================================================================
+write_status() {
+    local type="$1"
+    local message="$2"
+    
+    case "$type" in
+        "OK")       echo -e "\033[36m[OK]: $message\033[0m" ;;
+        "MISSING")  echo -e "\033[33m[MISSING]: $message\033[0m" ;;
+        "WARNING")  echo -e "\033[33m[WARNING]: $message\033[0m" ;;
+        "ERROR")    echo -e "\033[31m[ERROR]: $message\033[0m" ;;
+        "CRITICAL") echo -e "\033[31m[CRITICAL]: $message\033[0m" ;;
+        "INFO")     echo -e "\033[36m[INFO]: $message\033[0m" ;;
+        "SUCCESS")  echo -e "\033[32m[SUCCESS]: $message\033[0m" ;;
+        "REQUIRED") echo -e "\033[33m[REQUIRED]: $message\033[0m" ;;
+        "DEBUG")    echo -e "\033[90m[DEBUG]: $message\033[0m" ;;
+        *)          echo "$message" ;;
+    esac
+}
 
 # =================================================================
 # Check Node.js installation
 # =================================================================
-echo -e "\033]0;Admin Console - Checking Node.js\007"
 echo "Checking Node.js installation..."
+
 if ! command -v node &> /dev/null; then
-    echo
-    echo "ERROR: Node.js is not installed or not in PATH!"
+    echo ""
+    write_status "ERROR" "Node.js is not installed or not in PATH!"
     echo "Please download and install Node.js from:"
-    echo "https://nodejs.org/"
-    echo "Press Enter to open the Node.js download page."
-    read -r
-    xdg-open "https://nodejs.org/" 2>/dev/null || echo "Please manually visit https://nodejs.org/"
-    echo
-    # For Linux, you might want to suggest package manager installation
-    echo "You can also install Node.js using your package manager:"
-    echo "Ubuntu/Debian: sudo apt install nodejs npm"
-    echo "Fedora: sudo dnf install nodejs npm"
-    echo "Arch: sudo pacman -S nodejs npm"
-    exit 1
+    echo -e "\033[36mhttps://nodejs.org/\033[0m"
+    echo ""
+    
+    # Detect OS and suggest installation method
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "On macOS, you can install via Homebrew:"
+        echo "  brew install node"
+    else
+        echo "On Linux, you can install via your package manager:"
+        echo "  Ubuntu/Debian: sudo apt install nodejs npm"
+        echo "  Fedora: sudo dnf install nodejs npm"
+        echo "  Arch: sudo pacman -S nodejs npm"
+    fi
+    
+    echo ""
+    read -p "Press Enter to continue after installing Node.js, or Ctrl+C to exit..."
 fi
 
 # =================================================================
 # Initialize configuration
 # =================================================================
-echo -e "\033]0;Admin Console - Initializing\007"
 if [ ! -f "config.txt" ]; then
     echo "Creating default configuration..."
-    cat > config.txt << EOF
+    
+    cat > config.txt << 'EOF'
+# Sync-Player Configuration
+# Lines starting with # are comments
+
+# Server port (1024-49151)
 port: 3000
+
+# Volume step percentage (1-20)
 volume_step: 5
+
+# Skip seconds (1-60)
 skip_seconds: 5
+
+# Join mode: sync or reset
+join_mode: sync
+
+# HTTPS Configuration
+use_https: false
+ssl_key_file: key.pem
+ssl_cert_file: cert.pem
+
+# BSL-S2 (Both Side Local Sync Stream) Configuration
+# Mode: 'any' = BSL-S2 active if ANY client has the local file
+#       'all' = BSL-S2 only active if ALL clients have the local file
+bsl_s2_mode: any
+
+# Video Autoplay Configuration
+# Set to true to automatically play videos when loaded
+# Set to false to start videos paused
+video_autoplay: false
+
+# Admin Fingerprint Lock
+# When enabled, only the first machine to access /admin will be allowed
+# The fingerprint is stored in admin_fingerprint.txt
+# Set to true to enable, false to allow any machine to access admin
+admin_fingerprint_lock: false
 EOF
-    echo "Default config created"
+    
+    echo "Default config created with all available options"
 fi
 
 # =================================================================
 # Create folders if needed
 # =================================================================
 if [ ! -d "videos" ]; then
-    mkdir videos
+    mkdir -p videos
     echo "Created videos directory"
 fi
 
 # =================================================================
 # Check and Install Dependencies
 # =================================================================
-echo -e "\033]0;Admin Console - Checking Dependencies\007"
 echo "Checking required dependencies..."
 
-# Check Node.js dependencies
-MISSING_DEPS=0
+MISSING_DEPS=false
+REQUIRED_PACKAGES=("express" "socket.io" "helmet")
+
 if [ ! -d "node_modules" ]; then
-    MISSING_DEPS=1
-    echo "[MISSING]: Node.js dependencies (express, socket.io)"
+    MISSING_DEPS=true
+    write_status "MISSING" "Node.js dependencies (express, socket.io, helmet)"
 else
     echo "Checking for specific dependencies..."
-    if [ ! -d "node_modules/express" ]; then
-        MISSING_DEPS=1
-        echo "[MISSING]: express package"
-    fi
-    if [ ! -d "node_modules/socket.io" ]; then
-        MISSING_DEPS=1
-        echo "[MISSING]: socket.io package"
-    fi
-    if [ $MISSING_DEPS -eq 0 ]; then
-        echo "[OK]: All Node.js dependencies found"
+    for pkg in "${REQUIRED_PACKAGES[@]}"; do
+        if [ ! -d "node_modules/$pkg" ]; then
+            MISSING_DEPS=true
+            write_status "MISSING" "$pkg package"
+        fi
+    done
+    if [ "$MISSING_DEPS" = false ]; then
+        write_status "OK" "All Node.js dependencies found"
     fi
 fi
 
 # Check FFmpeg
-MISSING_FFMPEG=0
+MISSING_FFMPEG=false
 if ! command -v ffmpeg &> /dev/null; then
-    MISSING_FFMPEG=1
-    echo "[MISSING]: FFmpeg (required for video processing)"
+    MISSING_FFMPEG=true
+    write_status "MISSING" "FFmpeg (required for video processing)"
 else
-    echo "[OK]: FFmpeg found"
+    write_status "OK" "FFmpeg found"
 fi
 
-# Ask user to install missing dependencies
-if [ $MISSING_DEPS -eq 1 ]; then
-    echo
-    echo "[REQUIRED]: This software needs Node.js dependencies to work properly."
-    echo "Missing packages: express, socket.io"
-    echo
-    echo "Press ENTER to install dependencies automatically, or Ctrl+C to exit."
-    read -r
-    echo
+# Install missing Node.js dependencies
+if [ "$MISSING_DEPS" = true ]; then
+    echo ""
+    write_status "REQUIRED" "This software needs Node.js dependencies to work properly."
+    echo "Missing packages: express, socket.io, helmet"
+    echo ""
+    read -p "Press ENTER to install dependencies automatically, or Ctrl+C to exit..."
+    echo ""
     echo "Installing Node.js dependencies..."
-    if npm install express@5.1.0 socket.io@4.8.1; then
+    
+    if npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0; then
+        write_status "SUCCESS" "Dependencies installed successfully."
+        MISSING_DEPS=false
+        [ -f "$RETRY_FILE" ] && rm -f "$RETRY_FILE"
+    else
+        write_status "ERROR" "Failed to install dependencies."
+        echo "Please check your internet connection and try again."
+        echo "You can also try running: npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
+        echo ""
+        
+        # Auto-retry logic
+        if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "$RETRY_COUNT" > "$RETRY_FILE"
+            echo "Retry attempt $RETRY_COUNT of $MAX_RETRIES..."
+            echo "Restarting in 3 seconds..."
+            sleep 3
+            exec "$0"
+            exit 0
+        else
+            write_status "CRITICAL" "Maximum retry attempts reached."
+            echo "Please fix the issue manually and restart the script."
+            [ -f "$RETRY_FILE" ] && rm -f "$RETRY_FILE"
+            read -p "Press Enter to exit..."
+            exit 1
+        fi
+    fi
+fi
+
+# Install FFmpeg if missing
+if [ "$MISSING_FFMPEG" = true ]; then
+    echo ""
+    write_status "REQUIRED" "FFmpeg is not installed."
+    echo "FFmpeg is required for proper video processing and MKV support."
+    echo ""
+    
+    # Detect OS and suggest installation method
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "On macOS, install via Homebrew:"
+        echo "  brew install ffmpeg"
+    else
+        echo "On Linux, install via your package manager:"
+        echo "  Ubuntu/Debian: sudo apt install ffmpeg"
+        echo "  Fedora: sudo dnf install ffmpeg"
+        echo "  Arch: sudo pacman -S ffmpeg"
+    fi
+    
+    echo ""
+    read -p "Press Enter to continue (FFmpeg installation is recommended but optional)..."
+fi
+
+# =================================================================
+# Read configuration
+# =================================================================
+# Default values
+PORT=3000
+VOLUME_STEP=5
+SKIP_SECONDS=5
+JOIN_MODE="sync"
+USE_HTTPS="false"
+BSL_S2_MODE="any"
+ADMIN_LOCK="false"
+
+if [ -f "config.txt" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip comments and empty lines
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+        
+        # Parse key: value pairs
+        if [[ "$line" =~ ^[[:space:]]*([a-zA-Z_]+)[[:space:]]*:[[:space:]]*(.+)[[:space:]]*$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="${BASH_REMATCH[2]}"
+            value="${value%"${value##*[![:space:]]}"}"  # Trim trailing whitespace
+            
+            case "$key" in
+                "port")                   PORT="$value" ;;
+                "volume_step")            VOLUME_STEP="$value" ;;
+                "skip_seconds")           SKIP_SECONDS="$value" ;;
+                "join_mode")              JOIN_MODE="$value" ;;
+                "use_https")              USE_HTTPS="$value" ;;
+                "bsl_s2_mode")            BSL_S2_MODE="$value" ;;
+                "admin_fingerprint_lock") ADMIN_LOCK="$value" ;;
+            esac
+        fi
+    done < config.txt
+else
+    write_status "WARNING" "config.txt not found, using default values"
+fi
+
+# =================================================================
+# Firewall Information
+# =================================================================
+echo ""
+write_status "INFO" "Ensure port $PORT is open in your firewall for network access"
+echo ""
+
+# =================================================================
+# Get local IP address
+# =================================================================
+echo "Getting local IP address..."
+
+LOCAL_IP="localhost"
+
+# Try different methods to get IP based on OS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "localhost")
+else
+    # Linux
+    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [ -z "$LOCAL_IP" ]; then
+        LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7}' | head -n1)
+    fi
+    if [ -z "$LOCAL_IP" ]; then
+        LOCAL_IP="localhost"
+    fi
+fi
+
+# =================================================================
+# Display server information
+# =================================================================
+echo ""
+echo -e "\033[36mSync-Player 1.8.0\033[0m"
+echo -e "\033[36m==========================\033[0m"
+echo ""
+echo -e "\033[33mSettings:\033[0m"
+echo "- Server Port: $PORT"
+echo "- Volume Step: ${VOLUME_STEP}%"
+echo "- Skip Seconds: ${SKIP_SECONDS}s"
+echo "- Join Mode: $JOIN_MODE"
+echo "- HTTPS: $USE_HTTPS"
+echo "- BSL-S2 Mode: $BSL_S2_MODE"
+echo "- Admin Lock: $ADMIN_LOCK"
+echo ""
+echo -e "\033[33mAccess URLs:\033[0m"
+echo "- Your network: http://${LOCAL_IP}:${PORT}"
+echo "- Admin Panel: http://${LOCAL_IP}:${PORT}/admin"
+echo "- Testing purposes: http://localhost:${PORT}"
+echo ""
+echo -e "\033[33mFirewall: Manual configuration may be required for network access\033[0m"
+echo ""
+echo -e "\033[36mStarting Server...\033[0m"
+echo ""
+write_status "DEBUG" "Current directory: $PWD"
+echo ""
+
+# =================================================================
+# Start the server
+# =================================================================
+if [ ! -f "server.js" ]; then
+    write_status "CRITICAL" "server.js not found in current directory!"
+    echo "Please ensure you are running this script from the correct folder."
+    echo ""
+    read -p "Press Enter to exit..."
+    exit 1
+fi
+
+write_status "DEBUG" "Starting server with port $PORT..."
+
+# Clear retry counter on successful start
+[ -f "$RETRY_FILE" ] && rm -f "$RETRY_FILE"
+
+node server.js "$LOCAL_IP"
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    write_status "CRITICAL" "Server crashed with exit code $EXIT_CODE"
+    echo "Please check the error messages above."
+    echo ""
+    read -p "Press Enter to exit..."
+fi
