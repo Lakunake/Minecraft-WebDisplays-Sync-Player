@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Synced Video Player</title>
+  <title>Sync-Player</title>
   <style>
     html,
     body {
@@ -20,6 +20,74 @@
       background: black;
       display: none;
     }
+
+    #image-display {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: black;
+      display: none;
+    }
+
+    /* YouTube Player Container */
+    #youtube-container {
+      width: 100%;
+      height: 100%;
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #youtube-container.visible {
+      display: block;
+    }
+
+    .player-container {
+      width: 100%;
+      height: 100%;
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: black;
+      z-index: 5;
+      /* Below overlays but above background */
+    }
+
+    .player-container.visible {
+      display: block;
+    }
+
+    #iframe-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    #youtube-player {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Overlay to capture clicks on YouTube */
+    #youtube-click-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      cursor: pointer;
+    }
+
+    /* Make iframe ignore mouse events - our overlay handles them */
+    #youtube-container iframe {
+      pointer-events: none;
+    }
+
+    /* NOTE: YouTube iframe content cannot be styled via CSS due to cross-origin policy.
+       The controls=0 player param hides most UI, but some branding may still appear. */
 
     video::-webkit-media-controls,
     video::-moz-media-controls {
@@ -174,12 +242,63 @@
       justify-content: center;
       gap: 10px;
     }
+
+    #media-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      /* Below overlays, above video background */
+      color: white;
+      font-family: sans-serif;
+      background: #333;
+      /* Default dark background */
+    }
+
+    #media-placeholder .icon {
+      font-size: 100px;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+    }
+
+    #media-placeholder .text {
+      font-size: 24px;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+      padding: 10px 20px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+    }
   </style>
 </head>
 
 <body>
+  <div id="media-placeholder">
+    <div class="icon">🎵</div>
+    <div class="text">Audio Playing</div>
+  </div>
   <video id="video" autoplay preload="auto"></video>
   <video id="preload-video" preload="auto"></video>
+  <img id="image-display" alt="">
+
+  <div id="youtube-container">
+    <div id="youtube-player"></div>
+    <div id="youtube-click-overlay"></div>
+  </div>
+
+  <!-- External Player Containers -->
+  <div id="vimeo-container" class="player-container"></div>
+  <div id="dailymotion-container" class="player-container"></div>
+  <div id="twitch-container" class="player-container"></div>
+  <div id="soundcloud-container" class="player-container"></div>
+  <div id="iframe-container" class="player-container">
+    <iframe id="generic-iframe" allow="autoplay; fullscreen" allowfullscreen></iframe>
+  </div>
 
   <div id="waiting-message">Waiting for admin to launch playlist...</div>
   <div id="status"></div>
@@ -202,13 +321,195 @@
     </div>
   </div>
 
+  <!-- External Player SDKs -->
+  <script src="https://player.vimeo.com/api/player.js"></script>
+  <script src="https://player.twitch.tv/js/embed/v1.js"></script>
+  <script src="https://api.dmcdn.net/all.js"></script>
+  <script src="https://w.soundcloud.com/player/api.js"></script>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const video = document.getElementById('video');
     const preloadVideo = document.getElementById('preload-video');
+    const imageDisplay = document.getElementById('image-display');
     const waitingMessage = document.getElementById('waiting-message');
     const statusEl = document.getElementById('status');
     const currentTrackInfoEl = document.getElementById('current-track-info');
+    const mediaPlaceholder = document.getElementById('media-placeholder');
+
+    // Helper to check if a file is an image
+    const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
+    function isImageFile(filename) {
+      const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+      return imageExtensions.includes(ext);
+    }
+
+    // Helper to check if a file is audio
+    const audioExtensions = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'];
+    function isAudioFile(filename) {
+      const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+      return audioExtensions.includes(ext);
+    }
+
+    // Track if current media is an image
+    let currentMediaIsImage = false;
+
+    // YouTube Player state
+    const youtubeContainer = document.getElementById('youtube-container');
+    const youtubeClickOverlay = document.getElementById('youtube-click-overlay');
+    let ytPlayer = null;
+    let ytVideoHasPlayed = false;
+
+    // External Player state
+    let vimeoPlayer = null;
+    let twitchPlayer = null;
+    let dmPlayer = null;
+    let scWidget = null;
+    let currentPlatform = 'local'; // local, youtube, vimeo, twitch, etc.
+
+    // Helper to hide all player containers
+    function hideAllPlayers() {
+      const containers = document.querySelectorAll('.player-container');
+      containers.forEach(el => el.classList.remove('visible'));
+      youtubeContainer.classList.remove('visible');
+      video.style.display = 'none';
+      imageDisplay.style.display = 'none';
+      if (mediaPlaceholder) mediaPlaceholder.style.display = 'none';
+
+      // Stop/Pause existing players if possible
+      if (vimeoPlayer) vimeoPlayer.pause().catch(() => { });
+      if (dmPlayer) dmPlayer.pause();
+
+      // Clear generic iframe source to stop playback
+      const iframe = document.getElementById('generic-iframe');
+      if (iframe) iframe.src = '';
+    }
+
+    // Generic handler for external video ending
+    function handleVideoEnded() {
+      console.log('External video ended');
+      if (currentPlaylist.videos.length > 0) {
+        const nextIndex = (currentPlaylist.currentIndex + 1) % currentPlaylist.videos.length;
+        socket.emit('playlist-next', nextIndex);
+      }
+    }
+
+    // Load external content (Vimeo, Twitch, etc.)
+    function loadExternalContent(platform, id, url) {
+      currentPlatform = platform;
+      hideAllPlayers();
+
+      if (platform === 'youtube') {
+        youtubeContainer.classList.add('visible');
+        currentMediaIsYouTube = true;
+        // YouTube specific logic is handled by onYouTubeIframeAPIReady and socket play event
+        // But we might need to trigger load if it's already ready
+        if (ytPlayer && ytPlayerReady && id) {
+          ytPlayer.loadVideoById(id);
+        }
+        return;
+      }
+
+      currentMediaIsYouTube = false;
+
+      try {
+        switch (platform) {
+          case 'vimeo':
+            document.getElementById('vimeo-container').classList.add('visible');
+            if (!vimeoPlayer && window.Vimeo) {
+              vimeoPlayer = new Vimeo.Player('vimeo-container', {
+                id: id,
+                autoplay: true,
+                responsive: true,
+                width: '100%',
+                height: '100%'
+              });
+              vimeoPlayer.on('ended', handleVideoEnded);
+            } else if (vimeoPlayer) {
+              vimeoPlayer.loadVideo(id).then(() => vimeoPlayer.play()).catch(e => console.error('Vimeo play error:', e));
+            }
+            break;
+
+          case 'twitch':
+            document.getElementById('twitch-container').classList.add('visible');
+            document.getElementById('twitch-container').innerHTML = ''; // Clear previous
+            if (window.Twitch) {
+              const twitchOptions = {
+                width: '100%',
+                height: '100%',
+                layout: 'video',
+                autoplay: true
+              };
+              // Determine if ID is channel or video
+              if (id.match(/^\d+$/)) {
+                twitchOptions.video = id;
+              } else {
+                twitchOptions.channel = id;
+              }
+              twitchPlayer = new Twitch.Embed('twitch-container', twitchOptions);
+              twitchPlayer.addEventListener(Twitch.Embed.VIDEO_READY, () => {
+                const player = twitchPlayer.getPlayer();
+                if (player) {
+                  player.addEventListener('ended', handleVideoEnded);
+                }
+              });
+            }
+            break;
+
+          case 'dailymotion':
+            document.getElementById('dailymotion-container').classList.add('visible');
+            if (!dmPlayer && window.DM) {
+              dmPlayer = DM.player(document.getElementById('dailymotion-container'), {
+                video: id,
+                width: '100%',
+                height: '100%',
+                params: { autoplay: true, mute: false, events: { video_end: handleVideoEnded } }
+              });
+              // DM API events usually bound via params for 'video_end' or addEventListener 'end'
+              dmPlayer.addEventListener('end', handleVideoEnded);
+            } else if (dmPlayer) {
+              dmPlayer.load(id);
+            }
+            break;
+
+          case 'soundcloud':
+            document.getElementById('soundcloud-container').classList.add('visible');
+            const scContainer = document.getElementById('soundcloud-container');
+            scContainer.innerHTML = `<iframe id="sc-widget" width="100%" height="100%" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=true&visual=true"></iframe>`;
+            if (window.SC) {
+              const widget = SC.Widget('sc-widget');
+              widget.bind(SC.Widget.Events.FINISH, handleVideoEnded);
+            }
+            break;
+
+          case 'streamable':
+          case 'gdrive':
+          case 'kick':
+          case 'iframe':
+            const iframeContainer = document.getElementById('iframe-container');
+            iframeContainer.classList.add('visible');
+            const iframe = document.getElementById('generic-iframe');
+
+            if (platform === 'streamable') iframe.src = `https://streamable.com/e/${id}?autoplay=1`;
+            else if (platform === 'gdrive') iframe.src = `https://drive.google.com/file/d/${id}/preview`;
+            else if (platform === 'kick') iframe.src = `https://player.kick.com/${id}?autoplay=true`;
+            else iframe.src = url; // Generic iframe
+            break;
+
+          case 'directUrl':
+            // Use main video player
+            video.style.display = 'block';
+            video.src = url;
+            video.play().catch(e => console.error(e));
+            break;
+        }
+      } catch (err) {
+        console.error('Error loading external content:', err);
+        showTemporaryMessage('Error loading external content', 3000);
+      }
+    }
+    let currentMediaIsYouTube = false;
+    let ytApiLoaded = false;
 
     const socket = io();
 
@@ -318,7 +619,7 @@
         const videoToPreload = (currentPlaylist.mainVideoIndex >= 0 && currentPlaylist.videos.length > currentPlaylist.mainVideoIndex)
           ? currentPlaylist.videos[currentPlaylist.mainVideoIndex]
           : currentPlaylist.videos[0];
-        preloadVideo.src = `/videos/${videoToPreload.filename}`;
+        preloadVideo.src = `/media/${videoToPreload.filename}`;
         preloadVideo.load();
       }
 
@@ -405,7 +706,7 @@
       const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
       currentVideoInfo = currentVideo;
 
-      let videoSrc = `/videos/${currentVideo.filename}`;
+      let videoSrc = `/media/${currentVideo.filename}`;
       console.log('Loading video:', videoSrc);
       video.src = videoSrc;
 
@@ -517,11 +818,49 @@
       setTimeout(() => applyTrackSelections(), 500);
     }
 
+    // Handle sync for external players
+    function handleExternalSync(state) {
+      if (currentPlatform === 'youtube') {
+        if (ytPlayer && ytPlayerReady) {
+          const playerState = ytPlayer.getPlayerState();
+          if (state.isPlaying && playerState !== YT.PlayerState.PLAYING && playerState !== YT.PlayerState.BUFFERING) ytPlayer.playVideo();
+          else if (!state.isPlaying && playerState === YT.PlayerState.PLAYING) ytPlayer.pauseVideo();
+
+          const ytTime = ytPlayer.getCurrentTime();
+          if (Math.abs(ytTime - state.currentTime) > 2) {
+            ytPlayer.seekTo(state.currentTime, true);
+          }
+        }
+      } else if (currentPlatform === 'vimeo' && vimeoPlayer) {
+        vimeoPlayer.getPaused().then(paused => {
+          if (state.isPlaying && paused) vimeoPlayer.play().catch(e => { });
+          else if (!state.isPlaying && !paused) vimeoPlayer.pause().catch(e => { });
+        });
+        vimeoPlayer.getCurrentTime().then(t => {
+          if (Math.abs(t - state.currentTime) > 2) vimeoPlayer.setCurrentTime(state.currentTime).catch(e => { });
+        });
+      } else if (currentPlatform === 'twitch' && twitchPlayer) {
+        const isPaused = twitchPlayer.isPaused();
+        if (state.isPlaying && isPaused) twitchPlayer.play();
+        else if (!state.isPlaying && !isPaused) twitchPlayer.pause();
+      } else if (currentPlatform === 'dailymotion' && dmPlayer) {
+        if (state.isPlaying && dmPlayer.paused) dmPlayer.play();
+        else if (!state.isPlaying && !dmPlayer.paused) dmPlayer.pause();
+        if (Math.abs(dmPlayer.currentTime - state.currentTime) > 2) dmPlayer.seek(state.currentTime);
+      }
+    }
+
     // Handle server sync events
     socket.on('sync', (state) => {
       const now = Date.now();
       if (now - lastUpdate < 100) return;
       lastUpdate = now;
+
+      // Handle external players
+      if (currentPlatform && currentPlatform !== 'local' && currentPlatform !== 'directUrl') {
+        handleExternalSync(state);
+        return;
+      }
 
       // If we receive a sync and have an active playlist, hide waiting message
       if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
@@ -587,6 +926,9 @@
 
     // Control zones (click on screen)
     document.addEventListener('click', (e) => {
+      // Skip if YouTube is playing - it has its own click handler
+      if (currentMediaIsYouTube) return;
+
       const w = window.innerWidth;
       const x = e.clientX;
       const center = w / 2;
@@ -594,13 +936,35 @@
       const pauseZone = 75;
 
       if (x <= edgeZone) {
-        video.currentTime = Math.max(0, video.currentTime - skipSeconds);
-        showTemporaryMessage(`↩ Rewind ${skipSeconds}s`);
-        sendControlEvent();
+        // If viewing an image, go to previous media
+        if (currentMediaIsImage) {
+          if (currentPlaylist.currentIndex > 0) {
+            const prevIndex = currentPlaylist.currentIndex - 1;
+            socket.emit('playlist-jump', prevIndex);
+            showTemporaryMessage(`⏮ Previous media`);
+          } else {
+            showTemporaryMessage(`Already at first item`);
+          }
+        } else {
+          video.currentTime = Math.max(0, video.currentTime - skipSeconds);
+          showTemporaryMessage(`↩ Rewind ${skipSeconds}s`);
+          sendControlEvent();
+        }
       } else if (x >= w - edgeZone) {
-        video.currentTime = Math.min(video.duration, video.currentTime + skipSeconds);
-        showTemporaryMessage(`↪ Skip ${skipSeconds}s`);
-        sendControlEvent();
+        // If viewing an image, go to next media
+        if (currentMediaIsImage) {
+          if (currentPlaylist.currentIndex < currentPlaylist.videos.length - 1) {
+            const nextIndex = currentPlaylist.currentIndex + 1;
+            socket.emit('playlist-jump', nextIndex);
+            showTemporaryMessage(`⏭ Next media`);
+          } else {
+            showTemporaryMessage(`Already at last item`);
+          }
+        } else {
+          video.currentTime = Math.min(video.duration, video.currentTime + skipSeconds);
+          showTemporaryMessage(`↪ Skip ${skipSeconds}s`);
+          sendControlEvent();
+        }
       } else if (x >= center - pauseZone && x <= center + pauseZone) {
         if (video.paused) {
           video.play();
@@ -811,7 +1175,7 @@
       bslLocalFiles.clear();
 
       // Filter for video files and store them
-      const videoExtensions = ['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm'];
+      const videoExtensions = ['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm', '.png', '.jpg', '.jpeg', '.webp'];
       const videoFiles = [];
 
       for (const file of files) {
@@ -901,11 +1265,84 @@
       if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
         waitingMessage.style.display = 'block';
         video.style.display = 'none';
+        imageDisplay.style.display = 'none';
+        currentMediaIsImage = false;
         return;
       }
 
       const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
       currentVideoInfo = currentVideo;
+
+      // Check if this is external content
+      if (currentVideo.isExternal || currentVideo.isYouTube) {
+        currentMediaIsImage = false;
+        waitingMessage.style.display = 'none';
+
+        // Use the unified loader
+        const platform = currentVideo.platform || (currentVideo.isYouTube ? 'youtube' : 'local');
+        const id = currentVideo.externalId || currentVideo.youtubeId;
+        const url = currentVideo.externalUrl;
+
+        mediaPlaceholder.style.display = 'none'; // Ensure placeholder hidden for external content
+
+        loadExternalContent(platform, id, url);
+
+        showTemporaryMessage(`${currentVideo.platformName || 'External'} content loaded`, 2000);
+        return;
+      }
+
+      // Check if this is an image file
+      if (isImageFile(currentVideo.filename)) {
+        currentMediaIsImage = true;
+
+        // Hide video, show image
+        video.style.display = 'none';
+        video.pause();
+
+        // Check for BSL-S² local playback
+        const localUrl = getBslLocalUrl(currentVideo.filename);
+        let imageSrc;
+
+        if (localUrl) {
+          imageSrc = localUrl;
+          console.log('BSL-S²: Loading IMAGE from LOCAL file');
+          showTemporaryMessage('🖼️ Displaying local image (BSL-S²)', 2000);
+        } else {
+          imageSrc = `/media/${currentVideo.filename}`;
+          console.log('Loading image from server:', imageSrc);
+        }
+
+        imageDisplay.src = imageSrc;
+        imageDisplay.style.display = 'block';
+        waitingMessage.style.display = 'none';
+
+        showTemporaryMessage(`🖼️ Image - tap edges to skip`, 3000);
+        return;
+      }
+
+      // It's a video or audio file
+      currentMediaIsImage = false;
+
+      // Check if it's an audio file and handle display
+      if (isAudioFile(currentVideo.filename)) {
+        imageDisplay.style.display = 'block';
+        // Use the thumbnail API which extracts embedded cover art
+        imageDisplay.src = `/api/thumbnail/${encodeURIComponent(currentVideo.filename)}`;
+
+        // Hide broken image if no cover art found
+        // Hide broken image if no cover art found
+        imageDisplay.onerror = function () {
+          this.style.display = 'none';
+          mediaPlaceholder.style.display = 'flex';
+          showTemporaryMessage('🎵 Playing Audio', 3000);
+        };
+
+        video.style.display = 'none';
+      } else {
+        imageDisplay.style.display = 'none';
+        mediaPlaceholder.style.display = 'none';
+        video.style.display = 'block';
+      }
 
       // Check for BSL-S² local playback
       const localUrl = getBslLocalUrl(currentVideo.filename);
@@ -914,10 +1351,11 @@
       if (localUrl) {
         videoSrc = localUrl;
         console.log('BSL-S²: Loading from LOCAL file');
-        showTemporaryMessage('📁 Playing local file (BSL-S²)', 2000);
+        const msg = isAudioFile(currentVideo.filename) ? '📁 Playing local audio (BSL-S²)' : '📁 Playing local video (BSL-S²)';
+        showTemporaryMessage(msg, 2000);
       } else {
-        videoSrc = `/videos/${currentVideo.filename}`;
-        console.log('Loading video from server:', videoSrc);
+        videoSrc = `/media/${currentVideo.filename}`;
+        console.log('Loading media from server:', videoSrc);
       }
 
       video.src = videoSrc;
@@ -960,6 +1398,349 @@
         }
       };
     };
+
+    // ==================== YouTube IFrame API Integration ====================
+
+    // Load YouTube IFrame API
+    function loadYouTubeAPI() {
+      if (ytApiLoaded) return Promise.resolve();
+
+      return new Promise((resolve) => {
+        if (window.YT && window.YT.Player) {
+          ytApiLoaded = true;
+          resolve();
+          return;
+        }
+
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        window.onYouTubeIframeAPIReady = () => {
+          ytApiLoaded = true;
+          resolve();
+        };
+      });
+    }
+
+    // Initialize YouTube player with a video ID
+    function initYouTubePlayer(videoId) {
+      return new Promise((resolve) => {
+        // Destroy existing player if any
+        if (ytPlayer) {
+          try {
+            ytPlayer.destroy();
+          } catch (e) {
+            console.log('Error destroying previous player:', e);
+          }
+          ytPlayer = null;
+          ytPlayerReady = false;
+        }
+
+        // Reset the "has played" flag for the new video
+        ytVideoHasPlayed = false;
+
+        ytPlayer = new YT.Player('youtube-player', {
+          videoId: videoId,
+          playerVars: {
+            'controls': 0,           // Hide YouTube controls (this works)
+            'disablekb': 1,          // Disable keyboard controls
+            'rel': 0,                // Don't show related videos at end
+            'fs': 0,                 // Disable fullscreen button
+            'iv_load_policy': 3,     // Hide annotations
+            'playsinline': 1,        // Play inline on mobile
+            'cc_load_policy': 0,     // Don't show captions by default
+            'autoplay': 1,           // Auto-play when ready
+            'origin': window.location.origin
+            // NOTE: 'modestbranding' was deprecated Aug 2023
+            // NOTE: 'showinfo' was deprecated Sep 2018
+          },
+          events: {
+            'onReady': (event) => {
+              ytPlayerReady = true;
+              console.log('YouTube player ready');
+
+              // Auto-play if this is not the first video in playlist
+              // (first video follows server sync, subsequent videos should auto-continue)
+              if (currentPlaylist.currentIndex > 0) {
+                event.target.playVideo();
+              }
+
+              resolve(event.target);
+            },
+            'onStateChange': (event) => {
+              handleYouTubeStateChange(event);
+            },
+            'onError': (event) => {
+              console.error('YouTube player error:', event.data);
+              showTemporaryMessage('YouTube playback error', 3000);
+            }
+          }
+        });
+      });
+    }
+
+    // Track if YouTube video has actually started playing (to prevent false ENDED states)
+    // ytVideoHasPlayed is defined at the top of the script
+    // let ytVideoHasPlayed = false;
+
+    // Handle YouTube player state changes
+    function handleYouTubeStateChange(event) {
+      if (!ytPlayerReady) return;
+
+      // YT.PlayerState: UNSTARTED=-1, ENDED=0, PLAYING=1, PAUSED=2, BUFFERING=3, CUED=5
+      switch (event.data) {
+        case YT.PlayerState.PLAYING:
+          ytVideoHasPlayed = true; // Video has started playing at least once
+          statusEl.classList.remove('visible');
+          sendYouTubeControlEvent();
+          break;
+        case YT.PlayerState.PAUSED:
+          showTemporaryMessage("Paused", 0);
+          sendYouTubeControlEvent();
+          break;
+        case YT.PlayerState.BUFFERING:
+          showTemporaryMessage("Loading...", 0);
+          break;
+        case YT.PlayerState.ENDED:
+          // Only move to next if the video actually played first
+          // This prevents skipping when video is still loading
+          if (ytVideoHasPlayed && currentPlaylist.videos.length > 0) {
+            const nextIndex = (currentPlaylist.currentIndex + 1) % currentPlaylist.videos.length;
+            socket.emit('playlist-next', nextIndex);
+            ytVideoHasPlayed = false; // Reset for next video
+          }
+          break;
+      }
+    }
+
+    // Send control event for YouTube
+    function sendYouTubeControlEvent() {
+      if (!hasInitialSync || !ytPlayer || !ytPlayerReady) return;
+
+      try {
+        const playerState = ytPlayer.getPlayerState();
+        const isPlaying = playerState === YT.PlayerState.PLAYING;
+        const currentTime = ytPlayer.getCurrentTime() || 0;
+
+        socket.emit('control', {
+          isPlaying: isPlaying,
+          currentTime: currentTime,
+          duration: ytPlayer.getDuration() || 0,
+          volume: ytPlayer.getVolume() / 100,
+          currentVideoIndex: currentPlaylist.currentIndex,
+        });
+      } catch (e) {
+        console.log('Error sending YouTube control event:', e);
+      }
+    }
+
+    // Apply sync state to YouTube player
+    function syncYouTubePlayer(state) {
+      if (!ytPlayer || !ytPlayerReady) return;
+
+      try {
+        const playerState = ytPlayer.getPlayerState();
+        const isCurrentlyPlaying = playerState === YT.PlayerState.PLAYING;
+
+        // Sync play/pause
+        if (state.isPlaying && !isCurrentlyPlaying) {
+          ytPlayer.playVideo();
+        } else if (!state.isPlaying && isCurrentlyPlaying) {
+          ytPlayer.pauseVideo();
+          showTemporaryMessage("Paused", 0);
+        }
+
+        // Sync time (with 1 second tolerance)
+        const currentTime = ytPlayer.getCurrentTime() || 0;
+        if (Math.abs(currentTime - state.currentTime) > 1) {
+          ytPlayer.seekTo(state.currentTime, true);
+        }
+      } catch (e) {
+        console.log('Error syncing YouTube player:', e);
+      }
+    }
+
+    // Override the loadCurrentVideo to handle YouTube
+    const originalLoadWithBsl = loadCurrentVideo;
+    loadCurrentVideo = async function () {
+      if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
+        waitingMessage.style.display = 'block';
+        video.style.display = 'none';
+        imageDisplay.style.display = 'none';
+        youtubeContainer.classList.remove('visible');
+        currentMediaIsImage = false;
+        currentMediaIsYouTube = false;
+        return;
+      }
+
+      const currentVideo = currentPlaylist.videos[currentPlaylist.currentIndex];
+      currentVideoInfo = currentVideo;
+
+      // Check if this is a YouTube video
+      if (currentVideo.isYouTube && currentVideo.youtubeId) {
+        currentMediaIsYouTube = true;
+        currentMediaIsImage = false;
+
+        // Hide other media elements
+        video.style.display = 'none';
+        video.pause();
+        imageDisplay.style.display = 'none';
+        waitingMessage.style.display = 'none';
+
+        // Show YouTube container
+        youtubeContainer.classList.add('visible');
+
+        console.log('Loading YouTube video:', currentVideo.youtubeId);
+        showTemporaryMessage('📺 Loading YouTube video...', 2000);
+
+        // Load YouTube API if needed, then initialize player
+        await loadYouTubeAPI();
+        await initYouTubePlayer(currentVideo.youtubeId);
+
+        // Request sync from server
+        socket.emit('request-sync');
+
+        showTemporaryMessage('📺 YouTube - tap to control', 3000);
+        return;
+      }
+
+      // Not YouTube - hide YouTube container
+      currentMediaIsYouTube = false;
+      youtubeContainer.classList.remove('visible');
+
+      // Destroy YouTube player if exists
+      if (ytPlayer) {
+        try {
+          ytPlayer.destroy();
+        } catch (e) { }
+        ytPlayer = null;
+        ytPlayerReady = false;
+      }
+
+      // Call the original function for local videos/images
+      originalLoadWithBsl.call(this);
+    };
+
+    // Modified sync handler to support YouTube
+    const originalSyncHandler = socket._callbacks['$sync'];
+    socket.off('sync');
+    socket.on('sync', (state) => {
+      const now = Date.now();
+      if (now - lastUpdate < 100) return;
+      lastUpdate = now;
+
+      // If we receive a sync and have an active playlist, hide waiting message
+      if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
+        if (waitingMessage.style.display !== 'none') {
+          console.log('Hiding waiting message - active playlist detected');
+          waitingMessage.style.display = 'none';
+          hasInitialSync = true;
+
+          if (currentMediaIsYouTube) {
+            youtubeContainer.classList.add('visible');
+          } else {
+            video.style.display = 'block';
+          }
+        }
+      }
+
+      // Handle YouTube sync
+      if (currentMediaIsYouTube) {
+        syncYouTubePlayer(state);
+        return;
+      }
+
+      // Normal video sync
+      if (state.isPlaying !== !video.paused) {
+        if (state.isPlaying) {
+          video.play().catch(e => {
+            console.log('Playback error:', e);
+            handlePlaybackError(e);
+          });
+        } else {
+          video.pause();
+          showTemporaryMessage("Paused", 0);
+        }
+      }
+
+      if (Math.abs(video.currentTime - state.currentTime) > 0.5) {
+        video.currentTime = state.currentTime;
+      }
+
+      if (state.audioTrack !== undefined && state.audioTrack !== currentAudioTrack) {
+        currentAudioTrack = state.audioTrack;
+        if (currentVideoInfo && currentVideoInfo.tracks && currentVideoInfo.tracks.audio) {
+          const audioTrack = currentVideoInfo.tracks.audio[currentAudioTrack];
+          if (audioTrack) {
+            showTrackInfo(`Audio: ${audioTrack.language}${audioTrack.title ? ` - ${audioTrack.title}` : ''}`);
+          }
+        }
+      }
+
+      if (state.subtitleTrack !== undefined && state.subtitleTrack !== currentSubtitleTrack) {
+        currentSubtitleTrack = state.subtitleTrack;
+        if (currentSubtitleTrack >= 0 && currentVideoInfo && currentVideoInfo.tracks && currentVideoInfo.tracks.subtitles) {
+          const subtitleTrack = currentVideoInfo.tracks.subtitles[currentSubtitleTrack];
+          if (subtitleTrack) {
+            showTrackInfo(`Subtitles: ${subtitleTrack.language}${subtitleTrack.title ? ` - ${subtitleTrack.title}` : ''}`);
+          }
+        } else if (currentSubtitleTrack < 0) {
+          showTrackInfo("Subtitles: Off");
+        }
+      }
+    });
+
+    // Click handler for YouTube overlay (use sync-player controls)
+    youtubeClickOverlay.addEventListener('click', (e) => {
+      if (!currentMediaIsYouTube || !ytPlayer || !ytPlayerReady) return;
+
+      const w = window.innerWidth;
+      const x = e.clientX;
+      const center = w / 2;
+      const edgeZone = 87;
+      const pauseZone = 75;
+
+      try {
+        if (x <= edgeZone) {
+          // Rewind
+          const currentTime = ytPlayer.getCurrentTime() || 0;
+          ytPlayer.seekTo(Math.max(0, currentTime - skipSeconds), true);
+          showTemporaryMessage(`↩ Rewind ${skipSeconds}s`);
+          sendYouTubeControlEvent();
+        } else if (x >= w - edgeZone) {
+          // Skip forward
+          const currentTime = ytPlayer.getCurrentTime() || 0;
+          const duration = ytPlayer.getDuration() || 0;
+          ytPlayer.seekTo(Math.min(duration, currentTime + skipSeconds), true);
+          showTemporaryMessage(`↪ Skip ${skipSeconds}s`);
+          sendYouTubeControlEvent();
+        } else if (x >= center - pauseZone && x <= center + pauseZone) {
+          // Play/Pause
+          const playerState = ytPlayer.getPlayerState();
+          if (playerState === YT.PlayerState.PLAYING) {
+            ytPlayer.pauseVideo();
+          } else {
+            ytPlayer.playVideo();
+          }
+        } else if (x < center) {
+          // Volume down (left side between edge and center)
+          const currentVol = ytPlayer.getVolume() || 0;
+          const newVol = Math.max(0, currentVol - (volumeStep * 100));
+          ytPlayer.setVolume(newVol);
+          showTemporaryMessage(`Volume: ${Math.round(newVol)}%`);
+        } else {
+          // Volume up (right side between edge and center)
+          const currentVol = ytPlayer.getVolume() || 0;
+          const newVol = Math.min(100, currentVol + (volumeStep * 100));
+          ytPlayer.setVolume(newVol);
+          showTemporaryMessage(`Volume: ${Math.round(newVol)}%`);
+        }
+      } catch (e) {
+        console.log('Error handling YouTube click:', e);
+      }
+    });
   </script>
 </body>
 
