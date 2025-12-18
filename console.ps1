@@ -1,5 +1,5 @@
 # Sync-Player PowerShell Startup Script
-# Equivalent to start.bat with improved error handling and cleaner syntax
+# Equivalent to legacylauncher.bat with improved error handling and cleaner syntax, legacy launcher was last updated in 17.12.2025
 
 # Re-launch with bypass if not already bypassed (fixes right-click "Run with PowerShell")
 if ($ExecutionContext.SessionState.LanguageMode -eq 'ConstrainedLanguage' -or 
@@ -61,18 +61,26 @@ $nodeInstalled = Get-Command node -ErrorAction SilentlyContinue
 if (-not $nodeInstalled) {
     Write-Host ""
     Write-Status "ERROR" "Node.js is not installed or not in PATH!"
-    Write-Host "Please download and install Node.js from:"
-    Write-Host "https://nodejs.org/" -ForegroundColor Cyan
-    Write-Host "Press Enter to install Node.js via winget."
+    Write-Host "Press Enter to install Node.js via winget, or Ctrl+C to exit and install manually."
+    Write-Host "Manual download: https://nodejs.org/en/download" -ForegroundColor Cyan
     Read-Host
     
     try {
         winget install --id OpenJS.NodeJS.LTS -e
+        if ($LASTEXITCODE -ne 0) {
+            throw "winget install failed with exit code $LASTEXITCODE"
+        }
+        Write-Status "SUCCESS" "Node.js installed. Please restart this script."
+        Read-Host "Press Enter to exit"
+        exit 0
     }
     catch {
-        Write-Status "ERROR" "Failed to install Node.js. Please install manually."
+        Write-Status "ERROR" "Failed to install Node.js via winget."
+        Write-Host "Please install manually from: https://nodejs.org/en/download" -ForegroundColor Cyan
+        Write-Host "After installing, restart this script."
+        Read-Host "Press Enter to exit"
+        exit 1
     }
-    Write-Host ""
 }
 
 # =================================================================
@@ -128,9 +136,9 @@ admin_fingerprint_lock: false
 # =================================================================
 # Create folders if needed
 # =================================================================
-if (-not (Test-Path "videos")) {
-    New-Item -ItemType Directory -Path "videos" | Out-Null
-    Write-Host "Created videos directory"
+if (-not (Test-Path "media")) {
+    New-Item -ItemType Directory -Path "media" | Out-Null
+    Write-Host "Created media directory"
 }
 
 # =================================================================
@@ -182,10 +190,13 @@ if ($MISSING_DEPS) {
     Write-Host "Installing Node.js dependencies..."
     
     try {
-        $null = & npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0 2>&1
+        Write-Host "Running: npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0" -ForegroundColor Gray
+        Write-Host ""
+        cmd /c "npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
         if ($LASTEXITCODE -ne 0) {
             throw "npm install failed with exit code $LASTEXITCODE"
         }
+        Write-Host ""
         Write-Status "SUCCESS" "Dependencies installed successfully."
         $MISSING_DEPS = $false
         if (Test-Path $RETRY_FILE) { Remove-Item $RETRY_FILE -Force }
@@ -193,7 +204,10 @@ if ($MISSING_DEPS) {
     catch {
         Write-Status "ERROR" "Failed to install dependencies."
         Write-Host "Please check your internet connection and try again."
-        Write-Host "You can also try running: npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
+        Write-Host "You can also try running any one of the following commands in cmd after doing cd (Path to server.js):"
+        Write-Host "npm install"
+        Write-Host "npm install express socket.io helmet"
+        Write-Host "npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
         Write-Host ""
         
         # Auto-retry logic
@@ -216,44 +230,33 @@ if ($MISSING_DEPS) {
     }
 }
 
-# Install FFmpeg if missing
 if ($MISSING_FFMPEG) {
     Write-Host ""
     Write-Status "REQUIRED" "FFmpeg is not installed."
-    Write-Host "FFmpeg is required for proper video processing and MKV support."
+    Write-Host "FFmpeg is required for video thumbnails and MKV support."
     Write-Host ""
-    Write-Host "Press ENTER to download FFmpeg."
+    Write-Host "Press ENTER to install FFmpeg via winget, or Ctrl+C to install manually."
+    Write-Host "Manual download: https://ffmpeg.org/download.html" -ForegroundColor Cyan
     Read-Host
     
     try {
-        winget install ffmpeg
+        winget install --id Gyan.FFmpeg -e
         if ($LASTEXITCODE -ne 0) {
-            throw "winget install failed"
+            throw "winget install failed with exit code $LASTEXITCODE"
         }
+        Write-Status "SUCCESS" "FFmpeg installed successfully."
+        Write-Host "You may need to restart this script for FFmpeg to be detected."
         if (Test-Path $RETRY_FILE) { Remove-Item $RETRY_FILE -Force }
     }
     catch {
-        Write-Status "WARNING" "FFmpeg installation may have failed."
-        Write-Host "MKV files might not work properly without FFmpeg."
+        Write-Status "WARNING" "FFmpeg installation via winget failed."
+        Write-Host "Please install manually from: https://ffmpeg.org/download.html" -ForegroundColor Cyan
+        Write-Host "For Windows, download from: https://www.gyan.dev/ffmpeg/builds/" -ForegroundColor Cyan
+        Write-Host "Make sure to add FFmpeg to your system PATH."
         Write-Host ""
-        
-        # Auto-retry logic for FFmpeg
-        if ($RETRY_COUNT -lt $MAX_RETRIES) {
-            $RETRY_COUNT++
-            $RETRY_COUNT | Out-File -FilePath $RETRY_FILE -Force
-            Write-Host "Retry attempt $RETRY_COUNT of $MAX_RETRIES..."
-            Write-Host "Restarting in 3 seconds..."
-            Start-Sleep -Seconds 3
-            Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`""
-            exit 0
-        }
-        else {
-            Write-Status "WARNING" "Maximum retry attempts reached for FFmpeg."
-            Write-Host "You can continue without FFmpeg, but some features may not work."
-            if (Test-Path $RETRY_FILE) { Remove-Item $RETRY_FILE -Force }
-            Write-Host "Press any key to continue anyway..."
-            Read-Host
-        }
+        Write-Host "You can continue without FFmpeg, but thumbnails and some features won't work."
+        Write-Host "Press Enter to continue anyway..."
+        Read-Host
     }
 }
 
@@ -342,7 +345,7 @@ catch {
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console"
 Write-Host ""
-Write-Host "Sync-Player 1.8.0" -ForegroundColor Cyan
+Write-Host "Sync-Player 1.8.1" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Settings:" -ForegroundColor Yellow
