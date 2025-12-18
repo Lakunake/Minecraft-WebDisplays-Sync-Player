@@ -118,9 +118,9 @@ fi
 # =================================================================
 # Create folders if needed
 # =================================================================
-if [ ! -d "videos" ]; then
-    mkdir -p videos
-    echo "Created videos directory"
+if [ ! -d "media" ]; then
+    mkdir -p media
+    echo "Created media directory"
 fi
 
 # =================================================================
@@ -289,7 +289,7 @@ fi
 # Display server information
 # =================================================================
 echo ""
-echo -e "\033[36mSync-Player 1.8.0\033[0m"
+echo -e "\033[36mSync-Player 1.8.1\033[0m"
 echo -e "\033[36m==========================\033[0m"
 echo ""
 echo -e "\033[33mSettings:\033[0m"
