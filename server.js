@@ -206,7 +206,7 @@ app.use(helmet({
 }));
 
 app.use(express.static(__dirname));
-app.use('/videos', express.static(path.join(__dirname, 'videos')));
+app.use('/media', express.static(path.join(__dirname, 'media')));
 
 const PLAYLIST = {
   videos: [],
@@ -237,7 +237,7 @@ function getCurrentTrackSelections() {
 
 async function getTracksForFile(filename) {
   const safeFilename = path.basename(filename);
-  const filePath = path.join(__dirname, 'videos', safeFilename);
+  const filePath = path.join(__dirname, 'media', safeFilename);
   const tracks = { audio: [], subtitles: [] };
 
   return new Promise((resolve) => {
@@ -285,17 +285,17 @@ app.get('/admin', (req, res) => {
 });
 
 app.get('/api/files', (req, res) => {
-  const videosPath = path.join(__dirname, 'videos');
+  const mediaPath = path.join(__dirname, 'media');
 
-  fs.readdir(videosPath, async (err, files) => {
+  fs.readdir(mediaPath, async (err, files) => {
     if (err) {
-      return res.status(500).json({ error: 'Unable to read videos directory' });
+      return res.status(500).json({ error: 'Unable to read media directory' });
     }
 
     const mediaFiles = [];
     for (const file of files) {
       const ext = path.extname(file).toLowerCase();
-      if (['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm'].includes(ext)) {
+      if (['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm', '.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
         const usesHEVC = ext === '.mkv';
         mediaFiles.push({ filename: file, usesHEVC: usesHEVC });
       }
@@ -352,7 +352,7 @@ function getVideoDuration(videoPath) {
 app.get('/api/thumbnail/:filename', async (req, res) => {
   const filename = req.params.filename;
   const safeFilename = path.basename(filename);
-  const videoPath = path.join(__dirname, 'videos', safeFilename);
+  const videoPath = path.join(__dirname, 'media', safeFilename);
   const thumbnailFilename = safeFilename.replace(/\.[^.]+$/, '.jpg');
   const thumbnailPath = path.join(THUMBNAIL_DIR, thumbnailFilename);
 
@@ -361,9 +361,31 @@ app.get('/api/thumbnail/:filename', async (req, res) => {
     return res.json({ thumbnail: `/thumbnails/${thumbnailFilename}` });
   }
 
-  // Check if video exists
+  // Check if file exists
   if (!fs.existsSync(videoPath)) {
-    return res.status(404).json({ error: 'Video not found' });
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  // Check if this is an audio file (MP3, etc.) - extract embedded cover art
+  const audioExtensions = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'];
+  const isAudioFile = audioExtensions.some(ext => safeFilename.toLowerCase().endsWith(ext));
+
+  if (isAudioFile) {
+    console.log(`${colors.cyan}Extracting cover art from audio file: ${safeFilename}${colors.reset}`);
+
+    // Extract embedded cover art from audio file
+    const coverCommand = `ffmpeg -i "${videoPath}" -an -vcodec copy -y "${thumbnailPath}"`;
+
+    exec(coverCommand, (error) => {
+      if (error) {
+        console.log(`${colors.yellow}No embedded cover art found in: ${safeFilename}${colors.reset}`);
+        // Return a default audio icon or null
+        return res.json({ thumbnail: null, isAudio: true });
+      }
+      console.log(`${colors.green}Extracted cover art from: ${safeFilename}${colors.reset}`);
+      res.json({ thumbnail: `/thumbnails/${thumbnailFilename}`, isAudio: true });
+    });
+    return;
   }
 
   try {
@@ -574,6 +596,29 @@ io.on('connection', (socket) => {
       videoAutoplay: VIDEO_AUTOPLAY,
       adminFingerprintLock: ADMIN_FINGERPRINT_LOCK
     });
+  });
+
+  // Skip to next video in playlist (from admin skip button)
+  socket.on('skip-to-next-video', () => {
+    if (PLAYLIST.videos.length === 0) {
+      console.log('No videos in playlist to skip');
+      return;
+    }
+
+    const nextIndex = (PLAYLIST.currentIndex + 1) % PLAYLIST.videos.length;
+    console.log(`${colors.yellow}Skipping to video ${nextIndex + 1}/${PLAYLIST.videos.length}${colors.reset}`);
+
+    PLAYLIST.currentIndex = nextIndex;
+
+    const currentTracks = getCurrentTrackSelections();
+    videoState.audioTrack = currentTracks.audioTrack;
+    videoState.subtitleTrack = currentTracks.subtitleTrack;
+    videoState.currentTime = 0;
+    videoState.lastUpdate = Date.now();
+
+    io.emit('sync', videoState);
+    io.emit('playlist-position', nextIndex);
+    io.emit('playlist-update', PLAYLIST);
   });
 
   // Move to next video in playlist
