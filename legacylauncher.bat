@@ -91,9 +91,9 @@ if not exist config.txt (
 :: =================================================================
 :: Create folders if needed
 :: =================================================================
-if not exist videos (
-    mkdir videos
-    echo Created videos directory
+if not exist media (
+    mkdir media
+    echo Created media directory
 )
 
 :: =================================================================
@@ -293,7 +293,7 @@ if "%LOCAL_IP%"=="" set LOCAL_IP=localhost
 :: =================================================================
 title Admin Console
 echo.
-echo Sync-Player 1.8.0
+echo Sync-Player 1.8.1
 echo ==========================
 echo.
 echo Settings:
