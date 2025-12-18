@@ -408,6 +408,7 @@
 
     .playlist-item .thumbnail-bg {
       position: absolute;
+      /* Take a strip from the middle - DO NOT CHANGE */
       top: 0;
       left: 0;
       right: 0;
@@ -429,6 +430,11 @@
       opacity: 0.5;
       transition: filter 0.25s ease-out;
       /* Fast blur-in when deselected */
+    }
+
+    .playlist-item .thumbnail-bg.themed {
+      opacity: 1;
+      filter: none;
     }
 
     .playlist-item>*:not(.thumbnail-bg) {
@@ -528,9 +534,69 @@
       color: #2196F3;
     }
 
+    .badge-youtube {
+      background: rgba(255, 0, 0, 0.3);
+      color: #FF0000;
+    }
+
     .badge-playing {
       background: rgba(156, 39, 176, 0.3);
       color: #9C27B0;
+    }
+
+    .badge-image {
+      background: rgba(76, 175, 80, 0.3);
+      color: #4CAF50;
+    }
+
+    .badge-vimeo {
+      background: rgba(0, 173, 239, 0.3);
+      color: #00ADEF;
+    }
+
+    .badge-twitch {
+      background: rgba(145, 70, 255, 0.3);
+      color: #9146FF;
+    }
+
+    .badge-dailymotion {
+      background: rgba(0, 100, 178, 0.3);
+      color: #0064B2;
+    }
+
+    .badge-soundcloud {
+      background: rgba(255, 85, 0, 0.3);
+      color: #FF5500;
+    }
+
+    .badge-streamable {
+      background: rgba(13, 149, 229, 0.3);
+      color: #0D95E5;
+    }
+
+    .badge-gdrive {
+      background: rgba(66, 133, 244, 0.3);
+      color: #4285F4;
+    }
+
+    .badge-kick {
+      background: rgba(83, 252, 24, 0.3);
+      color: #53FC18;
+    }
+
+    .badge-url {
+      background: rgba(128, 128, 128, 0.3);
+      color: #808080;
+    }
+
+    .badge-audio {
+      background: rgba(255, 152, 0, 0.3);
+      color: #FF9800;
+    }
+
+    .badge-iframe {
+      background: rgba(255, 193, 7, 0.3);
+      color: #FFC107;
     }
 
     .move-buttons {
@@ -1072,6 +1138,71 @@
       display: none !important;
     }
 
+    /* YouTube Modal Styles */
+    .youtube-input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #e0e0e0;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    .youtube-input:focus {
+      outline: none;
+      border-color: #f44336;
+      box-shadow: 0 0 10px rgba(244, 67, 54, 0.2);
+    }
+
+    .youtube-preview {
+      display: none;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .youtube-preview.visible {
+      display: block;
+    }
+
+    .youtube-preview img {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+    }
+
+    .youtube-preview-info {
+      padding: 12px 15px;
+    }
+
+    .youtube-preview-title {
+      font-size: 14px;
+      color: #fff;
+      margin-bottom: 5px;
+    }
+
+    .youtube-preview-channel {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .youtube-error {
+      color: #f44336;
+      font-size: 13px;
+      padding: 10px;
+      background: rgba(244, 67, 54, 0.1);
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    .youtube-error.visible {
+      display: block;
+    }
+
     /* Quick Controls - In Sidebar */
     .sidebar-spacer {
       flex: 1;
@@ -1356,7 +1487,8 @@
           <div class="panel glass-strong">
             <div class="panel-header">
               <h2>📂 Available Files</h2>
-              <span style="visibility: hidden;" class="btn btn-sm btn-secondary">Spacer</span>
+              <button class="btn btn-sm btn-secondary" id="external-btn" onclick="openExternalModal()">🌐
+                External</button>
             </div>
             <div class="file-list" id="file-browser">
               <div class="empty-message">Loading files...</div>
@@ -1423,8 +1555,9 @@
             <button class="control-btn play" id="play-btn" style="width: 100%;">▶ Play</button>
             <button class="control-btn pause" id="pause-btn" style="width: 100%;">⏸ Pause</button>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
               <button class="control-btn skip" id="skip-back-btn">↩ <span id="skip-back-text">5s</span></button>
+              <button class="control-btn skip" id="skip-media-btn" title="Skip to next/previous media">⏭ Skip</button>
               <button class="control-btn skip" id="skip-forward-btn"><span id="skip-forward-text">5s</span> ↪</button>
             </div>
 
@@ -1498,6 +1631,44 @@
         </div>
       </div>
     </div>
+
+    <!-- External Content Modal -->
+    <div id="external-modal" class="modal">
+      <div class="modal-content" style="max-width: 550px;">
+        <div class="modal-header">
+          <h2>🌐 Add External Content</h2>
+          <button class="modal-close" id="external-modal-close">✕ Close</button>
+        </div>
+        <div id="external-modal-body">
+          <input type="text" id="external-url-input" class="youtube-input" placeholder="Paste URL here...">
+          <div id="external-error" class="youtube-error"></div>
+          <div id="external-preview" class="youtube-preview">
+            <img id="external-thumb" alt="Content thumbnail">
+            <div class="youtube-preview-info">
+              <p class="youtube-preview-title" id="external-title"></p>
+              <p class="youtube-preview-channel" id="external-platform"></p>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="external-add-btn" style="width: 100%;" disabled>+ Add to Playlist</button>
+
+          <div
+            style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 12px;">
+            <p style="color: #888; margin-bottom: 8px;"><strong>Supported Platforms:</strong></p>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span class="badge badge-youtube">YouTube</span>
+              <span class="badge badge-vimeo">Vimeo</span>
+              <span class="badge badge-dailymotion">Dailymotion</span>
+              <span class="badge badge-twitch">Twitch</span>
+              <span class="badge badge-soundcloud">SoundCloud</span>
+              <span class="badge badge-streamable">Streamable</span>
+              <span class="badge badge-gdrive">Google Drive</span>
+              <span class="badge badge-kick">Kick</span>
+              <span class="badge badge-url">Direct URL</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div> <!-- Close admin-ui -->
 
   <script src="/socket.io/socket.io.js"></script>
@@ -1507,6 +1678,64 @@
     let mainVideoIndex = -1;
     let skipSeconds = 5;
     const thumbnailCache = {}; // Cache for loaded thumbnails
+
+    // Platform Themes (Colors & Icons)
+    // Platform Themes (Colors & Icons)
+    const PLATFORM_THEMES = {
+      'youtube': { color: '#C62828', icon: '🔴', textColor: '#FFFFFF' }, // Red (Darker)
+      'vimeo': { color: '#0277BD', icon: '🔵', textColor: '#FFFFFF' },   // Blue (Darker)
+      'dailymotion': { color: '#1565C0', icon: '⚫', textColor: '#FFFFFF' }, // Dark Blue
+      'twitch': { color: '#673AB7', icon: '💜', textColor: '#FFFFFF' },  // Purple (Darker)
+      'soundcloud': { color: '#E65100', icon: '🟠', textColor: '#FFFFFF' }, // Orange (Darker)
+      'streamable': { color: '#0288D1', icon: '📺', textColor: '#FFFFFF' }, // Light Blue (Darker)
+      'gdrive': { color: '#2E7D32', icon: '📁', textColor: '#FFFFFF' },  // Green (Darker)
+      'kick': { color: '#388E3C', icon: '🟩', textColor: '#FFFFFF' },    // Forest Green (Instead of Neon)
+      'directUrl': { color: '#455A64', icon: '🔗', textColor: '#FFFFFF' }, // Blue Grey (Darker)
+      'local': { color: '#1565C0', icon: '🎬', textColor: '#FFFFFF' },   // Default Blue (Darker)
+      'audio': { color: '#EF6C00', icon: '🎵', textColor: '#FFFFFF' },   // Deep Orange
+      'image': { color: '#2E7D32', icon: '🖼️', textColor: '#FFFFFF' }   // Green (Darker)
+    };
+
+    // Helper to get platform key from video object
+    function getPlatformKey(video) {
+      if (video.isYouTube) return 'youtube';
+
+      // Check file extensions first
+      const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+      if (imageExtensions.some(ext => video.filename.toLowerCase().endsWith(ext))) return 'image';
+
+      const audioExtensions = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'];
+      if (audioExtensions.some(ext => video.filename.toLowerCase().endsWith(ext))) return 'audio';
+
+      // Use platform property if available (from external content)
+      if (video.platform) return video.platform;
+
+      // Fallback based on badge/name if platform prop missing
+      if (video.platformName) {
+        const name = video.platformName.toLowerCase().replace(/\s/g, '');
+        if (PLATFORM_THEMES[name]) return name;
+        if (name.includes('google')) return 'gdrive';
+        if (name.includes('url')) return 'directUrl';
+      }
+
+      return 'local';
+    }
+
+    // Apply platform theme to a thumbnail background element
+    function applyPlatformTheme(element, video) {
+      const key = getPlatformKey(video);
+      const theme = PLATFORM_THEMES[key] || PLATFORM_THEMES['local'];
+
+      // Set background color 
+      element.style.backgroundColor = theme.color;
+      element.style.backgroundImage = `linear-gradient(135deg, ${theme.color}dd, ${theme.color}66)`;
+
+      // Add themed class for visibility
+      element.classList.add('themed');
+
+      // Return theme info including text color
+      return { icon: theme.icon, textColor: theme.textColor || '#FFFFFF' };
+    }
 
     // Generate admin fingerprint for device identification
     function generateAdminFingerprint() {
@@ -1855,11 +2084,55 @@
         thumbnailBg.className = 'thumbnail-bg';
         playlistItem.appendChild(thumbnailBg);
 
-        // Check if thumbnail is already cached
-        if (thumbnailCache[item.filename]) {
+        // Apply platform theme
+        const themeInfo = applyPlatformTheme(thumbnailBg, item);
+        playlistItem.style.color = themeInfo.textColor;
+
+        // Remove icon fallback (user requested no icons for unfetchable)
+
+        // Check if this is an image file - use itself as thumbnail
+        const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+        const isImage = imageExtensions.some(ext => item.filename.toLowerCase().endsWith(ext));
+
+        if (isImage) {
+          // Image files are their own thumbnails
+          thumbnailBg.style.backgroundImage = `url('/media/${encodeURIComponent(item.filename)}')`;
+          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.remove('themed'); // Remove solid color if image exists
+          playlistItem.style.color = ''; // Reset text color
+
+
+          if (index === mainVideoIndex) {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                thumbnailBg.classList.add('cleared');
+              });
+            });
+          }
+        }
+        // Handle YouTube entries
+        else if (item.isYouTube && item.thumbnail) {
+          // YouTube videos have thumbnail URL pre-fetched
+          thumbnailBg.style.backgroundImage = `url('${item.thumbnail}')`;
+          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.remove('themed');
+          playlistItem.style.color = '';
+
+          if (index === mainVideoIndex) {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                thumbnailBg.classList.add('cleared');
+              });
+            });
+          }
+        }
+        // Check if thumbnail is already cached (local video files)
+        else if (thumbnailCache[item.filename]) {
           thumbnailBg.style.backgroundImage = `url('${thumbnailCache[item.filename]}')`;
           // Use 'cached' class - appears instantly with opacity 0.5
           thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.remove('themed');
+          playlistItem.style.color = '';
 
           // If this is the main video, animate the blur removal
           if (index === mainVideoIndex) {
@@ -1869,15 +2142,16 @@
               });
             });
           }
-        } else {
-          // Fetch and set thumbnail
+        } else if (!item.isYouTube) {
+          // Fetch and set thumbnail (only for local files)
           fetch(`/api/thumbnail/${encodeURIComponent(item.filename)}`)
             .then(response => response.json())
             .then(data => {
               if (data.thumbnail) {
                 thumbnailCache[item.filename] = data.thumbnail;
                 thumbnailBg.style.backgroundImage = `url('${data.thumbnail}')`;
-
+                thumbnailBg.classList.remove('themed');
+                playlistItem.style.color = '';
                 // Trigger transition after image loads
                 const img = new Image();
                 img.onload = () => {
@@ -1908,6 +2182,36 @@
         // Badges
         const badges = document.createElement('div');
         badges.className = 'playlist-badges';
+
+        // Add platform badge for external content
+        if (item.isExternal || item.isYouTube) {
+          const platformBadge = document.createElement('span');
+          const badgeClass = item.badge || 'badge-youtube';
+          const platformName = item.platformName || 'YouTube';
+          const syncIcon = item.syncLevel === 'full' ? '' : item.syncLevel === 'limited' ? '⚠️ ' : '📺 ';
+          platformBadge.className = `badge ${badgeClass}`;
+          platformBadge.textContent = `${syncIcon}${platformName}`;
+          badges.appendChild(platformBadge);
+        }
+
+        // Add Image badge if this is an image file
+        if (isImage) {
+          const imgBadge = document.createElement('span');
+          imgBadge.className = 'badge badge-image';
+          imgBadge.textContent = 'Image';
+          badges.appendChild(imgBadge);
+        }
+
+        // Add Audio badge if this is an audio file
+        const audioExtensions = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'];
+        const isAudio = audioExtensions.some(ext => item.filename.toLowerCase().endsWith(ext));
+        if (isAudio) {
+          const audioBadge = document.createElement('span');
+          audioBadge.className = 'badge badge-audio';
+          audioBadge.textContent = 'Audio';
+          badges.appendChild(audioBadge);
+        }
+
         if (index === mainVideoIndex) {
           const badge = document.createElement('span');
           badge.className = 'badge badge-main';
@@ -2157,6 +2461,93 @@
 
         const badges = document.createElement('div');
         badges.className = 'playlist-badges';
+
+        // Add platform badge for external content
+        if (video.isExternal || video.isYouTube) {
+          const platformBadge = document.createElement('span');
+          const badgeClass = video.badge || 'badge-youtube';
+          const platformName = video.platformName || 'YouTube';
+          const syncIcon = video.syncLevel === 'full' ? '✅' : video.syncLevel === 'limited' ? '⚠️' : '📺';
+          platformBadge.className = `badge ${badgeClass}`;
+          platformBadge.textContent = `${syncIcon} ${platformName}`;
+          badges.appendChild(platformBadge);
+        }
+
+        // Add thumbnail background
+        const thumbnailBg = document.createElement('div');
+        thumbnailBg.className = 'thumbnail-bg';
+        item.appendChild(thumbnailBg);
+
+        // Apply platform theme
+        const platformIcon = applyPlatformTheme(thumbnailBg, video);
+
+        // Add centered icon fallback
+        const iconFallback = document.createElement('div');
+        iconFallback.className = 'thumbnail-icon-fallback';
+        iconFallback.textContent = platformIcon;
+        iconFallback.style.position = 'absolute';
+        iconFallback.style.top = '50%';
+        iconFallback.style.left = '50%';
+        iconFallback.style.transform = 'translate(-50%, -50%)';
+        iconFallback.style.fontSize = '24px';
+        iconFallback.style.zIndex = '1';
+        thumbnailBg.appendChild(iconFallback);
+
+        // Check if this is an image file
+        const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+        const isImage = imageExtensions.some(ext => video.filename.toLowerCase().endsWith(ext));
+
+        if (isImage) {
+          thumbnailBg.style.backgroundImage = `url('/media/${encodeURIComponent(video.filename)}')`;
+          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.remove('themed');
+          item.style.color = '';
+        }
+        else if (video.isYouTube && video.thumbnail) {
+          thumbnailBg.style.backgroundImage = `url('${video.thumbnail}')`;
+          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.remove('themed');
+          item.style.color = '';
+        }
+        else if (thumbnailCache[video.filename]) {
+          thumbnailBg.style.backgroundImage = `url('${thumbnailCache[video.filename]}')`;
+          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.remove('themed');
+          item.style.color = '';
+        }
+        else if (!video.isYouTube) {
+          // Fetch thumbnail/cover art
+          fetch(`/api/thumbnail/${encodeURIComponent(video.filename)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.thumbnail) {
+                thumbnailCache[video.filename] = data.thumbnail;
+                thumbnailBg.style.backgroundImage = `url('${data.thumbnail}')`;
+                thumbnailBg.classList.add('loaded');
+                thumbnailBg.classList.remove('themed');
+                item.style.color = '';
+              }
+            })
+            .catch(() => { });
+        }
+
+        if (isImage) {
+          const imgBadge = document.createElement('span');
+          imgBadge.className = 'badge badge-image';
+          imgBadge.textContent = '🖼️ Image';
+          badges.appendChild(imgBadge);
+        }
+
+        // Add Audio badge if this is an audio file
+        const audioExtensions = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'];
+        const isAudio = audioExtensions.some(ext => video.filename.toLowerCase().endsWith(ext));
+        if (isAudio) {
+          const audioBadge = document.createElement('span');
+          audioBadge.className = 'badge badge-audio';
+          audioBadge.textContent = '🎵 Audio';
+          badges.appendChild(audioBadge);
+        }
+
         if (index === serverPlaylist.mainVideoIndex) {
           const badge = document.createElement('span');
           badge.className = 'badge badge-main';
@@ -2210,7 +2601,10 @@
         // Reset thumbnail
         if (thumbnailEl) {
           thumbnailEl.style.backgroundImage = '';
-          if (thumbnailIcon) thumbnailIcon.style.display = '';
+          if (thumbnailIcon) {
+            thumbnailIcon.style.display = 'none'; // Default hidden
+            thumbnailIcon.textContent = '';
+          }
         }
         return;
       }
@@ -2219,8 +2613,40 @@
       document.getElementById('current-video-name').textContent = videoInfo.filename;
       document.getElementById('current-video-status').textContent = `Video ${currentServerIndex + 1} of ${serverPlaylist.videos.length}`;
 
-      // Fetch and display thumbnail
-      fetchThumbnail(videoInfo.filename);
+      // Apply platform theme
+      const platformInfo = applyPlatformTheme(thumbnailEl, videoInfo);
+      // Removed icon as per user request
+      if (thumbnailIcon) {
+        thumbnailIcon.style.display = 'none';
+      }
+
+      // Check if this is an image file
+      const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+      const isImage = imageExtensions.some(ext => videoInfo.filename.toLowerCase().endsWith(ext));
+
+      if (isImage) {
+        // Image files are their own thumbnails
+        thumbnailEl.style.backgroundImage = `url('/media/${encodeURIComponent(videoInfo.filename)}')`;
+        thumbnailEl.style.backgroundSize = 'cover';
+        thumbnailEl.style.backgroundPosition = 'center';
+        if (thumbnailIcon) thumbnailIcon.style.display = 'none';
+        currentThumbnailFilename = videoInfo.filename; // Prevent refetch
+      }
+      // Handle YouTube videos - use pre-fetched thumbnail
+      else if (videoInfo.isYouTube && videoInfo.thumbnail) {
+        thumbnailEl.style.backgroundImage = `url('${videoInfo.thumbnail}')`;
+        thumbnailEl.style.backgroundSize = 'cover';
+        thumbnailEl.style.backgroundPosition = 'center';
+        if (thumbnailIcon) thumbnailIcon.style.display = 'none';
+        currentThumbnailFilename = videoInfo.youtubeId; // Prevent refetch
+      } else {
+        // Local video - fetch thumbnail from server
+        // Check if audio to show better default icon
+        // const isAudio = ... (Already handled by applyPlatformTheme)
+        // if (thumbnailIcon) thumbnailIcon.textContent = ... (Already set)
+
+        fetchThumbnail(videoInfo.filename);
+      }
 
       // Audio tracks
       const audioTracks = (videoInfo.tracks && videoInfo.tracks.audio) ? videoInfo.tracks.audio : [];
@@ -2268,6 +2694,10 @@
       document.getElementById('pause-btn').addEventListener('click', pauseVideo);
       document.getElementById('skip-back-btn').addEventListener('click', skipBack);
       document.getElementById('skip-forward-btn').addEventListener('click', skipForward);
+      document.getElementById('skip-media-btn').addEventListener('click', () => {
+        socket.emit('skip-to-next-video');
+        showStatus('Skipping to next media...', 'info');
+      });
       document.getElementById('seek-btn').addEventListener('click', seekTo);
 
       // Get current time button
@@ -2430,6 +2860,56 @@
       renderClientsModal(clients);
     });
 
+    // Update remote control availability based on sync level
+    function updateControlAvailability() {
+      if (!serverPlaylist || !serverPlaylist.videos || currentServerIndex < 0) return;
+
+      const video = serverPlaylist.videos[currentServerIndex];
+      const syncLevel = video.syncLevel || 'full'; // Default to full for legacy/youtube/local
+
+      const playBtn = document.getElementById('play-btn');
+      const pauseBtn = document.getElementById('pause-btn');
+      const skipBackBtn = document.getElementById('skip-back-btn');
+      const skipForwardBtn = document.getElementById('skip-forward-btn');
+      const seekBtn = document.getElementById('seek-btn');
+      const seekInput = document.getElementById('seek-time');
+
+      // Controls to manage
+      const controls = [playBtn, pauseBtn, skipBackBtn, skipForwardBtn, seekBtn, seekInput];
+
+      // Reset all to enabled
+      controls.forEach(el => {
+        if (el) {
+          el.disabled = false;
+          el.style.opacity = '1';
+          el.style.cursor = 'pointer';
+          el.title = '';
+        }
+      });
+
+      if (syncLevel === 'limited') {
+        // Limited: No seeking or skip seconds
+        [seekBtn, seekInput, skipBackBtn, skipForwardBtn].forEach(el => {
+          if (el) {
+            el.disabled = true;
+            el.style.opacity = '0.5';
+            el.style.cursor = 'not-allowed';
+            el.title = 'Not available for this platform';
+          }
+        });
+      } else if (syncLevel === 'autoplay') {
+        // Autoplay: No controls except playlist navigation
+        controls.forEach(el => {
+          if (el) {
+            el.disabled = true;
+            el.style.opacity = '0.5';
+            el.style.cursor = 'not-allowed';
+            el.title = 'Autoplay only - controls disabled';
+          }
+        });
+      }
+    }
+
     // Socket handlers
     socket.on('config', (config) => {
       skipSeconds = config.skipSeconds || 5;
@@ -2442,6 +2922,7 @@
       currentServerIndex = playlistObj.currentIndex;
       renderRemotePlaylistSidebar();
       renderRemoteTrackControls();
+      updateControlAvailability();
 
       // Sync server playlist to media tab if we have videos
       if (playlistObj.videos && playlistObj.videos.length > 0) {
@@ -2460,6 +2941,7 @@
       currentServerIndex = index;
       renderRemotePlaylistSidebar();
       renderRemoteTrackControls();
+      updateControlAvailability();
     });
 
     socket.on('track-change', (data) => {
@@ -2665,6 +3147,282 @@
 
     window.handleManualMatch = handleManualMatch;
     window.setClientName = setClientName;
+
+    // ==================== External Content Modal Functions ====================
+
+    let currentExternalData = null;
+
+    // Platform detection patterns
+    const PLATFORM_PATTERNS = {
+      youtube: {
+        patterns: [
+          /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
+          /^([a-zA-Z0-9_-]{11})$/
+        ],
+        name: 'YouTube',
+        badge: 'badge-youtube',
+        syncLevel: 'full'
+      },
+      vimeo: {
+        patterns: [/vimeo\.com\/(\d+)/],
+        name: 'Vimeo',
+        badge: 'badge-vimeo',
+        syncLevel: 'full'
+      },
+      dailymotion: {
+        patterns: [/dailymotion\.com\/video\/([a-zA-Z0-9]+)/],
+        name: 'Dailymotion',
+        badge: 'badge-dailymotion',
+        syncLevel: 'full'
+      },
+      twitch: {
+        patterns: [
+          /clips\.twitch\.tv\/([a-zA-Z0-9_-]+)/,
+          /twitch\.tv\/videos\/(\d+)/,
+          /twitch\.tv\/([a-zA-Z0-9_]+)$/
+        ],
+        name: 'Twitch',
+        badge: 'badge-twitch',
+        syncLevel: 'limited'
+      },
+      soundcloud: {
+        patterns: [/soundcloud\.com\/([^\/]+\/[^\/]+)/],
+        name: 'SoundCloud',
+        badge: 'badge-soundcloud',
+        syncLevel: 'limited'
+      },
+      streamable: {
+        patterns: [/streamable\.com\/([a-zA-Z0-9]+)/],
+        name: 'Streamable',
+        badge: 'badge-streamable',
+        syncLevel: 'autoplay'
+      },
+      gdrive: {
+        patterns: [/drive\.google\.com.*\/d\/([^\/]+)/],
+        name: 'Google Drive',
+        badge: 'badge-gdrive',
+        syncLevel: 'autoplay'
+      },
+      kick: {
+        patterns: [/kick\.com\/([a-zA-Z0-9_]+)/],
+        name: 'Kick',
+        badge: 'badge-kick',
+        syncLevel: 'autoplay'
+      },
+      directUrl: {
+        patterns: [/\.(mp4|webm|m3u8|ogg)(\?.*)?$/i],
+        name: 'Direct URL',
+        badge: 'badge-url',
+        syncLevel: 'full'
+      }
+    };
+
+    // Detect platform from URL
+    function detectPlatform(url) {
+      for (const [platform, config] of Object.entries(PLATFORM_PATTERNS)) {
+        for (const pattern of config.patterns) {
+          const match = url.match(pattern);
+          if (match) {
+            return { platform, id: match[1], config };
+          }
+        }
+      }
+      return null;
+    }
+
+    // Fetch content info via oEmbed or other methods
+    async function fetchExternalInfo(platform, id, url) {
+      let oembedUrl = null;
+      let thumbnail = null;
+      let title = 'External Content';
+      let author = platform;
+
+      try {
+        switch (platform) {
+          case 'youtube':
+            oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}&format=json`;
+            thumbnail = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+            break;
+          case 'vimeo':
+            oembedUrl = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(`https://vimeo.com/${id}`)}`;
+            break;
+          case 'dailymotion':
+            oembedUrl = `https://www.dailymotion.com/services/oembed?url=${encodeURIComponent(`https://www.dailymotion.com/video/${id}`)}&format=json`;
+            break;
+          case 'soundcloud':
+            oembedUrl = `https://soundcloud.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+            break;
+          case 'streamable':
+            oembedUrl = `https://api.streamable.com/oembed.json?url=${encodeURIComponent(`https://streamable.com/${id}`)}`;
+            break;
+          case 'twitch':
+            title = `Twitch: ${id}`;
+            thumbnail = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${id}-320x180.jpg`;
+            return { title, author: 'Twitch', thumbnail };
+          case 'gdrive':
+            title = `Google Drive Video`;
+            thumbnail = `https://drive.google.com/thumbnail?id=${id}&sz=w320`;
+            return { title, author: 'Google Drive', thumbnail };
+          case 'kick':
+            title = `Kick: ${id}`;
+            return { title, author: 'Kick', thumbnail: null };
+          case 'directUrl':
+            title = url.split('/').pop().split('?')[0] || 'Video';
+            return { title, author: 'Direct URL', thumbnail: null };
+        }
+
+        if (oembedUrl) {
+          const response = await fetch(oembedUrl);
+          if (response.ok) {
+            const data = await response.json();
+            title = data.title || title;
+            author = data.author_name || data.provider_name || author;
+            thumbnail = data.thumbnail_url || thumbnail;
+          }
+        }
+      } catch (error) {
+        console.log('Could not fetch oEmbed:', error);
+      }
+
+      return { title, author, thumbnail };
+    }
+
+    // Open External modal
+    function openExternalModal() {
+      const modal = document.getElementById('external-modal');
+      modal.classList.add('visible');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          modal.classList.add('animate');
+        });
+      });
+
+      // Reset modal state
+      document.getElementById('external-url-input').value = '';
+      document.getElementById('external-preview').classList.remove('visible');
+      document.getElementById('external-error').classList.remove('visible');
+      document.getElementById('external-add-btn').disabled = true;
+      currentExternalData = null;
+
+      setTimeout(() => document.getElementById('external-url-input').focus(), 100);
+    }
+
+    // Close External modal
+    function closeExternalModal() {
+      const modal = document.getElementById('external-modal');
+      modal.classList.remove('animate');
+      setTimeout(() => modal.classList.remove('visible'), 300);
+    }
+
+    // Handle URL input
+    async function handleExternalUrlInput(url) {
+      const preview = document.getElementById('external-preview');
+      const errorDiv = document.getElementById('external-error');
+      const addBtn = document.getElementById('external-add-btn');
+
+      preview.classList.remove('visible');
+      errorDiv.classList.remove('visible');
+      addBtn.disabled = true;
+      currentExternalData = null;
+
+      if (!url.trim()) return;
+
+      const detected = detectPlatform(url.trim());
+      if (!detected) {
+        errorDiv.textContent = 'Unsupported URL. See supported platforms below.';
+        errorDiv.classList.add('visible');
+        return;
+      }
+
+      try {
+        const info = await fetchExternalInfo(detected.platform, detected.id, url.trim());
+        currentExternalData = {
+          platform: detected.platform,
+          platformName: detected.config.name,
+          id: detected.id,
+          url: url.trim(),
+          syncLevel: detected.config.syncLevel,
+          badge: detected.config.badge,
+          ...info
+        };
+
+        // Update preview
+        const thumbEl = document.getElementById('external-thumb');
+        if (info.thumbnail) {
+          thumbEl.src = info.thumbnail;
+          thumbEl.style.display = '';
+        } else {
+          thumbEl.style.display = 'none';
+        }
+        document.getElementById('external-title').textContent = info.title;
+        document.getElementById('external-platform').textContent = `${detected.config.name} • ${detected.config.syncLevel === 'full' ? '✅ Full Sync' : detected.config.syncLevel === 'limited' ? '⚠️ Limited Sync' : '📺 Autoplay Only'}`;
+        preview.classList.add('visible');
+        addBtn.disabled = false;
+      } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.classList.add('visible');
+      }
+    }
+
+    // Add external content to playlist
+    function addExternalToPlaylist() {
+      if (!currentExternalData) return;
+
+      const entry = {
+        filename: currentExternalData.title,
+        isExternal: true,
+        platform: currentExternalData.platform,
+        platformName: currentExternalData.platformName,
+        externalId: currentExternalData.id,
+        externalUrl: currentExternalData.url,
+        syncLevel: currentExternalData.syncLevel,
+        badge: currentExternalData.badge,
+        title: currentExternalData.title,
+        thumbnail: currentExternalData.thumbnail,
+        author: currentExternalData.author,
+        // Keep backward compatibility with YouTube
+        isYouTube: currentExternalData.platform === 'youtube',
+        youtubeId: currentExternalData.platform === 'youtube' ? currentExternalData.id : null,
+        tracks: { audio: [], subtitles: [] },
+        isNew: true
+      };
+
+      // Check if already in playlist
+      const isDuplicate = playlist.some(item =>
+        item.isExternal && item.platform === entry.platform && item.externalId === entry.externalId
+      );
+
+      if (!isDuplicate) {
+        playlist.push(entry);
+        updatePlaylistDisplay();
+        updateDashboardStats();
+        setTimeout(() => { entry.isNew = false; }, 300);
+        closeExternalModal();
+        addLog(`${currentExternalData.platformName} content added: ${currentExternalData.title}`, 'success');
+      } else {
+        document.getElementById('external-error').textContent = 'This content is already in the playlist.';
+        document.getElementById('external-error').classList.add('visible');
+      }
+    }
+
+    // Initialize External modal event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('external-modal-close').addEventListener('click', closeExternalModal);
+
+      let externalInputTimeout;
+      document.getElementById('external-url-input').addEventListener('input', (e) => {
+        clearTimeout(externalInputTimeout);
+        externalInputTimeout = setTimeout(() => handleExternalUrlInput(e.target.value), 500);
+      });
+
+      document.getElementById('external-url-input').addEventListener('paste', (e) => {
+        setTimeout(() => handleExternalUrlInput(e.target.value), 50);
+      });
+
+      document.getElementById('external-add-btn').addEventListener('click', addExternalToPlaylist);
+    });
+
+    window.openExternalModal = openExternalModal;
   </script>
 </body>
 
