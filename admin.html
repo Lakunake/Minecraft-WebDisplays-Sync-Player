@@ -185,6 +185,12 @@
       }
     }
 
+    .status-dot.offline {
+      background: #f44336;
+      box-shadow: 0 0 10px #f44336;
+      animation: none;
+    }
+
     /* Dashboard Grid */
     .dashboard-grid {
       display: grid;
@@ -523,10 +529,13 @@
     }
 
     .badge {
-      padding: 3px 8px;
-      border-radius: 10px;
-      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 9px;
       font-weight: 600;
+      pointer-events: none;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
     .badge-main {
@@ -1110,27 +1119,70 @@
       background: rgba(33, 150, 243, 0.7);
     }
 
-    /* HEVC Warning */
+    /* HEVC Warning - Moved to Header */
     .hevc-warning {
+      display: none;
       background: rgba(244, 67, 54, 0.2);
       border: 1px solid rgba(244, 67, 54, 0.3);
       color: #f44336;
-      padding: 15px;
       border-radius: 8px;
-      margin-bottom: 15px;
-      opacity: 0;
-      max-height: 0;
-      padding: 0 15px;
-      margin-bottom: 0;
-      overflow: hidden;
-      transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
     }
 
     .hevc-warning.visible {
-      opacity: 1;
-      max-height: 100px;
-      padding: 15px;
-      margin-bottom: 15px;
+      display: flex;
+      flex: 1;
+      margin: 0 20px;
+      padding: 8px 16px;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* VPN/Proxy Warning */
+    .vpn-warning {
+      display: none;
+      background: rgba(255, 152, 0, 0.2);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      color: #FF9800;
+      border-radius: 8px;
+    }
+
+    .vpn-warning.visible {
+      display: flex;
+      flex: 1;
+      margin: 0 20px;
+      padding: 8px 16px;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .vpn-warning.fade-out {
+      animation: fadeOut 0.5s ease forwards;
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      to {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* Hidden */
@@ -1351,9 +1403,19 @@
       <!-- Header -->
       <header class="header glass">
         <h1>Sync-<span>Player</span> Admin</h1>
+        <div id="hevc-warning" class="hevc-warning" style="font-size: 13px;">
+          <strong>⚠️ HEVC Codec Warning:</strong>&nbsp;MKV files often use HEVC (H.265) codecs which may require HEVC
+          extensions for browser playback. Consider using&nbsp;<a
+            href="https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35" target="_blank"
+            style="color: #2196F3;">BSL-S² (Local Sync)</a>!
+        </div>
+        <div id="vpn-warning" class="vpn-warning" style="font-size: 13px;">
+          <strong>⚠️ VPN/Proxy Detected:</strong>&nbsp;<span id="vpn-warning-list"></span> - May cause connection issues
+          for clients.
+        </div>
         <div class="connection-status glass">
-          <div class="status-dot"></div>
-          <span>Connected</span>
+          <div class="status-dot" id="connection-dot"></div>
+          <span id="connection-text">Connecting...</span>
         </div>
       </header>
 
@@ -1465,6 +1527,11 @@
               </div>
               <div
                 style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                <span style="color: #888;">BSL-S² Adv Match</span>
+                <span id="cfg-bsl-adv">-</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
                 <span style="color: #888;">Admin Lock</span>
                 <span id="cfg-admin-lock">-</span>
               </div>
@@ -1475,12 +1542,7 @@
 
       <!-- Media & Playlist View -->
       <div id="media-view" class="view">
-        <div id="hevc-warning" class="hevc-warning">
-          <strong>⚠️ HEVC Codec Warning:</strong> MKV files often use HEVC (H.265) codecs which may require HEVC
-          extensions for browser playback. Consider using <a
-            href="https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35" target="_blank"
-            style="color: #2196F3;">BSL-S² (Local Sync)</a> for better compatibility!
-        </div>
+
 
         <div class="media-playlist-layout">
           <!-- Available Files -->
@@ -1560,6 +1622,10 @@
               <button class="control-btn skip" id="skip-media-btn" title="Skip to next/previous media">⏭ Skip</button>
               <button class="control-btn skip" id="skip-forward-btn"><span id="skip-forward-text">5s</span> ↪</button>
             </div>
+
+            <button class="btn btn-secondary" id="skip-intro-btn"
+              style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, #7B1FA2, #4A148C);">⏩ Skip
+              Intro (<span id="skip-intro-text">90s</span>)</button>
 
             <div class="seek-control" style="margin-top: 10px;">
               <input type="number" id="seek-time" placeholder="Seconds" min="0" style="width: 80px;">
@@ -1677,6 +1743,7 @@
     let playlist = [];
     let mainVideoIndex = -1;
     let skipSeconds = 5;
+    let skipIntroSeconds = 90;
     const thumbnailCache = {}; // Cache for loaded thumbnails
 
     // Platform Themes (Colors & Icons)
@@ -1795,8 +1862,11 @@
       document.getElementById('cfg-join-mode').textContent = cfg.joinMode || 'sync';
       document.getElementById('cfg-https').textContent = cfg.useHttps ? 'On' : 'Off';
       document.getElementById('cfg-bsl-mode').textContent = cfg.bslS2Mode || 'any';
+      document.getElementById('cfg-bsl-adv').textContent = cfg.bslAdvancedMatch ? 'On' : 'Off';
       document.getElementById('cfg-admin-lock').textContent = cfg.adminFingerprintLock ? 'On' : 'Off';
       skipSeconds = cfg.skipSeconds || 5;
+      skipIntroSeconds = cfg.skipIntroSeconds || 90;
+      document.getElementById('skip-intro-text').textContent = skipIntroSeconds + 's';
     });
 
     // Request config on load
@@ -1847,6 +1917,20 @@
       if (indicator && activeNavItem) {
         const navTop = activeNavItem.offsetTop + (activeNavItem.offsetHeight / 2) - 15;
         indicator.style.top = navTop + 'px';
+      }
+
+      // Check HEVC warning visibility on tab switch
+      updateHevcWarning();
+
+      // Hide VPN warning on tab switch (media or remote)
+      if (viewName !== 'dashboard') {
+        const vpnWarning = document.getElementById('vpn-warning');
+        if (vpnWarning && vpnWarning.classList.contains('visible')) {
+          vpnWarning.classList.add('fade-out');
+          setTimeout(() => {
+            vpnWarning.classList.remove('visible', 'fade-out');
+          }, 500);
+        }
       }
     }
 
@@ -2262,7 +2346,9 @@
     function updateHevcWarning() {
       const hasMKV = playlist.some(item => item.filename.endsWith('.mkv'));
       const warning = document.getElementById('hevc-warning');
-      if (hasMKV) {
+
+      // Only show if we have MKV files AND we are in the media view
+      if (hasMKV && currentViewName === 'media') {
         warning.classList.add('visible');
       } else {
         warning.classList.remove('visible');
@@ -2392,22 +2478,36 @@
     }
 
     // Fetch and display video thumbnail
+    // Fetch and display video thumbnail
     let currentThumbnailFilename = null;
     async function fetchThumbnail(filename) {
-      // Avoid refetching same thumbnail
-      if (currentThumbnailFilename === filename) return;
-      currentThumbnailFilename = filename;
-
       const thumbnailEl = document.querySelector('.video-thumbnail');
       const thumbnailIcon = document.querySelector('.video-thumbnail-icon');
 
       if (!thumbnailEl) return;
+
+      // Check cache first - if available, ALWAYS apply it (fixes bug where theme wipes it)
+      if (thumbnailCache[filename]) {
+        thumbnailEl.style.backgroundImage = `url('${thumbnailCache[filename]}')`;
+        thumbnailEl.style.backgroundSize = 'cover';
+        thumbnailEl.style.backgroundPosition = 'center';
+        if (thumbnailIcon) thumbnailIcon.style.display = 'none';
+        currentThumbnailFilename = filename;
+        return;
+      }
+
+      // Avoid refetching same thumbnail if we don't have it cached yet
+      if (currentThumbnailFilename === filename) return;
+      currentThumbnailFilename = filename;
 
       try {
         const response = await fetch(`/api/thumbnail/${encodeURIComponent(filename)}`);
         if (response.ok) {
           const data = await response.json();
           if (data.thumbnail) {
+            // Update cache
+            thumbnailCache[filename] = data.thumbnail;
+
             thumbnailEl.style.backgroundImage = `url('${data.thumbnail}')`;
             thumbnailEl.style.backgroundSize = 'cover';
             thumbnailEl.style.backgroundPosition = 'center';
@@ -2632,13 +2732,16 @@
         if (thumbnailIcon) thumbnailIcon.style.display = 'none';
         currentThumbnailFilename = videoInfo.filename; // Prevent refetch
       }
-      // Handle YouTube videos - use pre-fetched thumbnail
-      else if (videoInfo.isYouTube && videoInfo.thumbnail) {
+      // Handle any video with a thumbnail (YouTube, Twitch, Vimeo, etc.)
+      else if (videoInfo.thumbnail) {
         thumbnailEl.style.backgroundImage = `url('${videoInfo.thumbnail}')`;
         thumbnailEl.style.backgroundSize = 'cover';
         thumbnailEl.style.backgroundPosition = 'center';
         if (thumbnailIcon) thumbnailIcon.style.display = 'none';
-        currentThumbnailFilename = videoInfo.youtubeId; // Prevent refetch
+
+        // Use a unique ID or filename for cache key
+        const cacheKey = videoInfo.isYouTube ? videoInfo.youtubeId : videoInfo.filename;
+        currentThumbnailFilename = cacheKey;
       } else {
         // Local video - fetch thumbnail from server
         // Check if audio to show better default icon
@@ -2697,6 +2800,10 @@
       document.getElementById('skip-media-btn').addEventListener('click', () => {
         socket.emit('skip-to-next-video');
         showStatus('Skipping to next media...', 'info');
+      });
+      document.getElementById('skip-intro-btn').addEventListener('click', () => {
+        socket.emit('control', { action: 'skip', direction: 'forward', seconds: skipIntroSeconds });
+        showStatus(`Skipping intro (${skipIntroSeconds}s)...`, 'info');
       });
       document.getElementById('seek-btn').addEventListener('click', seekTo);
 
@@ -3002,7 +3109,55 @@
 
     // Admin authentication handlers
     socket.on('connect', () => {
+      // Update connection status UI
+      const dot = document.getElementById('connection-dot');
+      const text = document.getElementById('connection-text');
+      if (dot && text) {
+        dot.classList.remove('offline');
+        text.textContent = 'Connected';
+      }
+
       socket.emit('bsl-admin-register', { fingerprint: adminFingerprint });
+
+      // Check for VPN/proxy software
+      fetch('/api/vpn-check')
+        .then(res => res.json())
+        .then(data => {
+          if (data.detected && data.detected.length > 0) {
+            const vpnWarning = document.getElementById('vpn-warning');
+            document.getElementById('vpn-warning-list').textContent = data.detected.join(', ');
+            vpnWarning.classList.add('visible');
+            addLog(`VPN/Proxy detected: ${data.detected.join(', ')}`, 'warning');
+
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => {
+              vpnWarning.classList.add('fade-out');
+              setTimeout(() => {
+                vpnWarning.classList.remove('visible', 'fade-out');
+              }, 500); // Wait for fade animation
+            }, 3000);
+          }
+        })
+        .catch(err => console.log('VPN check skipped'));
+    });
+
+    socket.on('disconnect', () => {
+      // Update connection status UI
+      const dot = document.getElementById('connection-dot');
+      const text = document.getElementById('connection-text');
+      if (dot && text) {
+        dot.classList.add('offline');
+        text.textContent = 'Disconnected';
+      }
+    });
+
+    socket.on('connect_error', () => {
+      const dot = document.getElementById('connection-dot');
+      const text = document.getElementById('connection-text');
+      if (dot && text) {
+        dot.classList.add('offline');
+        text.textContent = 'Offline';
+      }
     });
 
     if (socket.connected) {
@@ -3071,27 +3226,29 @@
         const matchCount = Object.keys(client.matchedVideos).length;
         const displayName = client.clientName || `Client ${clientIdx + 1}`;
         const fingerprintShort = (client.clientId || '').slice(-4);
+        const driftValues = client.driftValues || {};
+
         html += `
-          <div class="bsl-client-card">
-            <div class="bsl-client-header">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="text" 
-                       class="client-name-input" 
-                       value="${displayName}" 
-                       data-client-id="${client.clientId}"
-                       title="Fingerprint: ${client.clientId}"
-                       style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
-                              border-radius: 4px; padding: 4px 8px; color: white; width: 150px; font-size: 13px;"
-                       onchange="setClientName(this)"
-                       onkeypress="if(event.key==='Enter') this.blur()">
-                <span style="color: #666; font-size: 11px;">(${fingerprintShort})</span>
-              </div>
-              <span class="bsl-badge ${matchCount > 0 ? 'bsl-positive' : 'bsl-negative'}">
-                ${matchCount}/${playlist.length} matched
-              </span>
-            </div>
-            <div class="bsl-file-list">
-        `;
+      <div class="bsl-client-card">
+        <div class="bsl-client-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="text" 
+                   class="client-name-input" 
+                   value="${displayName}" 
+                   data-client-id="${client.clientId}"
+                   title="Fingerprint: ${client.clientId}"
+                   style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
+                          border-radius: 4px; padding: 4px 8px; color: white; width: 150px; font-size: 13px;"
+                   onchange="setClientName(this)"
+                   onkeypress="if(event.key==='Enter') this.blur()">
+            <span style="color: #666; font-size: 11px;">(${fingerprintShort})</span>
+          </div>
+          <span class="bsl-badge ${matchCount > 0 ? 'bsl-positive' : 'bsl-negative'}">
+            ${matchCount}/${playlist.length} matched
+          </span>
+        </div>
+        <div class="bsl-file-list">
+    `;
 
         if (client.files.length === 0) {
           html += '<div class="empty-message">No video files found</div>';
@@ -3100,20 +3257,40 @@
             const matchedIdx = Object.entries(client.matchedVideos)
               .find(([idx, name]) => name === file.name)?.[0];
 
+            const currentDrift = matchedIdx !== undefined ? (driftValues[matchedIdx] || 0) : 0;
+
             html += `
-              <div class="bsl-file-item">
-                <span>${file.name}</span>
-                <select class="bsl-match-select" 
-                        data-client-id="${client.socketId}" 
-                        data-file-name="${file.name}"
-                        onchange="handleManualMatch(this)">
-                  <option value="-1" ${!matchedIdx ? 'selected' : ''}>Not matched</option>
-                  ${playlist.map((v, i) => `
-                    <option value="${i}" ${matchedIdx == i ? 'selected' : ''}>${v.filename}</option>
-                  `).join('')}
-                </select>
-              </div>
-            `;
+          <div class="bsl-file-item">
+            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">${file.name}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              ${matchedIdx !== undefined ? `
+                <div style="display: flex; align-items: center; gap: 4px;" title="Drift: offset client playback time (±60s)">
+                  <span style="color: #888; font-size: 10px;">Drift:</span>
+                  <input type="number" 
+                         class="bsl-drift-input"
+                         value="${currentDrift}"
+                         min="-60" max="60" step="1"
+                         data-client-fingerprint="${client.clientId}"
+                         data-playlist-index="${matchedIdx}"
+                         onchange="handleDriftChange(this)"
+                         style="width: 50px; padding: 2px 4px; background: rgba(255,255,255,0.05); 
+                                border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; 
+                                color: #e0e0e0; font-size: 11px; text-align: center;">
+                  <span style="color: #888; font-size: 10px;">s</span>
+                </div>
+              ` : ''}
+              <select class="bsl-match-select" 
+                      data-client-id="${client.socketId}" 
+                      data-file-name="${file.name}"
+                      onchange="handleManualMatch(this)">
+                <option value="-1" ${!matchedIdx ? 'selected' : ''}>Not matched</option>
+                ${playlist.map((v, i) => `
+                  <option value="${i}" ${matchedIdx == i ? 'selected' : ''}>${v.filename}</option>
+                `).join('')}
+              </select>
+            </div>
+          </div>
+        `;
           });
         }
 
@@ -3121,6 +3298,18 @@
       });
 
       modalBody.innerHTML = html;
+    }
+
+    function handleDriftChange(inputEl) {
+      const clientFingerprint = inputEl.dataset.clientFingerprint;
+      const playlistIndex = parseInt(inputEl.dataset.playlistIndex);
+      const driftSeconds = parseInt(inputEl.value) || 0;
+
+      socket.emit('bsl-set-drift', {
+        clientFingerprint,
+        playlistIndex,
+        driftSeconds
+      });
     }
 
     function handleManualMatch(selectEl) {
