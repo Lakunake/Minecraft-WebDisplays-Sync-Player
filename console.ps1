@@ -127,6 +127,11 @@ video_autoplay: false
 # The fingerprint is stored in admin_fingerprint.txt
 # Set to true to enable, false to allow any machine to access admin
 admin_fingerprint_lock: false
+
+# BSL-SÂ² Advanced Matching
+# When enabled, matches files using multiple criteria (name, size, extension, MIME)
+# A match is declared if 3 or more criteria pass
+bsl_advanced_match: false
 "@
     
     $defaultConfig | Out-File -FilePath "config.txt" -Encoding UTF8
@@ -274,6 +279,7 @@ $config = @{
     USE_HTTPS    = "false"
     BSL_S2_MODE  = "any"
     ADMIN_LOCK   = "false"
+    BSL_ADV_MATCH = "false"
 }
 
 if (Test-Path "config.txt") {
@@ -295,6 +301,7 @@ if (Test-Path "config.txt") {
                 "use_https" { $config.USE_HTTPS = $value }
                 "bsl_s2_mode" { $config.BSL_S2_MODE = $value }
                 "admin_fingerprint_lock" { $config.ADMIN_LOCK = $value }
+                "bsl_advanced_match" { $config.BSL_ADV_MATCH = $value }
             }
         }
     }
@@ -345,7 +352,7 @@ catch {
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console"
 Write-Host ""
-Write-Host "Sync-Player 1.8.1" -ForegroundColor Cyan
+Write-Host "Sync-Player 1.8.2" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Settings:" -ForegroundColor Yellow
@@ -355,6 +362,7 @@ Write-Host "- Skip Seconds: $($config.SKIP_SECONDS)s" -ForegroundColor White
 Write-Host "- Join Mode: $($config.JOIN_MODE)" -ForegroundColor White
 Write-Host "- HTTPS: $($config.USE_HTTPS)" -ForegroundColor White
 Write-Host "- BSL-S2 Mode: $($config.BSL_S2_MODE)" -ForegroundColor White
+Write-Host "- BSL-S2 Adv Match: $($config.BSL_ADV_MATCH)" -ForegroundColor White
 Write-Host "- Admin Lock: $($config.ADMIN_LOCK)" -ForegroundColor White
 Write-Host ""
 Write-Host "Access URLs:" -ForegroundColor Yellow
