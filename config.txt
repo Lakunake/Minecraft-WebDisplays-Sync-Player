@@ -3,7 +3,7 @@
 # Lines starting with # are comments
 
 # Server port (1024-49151)
-port: 3000
+port: 3001
 
 # Volume step percentage (1-20)
 volume_step: 5
@@ -21,7 +21,7 @@ use_https: false
 ssl_key_file: key.pem
 ssl_cert_file: cert.pem
 
-# BSL-S² (Both Side Local Sync Stream) Configuration
+# BSL-S² (Both Side Local Sync Stream) Mode
 # Mode: 'any' = BSL-S² active if ANY client has the local file
 #       'all' = BSL-S² only active if ALL clients have the local file
 bsl_s2_mode: any
@@ -29,10 +29,34 @@ bsl_s2_mode: any
 # Video Autoplay Configuration
 # Set to true to automatically play videos when loaded
 # Set to false to start videos paused
-video_autoplay: true
+video_autoplay: false
 
 # Admin Fingerprint Lock
 # When enabled, only the first machine to access /admin will be allowed
 # The fingerprint is stored in admin_fingerprint.txt
 # Set to true to enable, false to allow any machine to access admin
 admin_fingerprint_lock: true
+
+# BSL-S² Advanced Matching
+# When enabled, BSL-S² will check multiple criteria beyond just filename with 4 criterias
+# Set to true to enable advanced matching, false for filename-only matching.
+bsl_advanced_match: true
+
+# BSL-S² Advanced Match Threshold (1-4)
+# How many of the 4 criteria must pass for a match to be declared
+# Criteria: (1) Filename, (2) Extension, (3) File Size ±1.5MB, (4) MIME type
+bsl_advanced_match_threshold: 1
+
+# Skip Intro Seconds (hidden from config displays)
+# How many seconds the "Skip Intro" button jumps forward
+skip_intro_seconds: 87
+
+# Client Controls Configuration
+# When disabled, clients cannot use touch/click controls to control playback
+# Set to true to disable all client controls (they become view-only)
+client_controls_disabled: false
+
+# Client Sync to Server Configuration
+# When disabled, client control events are ignored by the server
+# This makes clients view-only even if they attempt to send control events
+client_sync_disabled: false
