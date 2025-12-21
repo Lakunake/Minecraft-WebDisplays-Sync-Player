@@ -90,6 +90,11 @@ const VOLUME_STEP = parseInt(config.volume_step) || 5;
 const JOIN_MODE = config.join_mode || 'sync';
 const BSL_S2_MODE = config.bsl_s2_mode || 'any'; // 'any' or 'all'
 const VIDEO_AUTOPLAY = config.video_autoplay === 'true'; // defaults to false
+const BSL_ADVANCED_MATCH = config.bsl_advanced_match === 'true'; // defaults to false
+const BSL_ADVANCED_MATCH_THRESHOLD = Math.min(4, Math.max(1, parseInt(config.bsl_advanced_match_threshold) || 3)); // 1-4, defaults to 3
+const SKIP_INTRO_SECONDS = parseInt(config.skip_intro_seconds) || 90;
+const CLIENT_CONTROLS_DISABLED = config.client_controls_disabled === 'true'; // defaults to false
+const CLIENT_SYNC_DISABLED = config.client_sync_disabled === 'true'; // defaults to false
 
 // BSL-S² (Both Side Local Sync Stream) state tracking
 // Maps socketId -> { folderSelected: bool, files: [{name, size}], matchedVideos: {playlistIndex: localFileName} }
@@ -100,6 +105,8 @@ let adminSocketId = null;
 const verifiedAdminSockets = new Set();
 // Track connected clients with their fingerprints
 const connectedClients = new Map(); // socketId -> { fingerprint, connectedAt }
+// BSL-S² drift values per client per video (fingerprint -> { playlistIndex: driftSeconds })
+const clientDriftValues = new Map();
 
 // BSL-S² Persistent matches file
 const BSL_MATCHES_FILE = path.join(__dirname, 'bsl_matches.json');
@@ -447,7 +454,8 @@ io.on('connection', (socket) => {
   socket.emit('config', {
     skipSeconds: SKIP_SECONDS,
     volumeStep: VOLUME_STEP / 100,
-    videoAutoplay: VIDEO_AUTOPLAY
+    videoAutoplay: VIDEO_AUTOPLAY,
+    clientControlsDisabled: CLIENT_CONTROLS_DISABLED
   });
 
   // Send playlist to client
@@ -482,6 +490,11 @@ io.on('connection', (socket) => {
 
   // Listen for control events from clients
   socket.on('control', (data) => {
+    // Block client sync events if disabled (admin controls still work via action-based events)
+    if (CLIENT_SYNC_DISABLED && !data.action) {
+      console.log(`${colors.yellow}Ignoring client sync event (client_sync_disabled)${colors.reset}`);
+      return;
+    }
     if (data.action) {
       if (data.action === 'playpause') {
         videoState.isPlaying = data.state;
@@ -589,9 +602,11 @@ io.on('connection', (socket) => {
     socket.emit('config', {
       port: PORT,
       skipSeconds: SKIP_SECONDS,
+      skipIntroSeconds: SKIP_INTRO_SECONDS,
       volumeStep: VOLUME_STEP / 100,
       joinMode: JOIN_MODE,
       bslS2Mode: BSL_S2_MODE,
+      bslAdvancedMatch: BSL_ADVANCED_MATCH,
       useHttps: config.use_https === 'true',
       videoAutoplay: VIDEO_AUTOPLAY,
       adminFingerprintLock: ADMIN_FINGERPRINT_LOCK
@@ -829,15 +844,80 @@ io.on('connection', (socket) => {
     if (PLAYLIST.videos.length > 0) {
       data.files.forEach(clientFile => {
         PLAYLIST.videos.forEach((playlistVideo, index) => {
-          // Check auto-match (exact filename)
-          if (clientFile.name.toLowerCase() === playlistVideo.filename.toLowerCase()) {
-            matchedVideos[index] = clientFile.name;
-            console.log(`${colors.green}  Auto-matched: ${clientFile.name} -> playlist[${index}]${colors.reset}`);
-          }
           // Check persistent match for this client (previously saved)
-          else if (clientMatches[clientFile.name.toLowerCase()] === playlistVideo.filename.toLowerCase()) {
+          if (clientMatches[clientFile.name.toLowerCase()] === playlistVideo.filename.toLowerCase()) {
             matchedVideos[index] = clientFile.name;
             console.log(`${colors.cyan}  Persistent match applied: ${clientFile.name} -> playlist[${index}]${colors.reset}`);
+            return; // Skip further checks for this file
+          }
+
+          // Advanced matching (3 of 4 criteria)
+          if (BSL_ADVANCED_MATCH) {
+            let matchScore = 0;
+            const SIZE_TOLERANCE = 1.5 * 1024 * 1024; // 1.5 MB in bytes
+
+            // 1. Filename match (case-insensitive)
+            const clientBasename = clientFile.name.toLowerCase();
+            const serverBasename = playlistVideo.filename.toLowerCase();
+            if (clientBasename === serverBasename) {
+              matchScore++;
+            }
+
+            // 2. Extension match (case-insensitive)
+            const clientExt = clientFile.name.substring(clientFile.name.lastIndexOf('.')).toLowerCase();
+            const serverExt = playlistVideo.filename.substring(playlistVideo.filename.lastIndexOf('.')).toLowerCase();
+            if (clientExt === serverExt) {
+              matchScore++;
+            }
+
+            // 3. Size match (within ±1.5MB tolerance)
+            if (clientFile.size !== undefined) {
+              try {
+                const serverFilePath = path.join(__dirname, 'media', playlistVideo.filename);
+                const serverStats = fs.statSync(serverFilePath);
+                const sizeDiff = Math.abs(clientFile.size - serverStats.size);
+                if (sizeDiff <= SIZE_TOLERANCE) {
+                  matchScore++;
+                }
+              } catch (err) {
+                // If we can't stat the file, skip this criterion
+                console.log(`${colors.yellow}  Could not stat server file: ${playlistVideo.filename}${colors.reset}`);
+              }
+            }
+
+            // 4. MIME type match
+            if (clientFile.type && clientFile.type.length > 0) {
+              // Derive expected MIME from extension
+              const mimeMap = {
+                '.mp4': 'video/mp4',
+                '.mkv': 'video/x-matroska',
+                '.webm': 'video/webm',
+                '.avi': 'video/x-msvideo',
+                '.mov': 'video/quicktime',
+                '.wmv': 'video/x-ms-wmv',
+                '.mp3': 'audio/mpeg',
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.webp': 'image/webp'
+              };
+              const expectedMime = mimeMap[serverExt] || '';
+              if (clientFile.type === expectedMime || clientFile.type.startsWith(expectedMime.split('/')[0])) {
+                matchScore++;
+              }
+            }
+
+            // Match if threshold or more criteria pass
+            if (matchScore >= BSL_ADVANCED_MATCH_THRESHOLD) {
+              matchedVideos[index] = clientFile.name;
+              console.log(`${colors.green}  Advanced match (${matchScore}/4, threshold: ${BSL_ADVANCED_MATCH_THRESHOLD}): ${clientFile.name} -> playlist[${index}]${colors.reset}`);
+            }
+          } else {
+            // Simple filename-only matching (original behavior)
+            if (clientFile.name.toLowerCase() === playlistVideo.filename.toLowerCase()) {
+              matchedVideos[index] = clientFile.name;
+              console.log(`${colors.green}  Auto-matched: ${clientFile.name} -> playlist[${index}]${colors.reset}`);
+            }
           }
         });
       });
@@ -891,6 +971,38 @@ io.on('connection', (socket) => {
       // Update admin
       sendBslStatusToAdmin();
     }
+  });
+
+  // Admin sets drift for a specific client and playlist video
+  socket.on('bsl-set-drift', (data) => {
+    const { clientFingerprint, playlistIndex, driftSeconds } = data;
+    if (!clientFingerprint || playlistIndex === undefined) return;
+
+    // Clamp drift to reasonable range (-60 to +60 seconds)
+    const clampedDrift = Math.max(-60, Math.min(60, parseInt(driftSeconds) || 0));
+
+    // Get or create drift object for this client
+    let clientDrifts = clientDriftValues.get(clientFingerprint);
+    if (!clientDrifts) {
+      clientDrifts = {};
+      clientDriftValues.set(clientFingerprint, clientDrifts);
+    }
+
+    // Store drift value
+    clientDrifts[playlistIndex] = clampedDrift;
+    console.log(`${colors.yellow}BSL-S² drift set: ${clientFingerprint} video[${playlistIndex}] = ${clampedDrift}s${colors.reset}`);
+
+    // Find the client socket and notify them
+    connectedClients.forEach((info, socketId) => {
+      if (info.fingerprint === clientFingerprint) {
+        io.to(socketId).emit('bsl-drift-update', {
+          driftValues: clientDrifts
+        });
+      }
+    });
+
+    // Update admin with new drift values
+    sendBslStatusToAdmin();
   });
 
   // Admin sets a client's display name
@@ -953,13 +1065,16 @@ io.on('connection', (socket) => {
       const fingerprint = status.clientId;
       // Use admin-set name, or fallback to fingerprint prefix
       const displayName = clientDisplayNames[fingerprint] || fingerprint.slice(-4);
+      // Get drift values for this client
+      const driftValues = clientDriftValues.get(fingerprint) || {};
       clientStatuses.push({
         socketId,
         clientId: fingerprint,
         clientName: displayName,
         folderSelected: status.folderSelected,
         files: status.files,
-        matchedVideos: status.matchedVideos
+        matchedVideos: status.matchedVideos,
+        driftValues: driftValues
       });
     });
 
@@ -1067,7 +1182,114 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 const LOCAL_IP = process.argv[2] || 'localhost';
+
+// ==================== VPN/Proxy Detection ====================
+// Check for ACTIVE VPN connections by detecting connected VPN network adapters
+function checkForVpnProxy() {
+  const detectedItems = [];
+
+  // Step 1: Check for active VPN network adapters using netsh
+  // This detects if a VPN tunnel is actually connected, not just if the app is open
+  exec('netsh interface show interface', { encoding: 'utf8', timeout: 5000 }, (error, stdout) => {
+    if (!error && stdout) {
+      // VPN adapter name patterns that indicate an active connection
+      const vpnAdapterPatterns = [
+        { pattern: /connected\s+.*\s+(tap-windows|tap-nordvpn|tap-protonvpn|tap-expressvpn)/i, display: 'VPN (TAP Adapter)' },
+        { pattern: /connected\s+.*\s+warp/i, display: 'Cloudflare WARP' },
+        { pattern: /connected\s+.*\s+wireguard/i, display: 'WireGuard' },
+        { pattern: /connected\s+.*\s+nordlynx/i, display: 'NordVPN (NordLynx)' },
+        { pattern: /connected\s+.*\s+mullvad/i, display: 'Mullvad VPN' },
+        { pattern: /connected\s+.*\s+proton/i, display: 'ProtonVPN' },
+        { pattern: /connected\s+.*\s+windscribe/i, display: 'Windscribe' },
+        { pattern: /connected\s+.*\s+surfshark/i, display: 'Surfshark' },
+        { pattern: /connected\s+.*\s+pia/i, display: 'Private Internet Access' },
+        { pattern: /connected\s+.*\s+expressvpn/i, display: 'ExpressVPN' },
+        { pattern: /connected\s+.*\s+cyberghost/i, display: 'CyberGhost' },
+        { pattern: /connected\s+.*\s+tun/i, display: 'VPN (TUN Adapter)' },
+      ];
+
+      vpnAdapterPatterns.forEach(({ pattern, display }) => {
+        if (pattern.test(stdout)) {
+          if (!detectedItems.includes(display)) {
+            detectedItems.push(display);
+          }
+        }
+      });
+    }
+
+    // Step 2: Check for DPI bypass tools that work at packet level (always active when running)
+    exec('tasklist /FO CSV /NH', { encoding: 'utf8', timeout: 5000 }, (error2, stdout2) => {
+      if (!error2 && stdout2) {
+        const runningProcesses = new Set();
+        stdout2.split('\n').forEach(line => {
+          const match = line.match(/^"([^"]+\.exe)"/i);
+          if (match) {
+            runningProcesses.add(match[1].toLowerCase().replace(/\.exe$/i, ''));
+          }
+        });
+
+        // DPI bypass and proxy tools (these are always active when the process runs)
+        const alwaysActiveProcesses = [
+          { name: 'goodbyedpi', display: 'GoodbyeDPI' },
+          { name: 'zapret', display: 'Zapret' },
+          { name: 'byedpi', display: 'ByeDPI' },
+          { name: 'v2ray', display: 'V2Ray' },
+          { name: 'v2rayn', display: 'V2RayN' },
+          { name: 'xray', display: 'Xray' },
+          { name: 'clash', display: 'Clash' },
+          { name: 'clash-verge', display: 'Clash Verge' },
+          { name: 'clashforwindows', display: 'Clash for Windows' },
+          { name: 'sing-box', display: 'sing-box' },
+          { name: 'shadowsocks', display: 'Shadowsocks' },
+          { name: 'ss-local', display: 'Shadowsocks' },
+          { name: 'tor', display: 'Tor' },
+          { name: 'obfs4proxy', display: 'Tor Bridge (obfs4)' },
+          { name: 'privoxy', display: 'Privoxy' },
+          { name: 'psiphon3', display: 'Psiphon' },
+          { name: 'lantern', display: 'Lantern' },
+          { name: 'cloudflared', display: 'Cloudflare Tunnel' },
+          { name: 'dnscrypt-proxy', display: 'DNSCrypt' },
+        ];
+
+        alwaysActiveProcesses.forEach(proc => {
+          if (runningProcesses.has(proc.name.toLowerCase())) {
+            if (!detectedItems.includes(proc.display)) {
+              detectedItems.push(proc.display);
+            }
+          }
+        });
+      }
+
+      // Output results
+      if (detectedItems.length > 0) {
+        console.log('');
+        console.log(`${colors.yellow}⚠️  Active VPN/Proxy Connections Detected:${colors.reset}`);
+        detectedItems.forEach(app => {
+          console.log(`${colors.yellow}   • ${app}${colors.reset}`);
+        });
+        console.log(`${colors.yellow}   These active connections may cause issues for clients on your network.${colors.reset}`);
+        console.log(`${colors.yellow}   Consider disconnecting when hosting Sync-Player sessions.${colors.reset}`);
+        console.log('');
+
+        // Store for admin panel notification
+        detectedVpnProxy = detectedItems;
+      }
+    });
+  });
+}
+
+// Store detected VPN/proxy for admin notification
+let detectedVpnProxy = [];
+
+// API endpoint for admin to check VPN/proxy status
+app.get('/api/vpn-check', (req, res) => {
+  res.json({ detected: detectedVpnProxy });
+});
+
 server.listen(PORT, () => {
   console.log(`${colors.blue}Server running at http://${LOCAL_IP}:${PORT}${colors.reset}`);
   console.log(`${colors.blue}Admin panel available at http://${LOCAL_IP}:${PORT}/admin${colors.reset}`);
+
+  // Check for VPN/proxy software after server starts
+  checkForVpnProxy();
 });
