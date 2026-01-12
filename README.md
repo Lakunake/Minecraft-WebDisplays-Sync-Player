@@ -71,9 +71,13 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 > Run "npm install express@5.1.0 socket.io@4.8.1" at cmd in case of the auto install failing.
 
 ### Method 1: LAN or Public IP (Direct Hosting),
-> Best for Many people and Repeated users, complex-ish setup, Safe if you enable HTTPS via config if you're direct hosting, otherwise lan is already safe
+> Best for Many people and Repeated users, complex-ish setup
 
-1. Run `start.bat` in your folder
+> [!WARNING]
+> This project of mine is still lacks critical safety measures required for directhosting, only use if you're going to host on lan
+
+
+1. Run `run.bat` in your folder
 2. Make sure your selected port is open in your firewall/router
 3. Access the video player from devices at the provided links
 4. Access admin panel at `http://your-ip:port/admin` and go to `http://your-ip:port` in minecraft
@@ -83,7 +87,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 
 1. Download and install [Tailscale](https://tailscale.com/download) on everybody's computers
 2. Invite your friends to your [Tailnet](https://tailscale.com/kb/1136/tailnet)
-3. Run `start.bat`, then visit the provided network link
+3. Run `run.bat`, then visit the provided network link
 > [!IMPORTANT]  
 > Beware, Tailscale only allows 3 emails per [Tailnet](https://tailscale.com/kb/1136/tailnet), but it allows a 100 devices to be connected at the same time, so it would be best if you created a new email for your friends to log into tailscale to just for this
 
