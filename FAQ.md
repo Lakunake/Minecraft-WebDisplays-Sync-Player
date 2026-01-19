@@ -57,4 +57,4 @@ Now accessing `yourdomain.ddns.net` will connect locally.
 
 ⚠️ Editing your hosts file can affect how your system resolves domains. Only make changes if you’re comfortable, and double-check the entries.
 
-Your Question isn't here? Then visit [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) or email **johnwebdisplays [at] gmail [dot] com**.
+Your Question isn't here? Then visit [Questions](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player/discussions/2) or email **johnwebdisplay@gmail.com**.
