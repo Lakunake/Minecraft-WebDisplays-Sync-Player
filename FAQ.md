@@ -20,6 +20,7 @@ Thats most likely a hardware related issue, but it could be solved by doing one 
 
 - Check [chrome://gpu/](chrome://gpu/) if it says anything about hevce being true, Install HEVC extensions from windows store and Turn on BSL-S²
 - If no, re-encode the video in H.264 or any chromium supported codec through either Handbrake or FFmpeg
+- Use BSL-S2
   
 
 **How do I properly use the admin panel?**
