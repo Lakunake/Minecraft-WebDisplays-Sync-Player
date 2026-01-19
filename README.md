@@ -11,7 +11,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 
 * [Node.js](https://nodejs.org/) installed on your machine (v16+ recommended)
 * [ffmpeg](https://ffmpeg.org/) installed for high bitrate support and video optimization
-* Media files placed in the `/videos/` folder (supports MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM)
+* Media files placed in the `/media/` folder (supports MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM, PNG, JPG)
 
 ---
 
