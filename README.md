@@ -111,13 +111,20 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 ## 📁 File Structure
 
 ```
-/videos/                 # Folder containing media files
-server.js               # Node.js backend with Socket.IO
-index.html              # Client video player interface
-admin.html              # Admin control panel
-package.json            # Node.js dependencies and scripts
-start.bat               # Windows startup script
-config.txt              # Configuration file (port, settings, etc.)
+/media/                # Folder containing media files
+/memory/               # Folder containing fingerprints, logs, etc.
+/res/                  # Folder containing the app’s runtime files, server, web pages, dependencies, and launch/helper scripts.
+server.js              # Node.js backend
+index.html             # Client video player interface
+admin.html             # Admin control panel
+landing.html           # Page to join rooms, exclusive to server mode
+package.json           # Node.js dependencies, scripts and other metadata
+launcher.vbs           # Small script that re-opens the server in Terminal if opened in CMD
+console.ps1            # Script that verifies dependencies, initializes settings, and keeps the server running with error recovery.
+run.bat                # Windows startup script
+start.sh               # Linux startup script
+config.txt             # Configuration file (port, settings, etc.)
+legacylauncher.bat     # Old startup script that is not updated but reliable, written in batch
 ```
 
 ---
@@ -127,9 +134,21 @@ config.txt              # Configuration file (port, settings, etc.)
 Edit `config.txt` to customize:
 
 ```ini
-port: 3000              # Server port
-volume_step: 5          # Volume adjustment percentage
-skip_seconds: 5         # Skip duration in seconds
+port: 3000                  # Server port
+volume_step: 5              # Volume adjustment percentage
+skip_seconds: 5             # Skip duration in seconds
+join_mode: sync/reset       # Decides what happens when a new user joins the watch party (more info in actual config)
+HTTPS: t/f                  # Whether you want to use https or not, but you also need cert and key files
+bsl_s2_mode: any/all        # Changing requirements of BSL-S² to if all clients should have file or not
+video_autoplay: t/f         # Explains itself
+admin_fingerprint_lock: t/f # Generates a fingerprint from to first machine to access /admin to not let others reach it (t/f)
+bsl_advanced_match: t/f     # Whether or not if BSL-S² should use Advanced match to check if 2 given videos are the same
+...threshold: [1-4]         # How many criterias should advanced match check
+skip_intro_seconds:         # How many seconds the "Skip Intro" button jumps forward
+controls_disabled: t/f      # If controls of clients should be disabled
+sync_disabled: t/f          # If clients should keep control of their own vid but should not send those controls to serv and get overridden by serv
+chat_enabled: t/f           # Yeah
+data_hydration: t/f         # When enabled, the server injects initial data into admin.html to save a round-trip, improves overall performance
 ```
 
 ---
