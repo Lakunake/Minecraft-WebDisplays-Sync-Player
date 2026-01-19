@@ -33,6 +33,9 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 * [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
 * Client Remembering
 * Machine fingerprint based locking
+* Server mode if you want to do simultaneous watch parties
+* A toggleable chat with proper escaping
+* A different look of the admin panel for mobile
 
 ---
 
