@@ -7,6 +7,11 @@ const fs = require('fs');
 const { exec } = require('child_process');
 const helmet = require('helmet');
 
+// Root directory (parent of res/ where server.js lives)
+const ROOT_DIR = path.join(__dirname, '..');
+// Memory directory for persistent data
+const MEMORY_DIR = path.join(ROOT_DIR, 'memory');
+
 // ANSI color codes for console output
 const colors = {
   reset: '\x1b[0m',
@@ -17,9 +22,56 @@ const colors = {
   cyan: '\x1b[36m'
 };
 
+// =================================================================
+// Startup Validation - Check if server is run from expected location
+// =================================================================
+function validateStartupLocation() {
+  const configPath = path.join(ROOT_DIR, 'config.txt');
+  const resFolder = path.basename(__dirname);
+
+  // Check if we're actually in a 'res' folder
+  if (resFolder !== 'res') {
+    console.log(`${colors.yellow}========================================${colors.reset}`);
+    console.log(`${colors.yellow}NOTE: Unexpected server location${colors.reset}`);
+    console.log(`${colors.yellow}========================================${colors.reset}`);
+    console.log('');
+    console.log(`This server is designed to run from a 'res' folder.`);
+    console.log(`Current folder: ${resFolder}`);
+    console.log('');
+    console.log(`${colors.cyan}Recommended: Use launcher scripts for best experience:${colors.reset}`);
+    console.log(`  Windows: run.bat`);
+    console.log(`  Linux/Mac: ./start.sh`);
+    console.log('');
+  }
+
+  // Check if parent directory has expected structure
+  if (!fs.existsSync(configPath) && !fs.existsSync(path.join(ROOT_DIR, 'media'))) {
+    console.log(`${colors.yellow}========================================${colors.reset}`);
+    console.log(`${colors.yellow}NOTE: Could not find project files${colors.reset}`);
+    console.log(`${colors.yellow}========================================${colors.reset}`);
+    console.log('');
+    console.log(`Could not locate config.txt or media folder in parent.`);
+    console.log(`Looking in: ${ROOT_DIR}`);
+    console.log('');
+    console.log(`${colors.cyan}Recommended: Run from project root:${colors.reset}`);
+    console.log(`  Windows: run.bat`);
+    console.log(`  Linux/Mac: ./start.sh`);
+    console.log(`  Manual: node res/server.js`);
+    console.log('');
+  }
+}
+
+// Check startup location (warnings only)
+validateStartupLocation();
+
+// Ensure memory directory exists
+if (!fs.existsSync(MEMORY_DIR)) {
+  fs.mkdirSync(MEMORY_DIR, { recursive: true });
+}
+
 // Read and parse config file
 function readConfig() {
-  const configPath = path.join(__dirname, 'config.txt');
+  const configPath = path.join(ROOT_DIR, 'config.txt');
   try {
     if (fs.existsSync(configPath)) {
       const configData = fs.readFileSync(configPath, 'utf8');
@@ -48,8 +100,30 @@ function readConfig() {
     join_mode: 'sync',
     use_https: 'false',
     ssl_key_file: 'key.pem',
-    ssl_cert_file: 'cert.pem'
+    ssl_cert_file: 'cert.pem',
+    bsl_s2_mode: 'any',
+    video_autoplay: 'false',
+    admin_fingerprint_lock: 'false',
+    bsl_advanced_match: 'true',
+    bsl_advanced_match_threshold: '1',
+    skip_intro_seconds: '87',
+    client_controls_disabled: 'false',
+    client_sync_disabled: 'false',
+    server_mode: 'false',
+    chat_enabled: 'true',
+    data_hydration: 'true'
   };
+}
+
+// Helper to escape HTML to prevent XSS
+function escapeHTML(text) {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 const config = readConfig();
@@ -59,8 +133,8 @@ let server;
 
 if (config.use_https === 'true') {
   try {
-    const keyPath = path.join(__dirname, config.ssl_key_file || 'key.pem');
-    const certPath = path.join(__dirname, config.ssl_cert_file || 'cert.pem');
+    const keyPath = path.join(ROOT_DIR, config.ssl_key_file || 'key.pem');
+    const certPath = path.join(ROOT_DIR, config.ssl_cert_file || 'cert.pem');
 
     if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
       const options = {
@@ -90,12 +164,319 @@ const VOLUME_STEP = parseInt(config.volume_step) || 5;
 const JOIN_MODE = config.join_mode || 'sync';
 const BSL_S2_MODE = config.bsl_s2_mode || 'any'; // 'any' or 'all'
 const VIDEO_AUTOPLAY = config.video_autoplay === 'true'; // defaults to false
-const BSL_ADVANCED_MATCH = config.bsl_advanced_match === 'true'; // defaults to false
-const BSL_ADVANCED_MATCH_THRESHOLD = Math.min(4, Math.max(1, parseInt(config.bsl_advanced_match_threshold) || 3)); // 1-4, defaults to 3
+const BSL_ADVANCED_MATCH = config.bsl_advanced_match === 'true'; // defaults to true
+const BSL_ADVANCED_MATCH_THRESHOLD = Math.min(4, Math.max(1, parseInt(config.bsl_advanced_match_threshold) || 1)); // 1-4, defaults to 1
 const SKIP_INTRO_SECONDS = parseInt(config.skip_intro_seconds) || 90;
 const CLIENT_CONTROLS_DISABLED = config.client_controls_disabled === 'true'; // defaults to false
 const CLIENT_SYNC_DISABLED = config.client_sync_disabled === 'true'; // defaults to false
+const SERVER_MODE = config.server_mode === 'true'; // defaults to false
+const CHAT_ENABLED = config.chat_enabled !== 'false'; // defaults to true
+const DATA_HYDRATION = config.data_hydration !== 'false'; // defaults to true
 
+// Server mode - disable console logs and enable room-based architecture
+if (SERVER_MODE) {
+  console.log(`${colors.cyan}Server mode activated, Logs are disabled!${colors.reset}`);
+  console.log(`${colors.cyan}Multi-room system enabled. Join mode forced to 'sync'.${colors.reset}`);
+  // Override console.log to suppress output (keep console.error for critical errors)
+  console.log = () => { };
+}
+
+// ==================== Room Logger System ====================
+class RoomLogger {
+  constructor() {
+    this.generalLogFile = path.join(MEMORY_DIR, 'general.json');
+    this.ensureGeneralLog();
+  }
+
+  ensureGeneralLog() {
+    if (!fs.existsSync(this.generalLogFile)) {
+      this.saveLog(this.generalLogFile, { logs: [] });
+    }
+  }
+
+  loadLog(filePath) {
+    try {
+      if (fs.existsSync(filePath)) {
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      }
+    } catch (error) {
+      console.error('Error loading log:', error);
+    }
+    return { logs: [] };
+  }
+
+  saveLog(filePath, data) {
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+      console.error('Error saving log:', error);
+    }
+  }
+
+  logGeneral(event, details = {}) {
+    const logData = this.loadLog(this.generalLogFile);
+    logData.logs.push({
+      timestamp: new Date().toISOString(),
+      event,
+      ...details
+    });
+    // Keep only last 1000 entries
+    if (logData.logs.length > 1000) {
+      logData.logs = logData.logs.slice(-1000);
+    }
+    this.saveLog(this.generalLogFile, logData);
+  }
+
+  logRoom(roomCode, event, details = {}) {
+    const roomLogFile = path.join(MEMORY_DIR, `${roomCode}.json`);
+    let logData = this.loadLog(roomLogFile);
+
+    if (!logData.roomCode) {
+      logData.roomCode = roomCode;
+      logData.logs = [];
+    }
+
+    logData.logs.push({
+      timestamp: new Date().toISOString(),
+      event,
+      ...details
+    });
+
+    // Keep only last 500 entries per room
+    if (logData.logs.length > 500) {
+      logData.logs = logData.logs.slice(-500);
+    }
+
+    this.saveLog(roomLogFile, logData);
+  }
+
+  initRoomLog(roomCode, roomName, createdAt) {
+    const roomLogFile = path.join(MEMORY_DIR, `${roomCode}.json`);
+    const logData = {
+      roomCode,
+      roomName,
+      createdAt,
+      logs: [{
+        timestamp: createdAt,
+        event: 'room_created'
+      }]
+    };
+    this.saveLog(roomLogFile, logData);
+  }
+
+  deleteRoomLog(roomCode) {
+    const roomLogFile = path.join(MEMORY_DIR, `${roomCode}.json`);
+    try {
+      if (fs.existsSync(roomLogFile)) {
+        fs.unlinkSync(roomLogFile);
+      }
+    } catch (error) {
+      console.error('Error deleting room log:', error);
+    }
+  }
+
+  // ==================== Admin Fingerprint Persistence ====================
+  getAdminsFile() {
+    return path.join(MEMORY_DIR, 'room_admins.json');
+  }
+
+  loadAdmins() {
+    try {
+      const adminsFile = this.getAdminsFile();
+      if (fs.existsSync(adminsFile)) {
+        return JSON.parse(fs.readFileSync(adminsFile, 'utf8'));
+      }
+    } catch (error) {
+      console.error('Error loading room admins:', error);
+    }
+    return {};
+  }
+
+  saveAdmins(admins) {
+    try {
+      fs.writeFileSync(this.getAdminsFile(), JSON.stringify(admins, null, 2));
+    } catch (error) {
+      console.error('Error saving room admins:', error);
+    }
+  }
+
+  saveAdminFingerprint(roomCode, fingerprint) {
+    const admins = this.loadAdmins();
+    admins[roomCode] = {
+      fingerprint,
+      savedAt: new Date().toISOString()
+    };
+    this.saveAdmins(admins);
+    console.log(`Admin fingerprint saved for room ${roomCode}`);
+  }
+
+  getAdminFingerprint(roomCode) {
+    const admins = this.loadAdmins();
+    return admins[roomCode]?.fingerprint || null;
+  }
+
+  deleteAdminFingerprint(roomCode) {
+    const admins = this.loadAdmins();
+    if (admins[roomCode]) {
+      delete admins[roomCode];
+      this.saveAdmins(admins);
+      console.log(`Admin fingerprint deleted for room ${roomCode}`);
+    }
+  }
+}
+
+const roomLogger = SERVER_MODE ? new RoomLogger() : null;
+
+// ==================== Room Class ====================
+class Room {
+  constructor(code, name, isPrivate, adminFingerprint) {
+    this.code = code;
+    this.name = name;
+    this.isPrivate = isPrivate;
+    this.createdAt = new Date().toISOString();
+    this.adminFingerprint = adminFingerprint;
+    this.adminSocketId = null;
+    this.clients = new Map(); // socketId -> { fingerprint, name, connectedAt }
+
+    // Room-specific playlist and video state
+    this.playlist = {
+      videos: [],
+      currentIndex: -1,
+      mainVideoIndex: -1,
+      mainVideoStartTime: 0,
+      preloadMainVideo: false
+    };
+
+    this.videoState = {
+      isPlaying: true,
+      currentTime: 0,
+      lastUpdate: Date.now(),
+      audioTrack: 0,
+      subtitleTrack: -1
+    };
+
+    // BSL-S² state for this room
+    this.clientBslStatus = new Map();
+    this.clientDriftValues = new Map();
+  }
+
+  addClient(socketId, fingerprint, name) {
+    this.clients.set(socketId, {
+      fingerprint,
+      name: name || `Guest-${socketId.slice(-4)}`,
+      connectedAt: new Date().toISOString()
+    });
+  }
+
+  removeClient(socketId) {
+    this.clients.delete(socketId);
+    this.clientBslStatus.delete(socketId);
+  }
+
+  getClientCount() {
+    return this.clients.size;
+  }
+
+  isAdmin(fingerprint) {
+    // First check RAM
+    if (this.adminFingerprint === fingerprint) {
+      return true;
+    }
+    // Fallback: check persisted fingerprint from disk
+    if (roomLogger) {
+      const persistedFp = roomLogger.getAdminFingerprint(this.code);
+      if (persistedFp && persistedFp === fingerprint) {
+        // Update RAM to match disk for future checks
+        this.adminFingerprint = persistedFp;
+        console.log(`Admin fingerprint restored from disk for room ${this.code}`);
+        return true;
+      }
+    }
+    console.log(`Admin check failed for room ${this.code}: provided='${fingerprint}', expected='${this.adminFingerprint}'`);
+    return false;
+  }
+
+  getCurrentTrackSelections() {
+    if (this.playlist.videos.length > 0 && this.playlist.currentIndex >= 0 && this.playlist.currentIndex < this.playlist.videos.length) {
+      const currentVideo = this.playlist.videos[this.playlist.currentIndex];
+      return {
+        audioTrack: currentVideo.selectedAudioTrack !== undefined ? currentVideo.selectedAudioTrack : 0,
+        subtitleTrack: currentVideo.selectedSubtitleTrack !== undefined ? currentVideo.selectedSubtitleTrack : -1
+      };
+    }
+    return { audioTrack: 0, subtitleTrack: -1 };
+  }
+}
+
+// ==================== Rooms Manager ====================
+const rooms = new Map(); // roomCode -> Room
+
+function generateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  // Ensure uniqueness
+  if (rooms.has(code)) {
+    return generateRoomCode();
+  }
+  return code;
+}
+
+function createRoom(name, isPrivate, adminFingerprint) {
+  const code = generateRoomCode();
+  const room = new Room(code, name, isPrivate, adminFingerprint);
+  rooms.set(code, room);
+
+  if (roomLogger) {
+    roomLogger.logGeneral('room_created', { roomCode: code, roomName: name, isPrivate });
+    roomLogger.initRoomLog(code, name, room.createdAt);
+    // Persist admin fingerprint to disk for reliable verification
+    roomLogger.saveAdminFingerprint(code, adminFingerprint);
+  }
+
+  return room;
+}
+
+function getRoom(code) {
+  return rooms.get(code?.toUpperCase());
+}
+
+function deleteRoom(code) {
+  const room = rooms.get(code);
+  if (room) {
+    if (roomLogger) {
+      roomLogger.logGeneral('room_deleted', { roomCode: code, roomName: room.name });
+      roomLogger.deleteRoomLog(code);
+      // Also delete persisted fingerprint
+      roomLogger.deleteAdminFingerprint(code);
+    }
+    rooms.delete(code);
+    return true;
+  }
+  return false;
+}
+
+function getPublicRooms() {
+  const publicRooms = [];
+  rooms.forEach((room, code) => {
+    if (!room.isPrivate) {
+      publicRooms.push({
+        code: room.code,
+        name: room.name,
+        viewers: room.getClientCount(),
+        createdAt: room.createdAt
+      });
+    }
+  });
+  return publicRooms;
+}
+
+// Track which room each socket is in (for server mode)
+const socketRoomMap = new Map(); // socketId -> roomCode
+
+// ==================== Legacy Single-Room State (Non-Server Mode) ====================
 // BSL-S² (Both Side Local Sync Stream) state tracking
 // Maps socketId -> { folderSelected: bool, files: [{name, size}], matchedVideos: {playlistIndex: localFileName} }
 const clientBslStatus = new Map();
@@ -108,11 +489,11 @@ const connectedClients = new Map(); // socketId -> { fingerprint, connectedAt }
 // BSL-S² drift values per client per video (fingerprint -> { playlistIndex: driftSeconds })
 const clientDriftValues = new Map();
 
-// BSL-S² Persistent matches file
-const BSL_MATCHES_FILE = path.join(__dirname, 'bsl_matches.json');
+// BSL-S² Persistent matches file (legacy, now in memory.json)
+const BSL_MATCHES_FILE = path.join(MEMORY_DIR, 'bsl_matches.json');
 
 // ==================== Unified Memory Storage ====================
-const MEMORY_FILE = path.join(__dirname, 'memory.json');
+const MEMORY_FILE = path.join(MEMORY_DIR, 'memory.json');
 
 // Load unified memory (contains all persistent data)
 function loadMemory() {
@@ -129,11 +510,11 @@ function loadMemory() {
     };
 
     // Migrate from old files if they exist
-    if (fs.existsSync(path.join(__dirname, 'admin_fingerprint.txt'))) {
-      legacy.adminFingerprint = fs.readFileSync(path.join(__dirname, 'admin_fingerprint.txt'), 'utf8').trim();
+    if (fs.existsSync(path.join(ROOT_DIR, 'admin_fingerprint.txt'))) {
+      legacy.adminFingerprint = fs.readFileSync(path.join(ROOT_DIR, 'admin_fingerprint.txt'), 'utf8').trim();
     }
-    if (fs.existsSync(path.join(__dirname, 'client_names.json'))) {
-      legacy.clientNames = JSON.parse(fs.readFileSync(path.join(__dirname, 'client_names.json'), 'utf8'));
+    if (fs.existsSync(path.join(ROOT_DIR, 'client_names.json'))) {
+      legacy.clientNames = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'client_names.json'), 'utf8'));
     }
     if (fs.existsSync(BSL_MATCHES_FILE)) {
       legacy.bslMatches = JSON.parse(fs.readFileSync(BSL_MATCHES_FILE, 'utf8'));
@@ -212,8 +593,8 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Disabled to allow video playback
 }));
 
-app.use(express.static(__dirname));
-app.use('/media', express.static(path.join(__dirname, 'media')));
+app.use(express.static(ROOT_DIR));
+app.use('/media', express.static(path.join(ROOT_DIR, 'media')));
 
 const PLAYLIST = {
   videos: [],
@@ -244,7 +625,7 @@ function getCurrentTrackSelections() {
 
 async function getTracksForFile(filename) {
   const safeFilename = path.basename(filename);
-  const filePath = path.join(__dirname, 'media', safeFilename);
+  const filePath = path.join(ROOT_DIR, 'media', safeFilename);
   const tracks = { audio: [], subtitles: [] };
 
   return new Promise((resolve) => {
@@ -287,29 +668,155 @@ async function getTracksForFile(filename) {
   });
 }
 
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+app.get('/', (req, res) => {
+  if (SERVER_MODE) {
+    // Server mode: landing page for room selection
+    res.sendFile(path.join(__dirname, 'landing.html'));
+  } else {
+    // Legacy mode: direct to client
+    res.sendFile(path.join(__dirname, 'index.html'));
+  }
 });
 
-app.get('/api/files', (req, res) => {
-  const mediaPath = path.join(__dirname, 'media');
+let adminTemplateCache = null;
 
-  fs.readdir(mediaPath, async (err, files) => {
-    if (err) {
-      return res.status(500).json({ error: 'Unable to read media directory' });
+// Helper for serving admin page with hydration
+async function serveHydratedAdmin(req, res, roomCode = null) {
+  const adminPath = path.join(__dirname, 'admin.html');
+  if (!fs.existsSync(adminPath)) return res.status(404).send('Admin page not found');
+
+  if (!DATA_HYDRATION) {
+    return res.sendFile(adminPath);
+  }
+
+  try {
+    // RAM Cache optimization: read once from disk
+    if (!adminTemplateCache) {
+      adminTemplateCache = fs.readFileSync(adminPath, 'utf8');
     }
 
-    const mediaFiles = [];
-    for (const file of files) {
-      const ext = path.extname(file).toLowerCase();
-      if (['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm', '.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
-        const usesHEVC = ext === '.mkv';
-        mediaFiles.push({ filename: file, usesHEVC: usesHEVC });
+    let html = adminTemplateCache;
+    const files = await getMediaFiles();
+
+    // Determine state based on room or legacy
+    let initialState = { files: files };
+    if (SERVER_MODE && roomCode) {
+      const room = getRoom(roomCode);
+      if (room) {
+        initialState.playlist = room.playlist.videos;
+        initialState.currentVideoIndex = room.playlist.currentIndex;
       }
+    } else {
+      initialState.playlist = PLAYLIST.videos;
+      initialState.currentVideoIndex = PLAYLIST.currentIndex;
     }
 
-    res.json(mediaFiles);
+    // Securely stringify and escape </script> to prevent script injection
+    const jsonState = JSON.stringify(initialState).replace(/<\/script>/g, '<\\/script>');
+    const hydrationScript = `<script>window.INITIAL_DATA = ${jsonState};</script>`;
+    // Inject before first script or head
+    html = html.replace('<head>', `<head>\n    ${hydrationScript}`);
+
+    res.send(html);
+  } catch (error) {
+    console.error('Hydration error:', error);
+    res.sendFile(adminPath);
+  }
+}
+
+app.get('/admin', (req, res) => {
+  if (SERVER_MODE) {
+    res.redirect('/');
+  } else {
+    serveHydratedAdmin(req, res);
+  }
+});
+
+app.get('/admin/:roomCode', (req, res) => {
+  if (!SERVER_MODE) {
+    return res.redirect('/admin');
+  }
+  const room = getRoom(req.params.roomCode);
+  if (!room) {
+    return res.redirect('/?error=room_not_found');
+  }
+  serveHydratedAdmin(req, res, req.params.roomCode);
+});
+
+app.get('/watch/:roomCode', (req, res) => {
+  if (!SERVER_MODE) {
+    return res.redirect('/');
+  }
+  const room = getRoom(req.params.roomCode);
+  if (!room) {
+    return res.redirect('/?error=room_not_found');
+  }
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Room API endpoints (server mode only)
+app.get('/api/rooms', (req, res) => {
+  if (!SERVER_MODE) {
+    return res.status(404).json({ error: 'Server mode not enabled' });
+  }
+  res.json(getPublicRooms());
+});
+
+app.get('/api/rooms/:roomCode', (req, res) => {
+  if (!SERVER_MODE) {
+    return res.status(404).json({ error: 'Server mode not enabled' });
+  }
+  const room = getRoom(req.params.roomCode);
+  if (!room) {
+    return res.status(404).json({ error: 'Room not found' });
+  }
+  res.json({
+    code: room.code,
+    name: room.name,
+    isPrivate: room.isPrivate,
+    viewers: room.getClientCount(),
+    createdAt: room.createdAt
   });
+});
+
+// Server mode status endpoint
+app.get('/api/server-mode', (req, res) => {
+  res.json({ serverMode: SERVER_MODE });
+});
+
+let mediaFilesCache = { data: null, lastUpdate: 0 };
+
+// Helper to get media files
+function getMediaFiles() {
+  // Prevent disk-spamming with a 20-second cache
+  if (mediaFilesCache.data && (Date.now() - mediaFilesCache.lastUpdate < 20000)) {
+    return Promise.resolve(mediaFilesCache.data);
+  }
+
+  const mediaPath = path.join(ROOT_DIR, 'media');
+  return new Promise((resolve) => {
+    fs.readdir(mediaPath, (err, files) => {
+      if (err) return resolve([]);
+      const mediaFiles = [];
+      for (const file of files) {
+        const ext = path.extname(file).toLowerCase();
+        if (['.mp4', '.mp3', '.avi', '.mov', '.wmv', '.mkv', '.webm', '.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+          mediaFiles.push({
+            filename: file,
+            escapedFilename: escapeHTML(file),
+            usesHEVC: ext === '.mkv'
+          });
+        }
+      }
+      mediaFilesCache = { data: mediaFiles, lastUpdate: Date.now() };
+      resolve(mediaFiles);
+    });
+  });
+}
+
+app.get('/api/files', async (req, res) => {
+  const files = await getMediaFiles();
+  res.json(files);
 });
 
 app.get('/api/tracks/:filename', async (req, res) => {
@@ -359,7 +866,7 @@ function getVideoDuration(videoPath) {
 app.get('/api/thumbnail/:filename', async (req, res) => {
   const filename = req.params.filename;
   const safeFilename = path.basename(filename);
-  const videoPath = path.join(__dirname, 'media', safeFilename);
+  const videoPath = path.join(ROOT_DIR, 'media', safeFilename);
   const thumbnailFilename = safeFilename.replace(/\.[^.]+$/, '.jpg');
   const thumbnailPath = path.join(THUMBNAIL_DIR, thumbnailFilename);
 
@@ -443,37 +950,251 @@ app.get('/api/thumbnail/:filename', async (req, res) => {
 io.on('connection', (socket) => {
   console.log(`${colors.cyan}A user connected: ${socket.id}${colors.reset}`);
 
-  // Broadcast updated client count to all (excluding admin)
-  broadcastClientCount();
+  // ==================== Server Mode Room Events ====================
+  if (SERVER_MODE) {
+    // Create a new room
+    socket.on('create-room', (data, callback) => {
+      const { name, isPrivate, fingerprint } = data;
+      const roomName = name || 'Watch Party';
 
-  const currentTracks = getCurrentTrackSelections();
-  videoState.audioTrack = currentTracks.audioTrack;
-  videoState.subtitleTrack = currentTracks.subtitleTrack;
+      const room = createRoom(roomName, isPrivate === true, fingerprint);
+      room.adminSocketId = socket.id;
+      room.addClient(socket.id, fingerprint, 'Admin');
 
-  // Send config values to client
-  socket.emit('config', {
-    skipSeconds: SKIP_SECONDS,
-    volumeStep: VOLUME_STEP / 100,
-    videoAutoplay: VIDEO_AUTOPLAY,
-    clientControlsDisabled: CLIENT_CONTROLS_DISABLED
-  });
+      // Join socket.io room
+      socket.join(room.code);
+      socketRoomMap.set(socket.id, room.code);
 
-  // Send playlist to client
-  socket.emit('playlist-update', PLAYLIST);
+      if (roomLogger) {
+        roomLogger.logRoom(room.code, 'admin_connected', { socketId: socket.id });
+        roomLogger.logGeneral('room_admin_joined', { roomCode: room.code });
+      }
 
-  // Handle join behavior based on config
-  if (JOIN_MODE === 'reset') {
-    videoState.currentTime = 0;
-    videoState.lastUpdate = Date.now();
-    io.emit('sync', videoState);
-    console.log(`${colors.yellow}New user joined, resetting video to 0 for everyone (reset mode)${colors.reset}`);
-  } else {
-    socket.emit('sync', videoState);
-    console.log(`${colors.cyan}New user joined, syncing to current time: ${videoState.currentTime}${colors.reset}`);
+      if (callback) {
+        callback({ success: true, roomCode: room.code, roomName: room.name });
+      }
+
+      // Emit public rooms update
+      io.emit('rooms-updated', getPublicRooms());
+    });
+
+    // Join an existing room
+    socket.on('join-room', (data, callback) => {
+      const { roomCode, name, fingerprint } = data;
+      const room = getRoom(roomCode);
+
+      if (!room) {
+        if (callback) {
+          callback({ success: false, error: 'Room not found' });
+        }
+        return;
+      }
+
+      // Check if this is the admin reconnecting
+      const isAdmin = room.isAdmin(fingerprint);
+      if (isAdmin) {
+        room.adminSocketId = socket.id;
+      }
+
+      room.addClient(socket.id, fingerprint, name);
+      socket.join(room.code);
+      socketRoomMap.set(socket.id, room.code);
+
+      if (roomLogger) {
+        roomLogger.logRoom(room.code, 'client_joined', {
+          socketId: socket.id,
+          name: name || 'Guest',
+          isAdmin
+        });
+      }
+
+      // Send room config (server mode forces sync join mode)
+      socket.emit('config', {
+        skipSeconds: SKIP_SECONDS,
+        volumeStep: VOLUME_STEP / 100,
+        videoAutoplay: VIDEO_AUTOPLAY,
+        clientControlsDisabled: CLIENT_CONTROLS_DISABLED,
+        serverMode: true,
+        roomCode: room.code,
+        roomName: room.name,
+        isAdmin,
+        chatEnabled: CHAT_ENABLED
+      });
+
+      // Send current room state
+      socket.emit('playlist-update', room.playlist);
+      socket.emit('sync', room.videoState);
+
+      if (callback) {
+        callback({
+          success: true,
+          roomCode: room.code,
+          roomName: room.name,
+          isAdmin,
+          viewers: room.getClientCount()
+        });
+      }
+
+      // Broadcast updated viewer count to room
+      io.to(room.code).emit('viewer-count', room.getClientCount());
+      io.emit('rooms-updated', getPublicRooms());
+    });
+
+    // Leave room
+    socket.on('leave-room', () => {
+      const roomCode = socketRoomMap.get(socket.id);
+      if (roomCode) {
+        const room = getRoom(roomCode);
+        if (room) {
+          room.removeClient(socket.id);
+          socket.leave(roomCode);
+
+          if (roomLogger) {
+            roomLogger.logRoom(roomCode, 'client_left', { socketId: socket.id });
+          }
+
+          io.to(roomCode).emit('viewer-count', room.getClientCount());
+          io.emit('rooms-updated', getPublicRooms());
+        }
+        socketRoomMap.delete(socket.id);
+      }
+    });
+
+    // Delete room (admin only)
+    socket.on('delete-room', (data, callback) => {
+      const { roomCode, fingerprint } = data;
+      const room = getRoom(roomCode);
+
+      if (!room) {
+        if (callback) callback({ success: false, error: 'Room not found' });
+        return;
+      }
+
+      if (!room.isAdmin(fingerprint)) {
+        if (callback) callback({ success: false, error: 'Not authorized' });
+        return;
+      }
+
+      // Notify all clients in the room
+      io.to(roomCode).emit('room-deleted', { roomCode });
+
+      // Remove all sockets from room
+      room.clients.forEach((_, socketId) => {
+        const clientSocket = io.sockets.sockets.get(socketId);
+        if (clientSocket) {
+          clientSocket.leave(roomCode);
+        }
+        socketRoomMap.delete(socketId);
+      });
+
+      deleteRoom(roomCode);
+
+      if (callback) callback({ success: true });
+      io.emit('rooms-updated', getPublicRooms());
+    });
+
+    // Handle disconnect in server mode
+    socket.on('disconnect', () => {
+      const roomCode = socketRoomMap.get(socket.id);
+      if (roomCode) {
+        const room = getRoom(roomCode);
+        if (room) {
+          room.removeClient(socket.id);
+
+          if (roomLogger) {
+            roomLogger.logRoom(roomCode, 'client_disconnected', { socketId: socket.id });
+          }
+
+          io.to(roomCode).emit('viewer-count', room.getClientCount());
+          io.emit('rooms-updated', getPublicRooms());
+        }
+        socketRoomMap.delete(socket.id);
+      }
+    });
+
+    // Get public rooms list
+    socket.on('get-rooms', (callback) => {
+      if (callback) {
+        callback(getPublicRooms());
+      }
+    });
+
+    // Chat message handler (server mode)
+    socket.on('chat-message', (data) => {
+      if (!CHAT_ENABLED) return;
+
+      const roomCode = socketRoomMap.get(socket.id);
+      if (roomCode) {
+        const room = getRoom(roomCode);
+        if (room) {
+          // Broadcast message to all clients in the room (properly escaped)
+          io.to(roomCode).emit('chat-message', {
+            sender: escapeHTML(data.sender || 'Guest'),
+            message: escapeHTML(data.message?.substring(0, 500) || ''),
+            timestamp: Date.now()
+          });
+        }
+      }
+    });
+
+    // Server mode: don't run legacy initialization, but continue to register event handlers below
   }
+
+  // ==================== Legacy Single-Room Mode Initialization ====================
+  // Only run legacy initialization for non-server mode
+  if (!SERVER_MODE) {
+    // Broadcast updated client count to all (excluding admin)
+    broadcastClientCount();
+
+    const currentTracks = getCurrentTrackSelections();
+    videoState.audioTrack = currentTracks.audioTrack;
+    videoState.subtitleTrack = currentTracks.subtitleTrack;
+
+    // Send config values to client
+    socket.emit('config', {
+      skipSeconds: SKIP_SECONDS,
+      volumeStep: VOLUME_STEP / 100,
+      videoAutoplay: VIDEO_AUTOPLAY,
+      clientControlsDisabled: CLIENT_CONTROLS_DISABLED,
+      serverMode: false,
+      chatEnabled: CHAT_ENABLED
+    });
+
+    // Send playlist to client
+    socket.emit('playlist-update', PLAYLIST);
+
+    // Handle join behavior based on config
+    if (JOIN_MODE === 'reset') {
+      videoState.currentTime = 0;
+      videoState.lastUpdate = Date.now();
+      io.emit('sync', videoState);
+      console.log(`${colors.yellow}New user joined, resetting video to 0 for everyone (reset mode)${colors.reset}`);
+    } else {
+      socket.emit('sync', videoState);
+      console.log(`${colors.cyan}New user joined, syncing to current time: ${videoState.currentTime}${colors.reset}`);
+    }
+  } // End of !SERVER_MODE block
+
+  // ==================== Shared Event Handlers (Both Modes) ====================
 
   // Handle request for initial state (from client on connect)
   socket.on('request-initial-state', () => {
+    if (SERVER_MODE) {
+      const roomCode = socketRoomMap.get(socket.id);
+      if (roomCode) {
+        const room = getRoom(roomCode);
+        if (room) {
+          console.log(`Client requested initial state for room ${roomCode}`);
+          socket.emit('initial-state', {
+            playlist: room.playlist,
+            mainVideoStartTime: room.playlist.mainVideoStartTime,
+            videoState: room.videoState
+          });
+          return;
+        }
+      }
+    }
+
     console.log('Client requested initial state');
     socket.emit('initial-state', {
       playlist: PLAYLIST,
@@ -484,12 +1205,88 @@ io.on('connection', (socket) => {
 
   // Handle explicit sync request from client
   socket.on('request-sync', () => {
+    if (SERVER_MODE) {
+      const roomCode = socketRoomMap.get(socket.id);
+      if (roomCode) {
+        const room = getRoom(roomCode);
+        if (room) {
+          socket.emit('sync', room.videoState);
+          return;
+        }
+      }
+    }
+
     console.log('Client requested sync');
     socket.emit('sync', videoState);
   });
 
+  // Chat message handler (legacy mode - only if not in server mode room)
+  if (!SERVER_MODE) {
+    socket.on('chat-message', (data) => {
+      if (!CHAT_ENABLED) return;
+
+      // Broadcast message to all clients (properly escaped)
+      io.emit('chat-message', {
+        sender: escapeHTML(data.sender || 'Guest'),
+        message: escapeHTML(data.message?.substring(0, 500) || ''),
+        timestamp: Date.now()
+      });
+    });
+  }
+
   // Listen for control events from clients
   socket.on('control', (data) => {
+    if (SERVER_MODE) {
+      const roomCode = socketRoomMap.get(socket.id);
+      if (!roomCode) return;
+      const room = getRoom(roomCode);
+      if (!room) return;
+
+      // Allow control if client controls are enabled OR if it's the admin
+      const isAdmin = room.adminSocketId === socket.id;
+      if (CLIENT_CONTROLS_DISABLED && !isAdmin) {
+        console.log(`${colors.yellow}Ignoring non-admin control event in room ${roomCode}${colors.reset}`);
+        return;
+      }
+
+      if (data.action) {
+        if (data.action === 'playpause') {
+          room.videoState.isPlaying = data.state;
+          room.videoState.lastUpdate = Date.now();
+          io.to(roomCode).emit('sync', room.videoState);
+        } else if (data.action === 'skip') {
+          const direction = data.direction === 'forward' ? 1 : -1;
+          room.videoState.currentTime += direction * (data.seconds || SKIP_SECONDS);
+          room.videoState.lastUpdate = Date.now();
+          io.to(roomCode).emit('sync', room.videoState);
+        } else if (data.action === 'seek') {
+          room.videoState.currentTime = data.time;
+          room.videoState.lastUpdate = Date.now();
+          io.to(roomCode).emit('sync', room.videoState);
+        } else if (data.action === 'selectTrack') {
+          if (data.type === 'audio') {
+            room.videoState.audioTrack = data.trackIndex;
+          } else if (data.type === 'subtitle') {
+            room.videoState.subtitleTrack = data.trackIndex;
+          }
+          room.videoState.lastUpdate = Date.now();
+          io.to(roomCode).emit('sync', room.videoState);
+        }
+      } else {
+        // Direct sync from client (sync-player mode)
+        room.videoState = {
+          isPlaying: data.isPlaying,
+          currentTime: data.currentTime,
+          lastUpdate: Date.now(),
+          audioTrack: room.videoState.audioTrack,
+          subtitleTrack: room.videoState.subtitleTrack
+        };
+        io.to(roomCode).emit('sync', room.videoState);
+      }
+      return;
+    }
+
+    // Legacy Mode logic
     // Block client sync events if disabled (admin controls still work via action-based events)
     if (CLIENT_SYNC_DISABLED && !data.action) {
       console.log(`${colors.yellow}Ignoring client sync event (client_sync_disabled)${colors.reset}`);
@@ -535,13 +1332,38 @@ io.on('connection', (socket) => {
   socket.on('set-playlist', async (data) => {
     console.log('Received playlist data:', data);
 
+    let targetPlaylist, targetVideoState, targetRoomCode;
+
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+
+      // Only allow admin to set playlist (unless it's a public room with some other rule, but usually admin only)
+      if (room.adminSocketId !== socket.id) {
+        console.log(`${colors.red}Non-admin attempted to set playlist in room ${targetRoomCode}${colors.reset}`);
+        socket.emit('playlist-set', { success: false, message: 'Only admins can set the playlist' });
+        return;
+      }
+
+      targetPlaylist = room.playlist;
+      targetVideoState = room.videoState;
+    } else {
+      targetPlaylist = PLAYLIST;
+      targetVideoState = videoState;
+    }
+
     const processedPlaylist = [];
 
     for (const item of data.playlist) {
       const videoInfo = { ...item };
 
       try {
-        const tracks = await getTracksForFile(item.filename);
+        let tracks = { audio: [], subtitles: [] };
+        if (!item.isExternal) {
+          tracks = await getTracksForFile(item.filename);
+        }
         videoInfo.tracks = tracks;
       } catch (error) {
         console.error('Error getting track info:', error);
@@ -559,35 +1381,52 @@ io.on('connection', (socket) => {
       processedPlaylist.push(videoInfo);
     }
 
-    PLAYLIST.videos = processedPlaylist;
-    PLAYLIST.mainVideoIndex = data.mainVideoIndex;
-    PLAYLIST.mainVideoStartTime = data.startTime;
-    PLAYLIST.currentIndex = 0;
-    PLAYLIST.preloadMainVideo = true;
+    targetPlaylist.videos = processedPlaylist;
+    targetPlaylist.mainVideoIndex = data.mainVideoIndex;
+    targetPlaylist.mainVideoStartTime = data.startTime;
+    targetPlaylist.currentIndex = 0;
+    targetPlaylist.preloadMainVideo = true;
 
-    const currentTracks = getCurrentTrackSelections();
-    videoState.audioTrack = currentTracks.audioTrack;
-    videoState.subtitleTrack = currentTracks.subtitleTrack;
-    videoState.currentTime = 0;
-    videoState.lastUpdate = Date.now();
+    // Set initial track selections for the first video
+    if (processedPlaylist.length > 0) {
+      const firstVideo = processedPlaylist[0];
+      targetVideoState.audioTrack = firstVideo.selectedAudioTrack !== undefined ? firstVideo.selectedAudioTrack : 0;
+      targetVideoState.subtitleTrack = firstVideo.selectedSubtitleTrack !== undefined ? firstVideo.selectedSubtitleTrack : -1;
+    }
 
-    console.log('Playlist updated:');
-    console.log('- Total videos:', PLAYLIST.videos.length);
-    console.log('- Main video index:', PLAYLIST.mainVideoIndex);
-    console.log('- Start time:', PLAYLIST.mainVideoStartTime);
+    targetVideoState.currentTime = 0;
+    targetVideoState.lastUpdate = Date.now();
 
-    // Notify all clients about the new playlist
-    io.emit('playlist-update', PLAYLIST);
+    console.log(`Playlist updated (Room: ${targetRoomCode || 'Legacy'}):`);
+    console.log('- Total videos:', targetPlaylist.videos.length);
+    console.log('- Main video index:', targetPlaylist.mainVideoIndex);
+    console.log('- Start time:', targetPlaylist.mainVideoStartTime);
+
+    // Notify clients about the new playlist
+    if (SERVER_MODE) {
+      io.to(targetRoomCode).emit('playlist-update', targetPlaylist);
+    } else {
+      io.emit('playlist-update', targetPlaylist);
+    }
 
     // Set initial play state based on autoplay config
-    videoState.isPlaying = VIDEO_AUTOPLAY;
-    io.emit('sync', videoState);
+    targetVideoState.isPlaying = VIDEO_AUTOPLAY;
+
+    if (SERVER_MODE) {
+      io.to(targetRoomCode).emit('sync', targetVideoState);
+    } else {
+      io.emit('sync', targetVideoState);
+    }
 
     // Extra pause to make sure if autoplay is off
     if (!VIDEO_AUTOPLAY) {
       setTimeout(() => {
-        videoState.isPlaying = false;
-        io.emit('sync', videoState);
+        targetVideoState.isPlaying = false;
+        if (SERVER_MODE) {
+          io.to(targetRoomCode).emit('sync', targetVideoState);
+        } else {
+          io.emit('sync', targetVideoState);
+        }
       }, 500);
     }
 
@@ -615,64 +1454,152 @@ io.on('connection', (socket) => {
 
   // Skip to next video in playlist (from admin skip button)
   socket.on('skip-to-next-video', () => {
-    if (PLAYLIST.videos.length === 0) {
+    let targetPlaylist, targetVideoState, targetRoomCode;
+
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+
+      if (room.adminSocketId !== socket.id) return;
+
+      targetPlaylist = room.playlist;
+      targetVideoState = room.videoState;
+    } else {
+      targetPlaylist = PLAYLIST;
+      targetVideoState = videoState;
+    }
+
+    if (targetPlaylist.videos.length === 0) {
       console.log('No videos in playlist to skip');
       return;
     }
 
-    const nextIndex = (PLAYLIST.currentIndex + 1) % PLAYLIST.videos.length;
-    console.log(`${colors.yellow}Skipping to video ${nextIndex + 1}/${PLAYLIST.videos.length}${colors.reset}`);
+    const nextIndex = (targetPlaylist.currentIndex + 1) % targetPlaylist.videos.length;
+    console.log(`${colors.yellow}Skipping to video ${nextIndex + 1}/${targetPlaylist.videos.length} (Room: ${targetRoomCode || 'Legacy'})${colors.reset}`);
 
-    PLAYLIST.currentIndex = nextIndex;
+    targetPlaylist.currentIndex = nextIndex;
 
-    const currentTracks = getCurrentTrackSelections();
-    videoState.audioTrack = currentTracks.audioTrack;
-    videoState.subtitleTrack = currentTracks.subtitleTrack;
-    videoState.currentTime = 0;
-    videoState.lastUpdate = Date.now();
+    // Set initial track selections for the new video
+    const video = targetPlaylist.videos[nextIndex];
+    targetVideoState.audioTrack = video.selectedAudioTrack !== undefined ? video.selectedAudioTrack : 0;
+    targetVideoState.subtitleTrack = video.selectedSubtitleTrack !== undefined ? video.selectedSubtitleTrack : -1;
+    targetVideoState.currentTime = 0;
+    targetVideoState.lastUpdate = Date.now();
 
-    io.emit('sync', videoState);
-    io.emit('playlist-position', nextIndex);
-    io.emit('playlist-update', PLAYLIST);
+    if (SERVER_MODE) {
+      io.to(targetRoomCode).emit('sync', targetVideoState);
+      io.to(targetRoomCode).emit('playlist-position', nextIndex);
+      io.to(targetRoomCode).emit('playlist-update', targetPlaylist);
+    } else {
+      io.emit('sync', targetVideoState);
+      io.emit('playlist-position', nextIndex);
+      io.emit('playlist-update', targetPlaylist);
+    }
   });
 
   // Move to next video in playlist
   socket.on('playlist-next', (nextIndex) => {
-    PLAYLIST.currentIndex = nextIndex;
+    let targetPlaylist, targetVideoState, targetRoomCode;
 
-    const currentTracks = getCurrentTrackSelections();
-    videoState.audioTrack = currentTracks.audioTrack;
-    videoState.subtitleTrack = currentTracks.subtitleTrack;
-    videoState.lastUpdate = Date.now();
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
 
-    io.emit('sync', videoState);
-    io.emit('playlist-position', nextIndex);
+      targetPlaylist = room.playlist;
+      targetVideoState = room.videoState;
+    } else {
+      targetPlaylist = PLAYLIST;
+      targetVideoState = videoState;
+    }
+
+    targetPlaylist.currentIndex = nextIndex;
+
+    // Set initial track selections for the new video
+    if (targetPlaylist.videos[nextIndex]) {
+      const video = targetPlaylist.videos[nextIndex];
+      targetVideoState.audioTrack = video.selectedAudioTrack !== undefined ? video.selectedAudioTrack : 0;
+      targetVideoState.subtitleTrack = video.selectedSubtitleTrack !== undefined ? video.selectedSubtitleTrack : -1;
+    }
+    targetVideoState.lastUpdate = Date.now();
+
+    if (SERVER_MODE) {
+      io.to(targetRoomCode).emit('sync', targetVideoState);
+      io.to(targetRoomCode).emit('playlist-position', nextIndex);
+    } else {
+      io.emit('sync', targetVideoState);
+      io.emit('playlist-position', nextIndex);
+    }
   });
 
   // Jump to specific video in playlist (from admin)
   socket.on('playlist-jump', (index) => {
-    if (index < 0 || index >= PLAYLIST.videos.length) {
+    let targetPlaylist, targetVideoState, targetRoomCode;
+
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+
+      if (room.adminSocketId !== socket.id) return;
+
+      targetPlaylist = room.playlist;
+      targetVideoState = room.videoState;
+    } else {
+      targetPlaylist = PLAYLIST;
+      targetVideoState = videoState;
+    }
+
+    if (index < 0 || index >= targetPlaylist.videos.length) {
       console.log('Invalid playlist jump index:', index);
       return;
     }
 
-    console.log(`${colors.yellow}Jumping to playlist position ${index}${colors.reset}`);
-    PLAYLIST.currentIndex = index;
+    console.log(`${colors.yellow}Jumping to playlist position ${index} (Room: ${targetRoomCode || 'Legacy'})${colors.reset}`);
+    targetPlaylist.currentIndex = index;
 
-    const currentTracks = getCurrentTrackSelections();
-    videoState.audioTrack = currentTracks.audioTrack;
-    videoState.subtitleTrack = currentTracks.subtitleTrack;
-    videoState.currentTime = 0;  // Reset to start of video
-    videoState.lastUpdate = Date.now();
+    // Set initial track selections for the new video
+    const video = targetPlaylist.videos[index];
+    targetVideoState.audioTrack = video.selectedAudioTrack !== undefined ? video.selectedAudioTrack : 0;
+    targetVideoState.subtitleTrack = video.selectedSubtitleTrack !== undefined ? video.selectedSubtitleTrack : -1;
+    targetVideoState.currentTime = 0;  // Reset to start of video
+    targetVideoState.lastUpdate = Date.now();
 
-    io.emit('sync', videoState);
-    io.emit('playlist-position', index);
-    io.emit('playlist-update', PLAYLIST);
+    if (SERVER_MODE) {
+      io.to(targetRoomCode).emit('sync', targetVideoState);
+      io.to(targetRoomCode).emit('playlist-position', index);
+      io.to(targetRoomCode).emit('playlist-update', targetPlaylist);
+    } else {
+      io.emit('sync', targetVideoState);
+      io.emit('playlist-position', index);
+      io.emit('playlist-update', targetPlaylist);
+    }
   });
 
   // Handle track selection changes from admin
   socket.on('track-change', (data) => {
     console.log('Track change received:', data);
+
+    let targetPlaylist, targetVideoState, targetRoomCode;
+
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+
+      if (room.adminSocketId !== socket.id) return;
+
+      targetPlaylist = room.playlist;
+      targetVideoState = room.videoState;
+    } else {
+      targetPlaylist = PLAYLIST;
+      targetVideoState = videoState;
+    }
 
     if (data.videoIndex === undefined || data.videoIndex < 0) {
       console.error('Invalid video index for track change');
@@ -689,8 +1616,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (PLAYLIST.videos.length > data.videoIndex) {
-      const video = PLAYLIST.videos[data.videoIndex];
+    if (targetPlaylist.videos.length > data.videoIndex) {
+      const video = targetPlaylist.videos[data.videoIndex];
 
       if (data.type === 'audio') {
         video.selectedAudioTrack = data.trackIndex;
@@ -698,18 +1625,28 @@ io.on('connection', (socket) => {
         video.selectedSubtitleTrack = data.trackIndex;
       }
 
-      if (data.videoIndex === PLAYLIST.currentIndex) {
+      if (data.videoIndex === targetPlaylist.currentIndex) {
         if (data.type === 'audio') {
-          videoState.audioTrack = data.trackIndex;
+          targetVideoState.audioTrack = data.trackIndex;
         } else if (data.type === 'subtitle') {
-          videoState.subtitleTrack = data.trackIndex;
+          targetVideoState.subtitleTrack = data.trackIndex;
         }
-        videoState.lastUpdate = Date.now();
-        io.emit('sync', videoState);
+        targetVideoState.lastUpdate = Date.now();
+
+        if (SERVER_MODE) {
+          io.to(targetRoomCode).emit('sync', targetVideoState);
+        } else {
+          io.emit('sync', targetVideoState);
+        }
       }
 
-      console.log(`Updated ${data.type} track for video ${data.videoIndex} to track ${data.trackIndex}`);
-      io.emit('track-change', data);
+      console.log(`Updated ${data.type} track for video ${data.videoIndex} to track ${data.trackIndex} (Room: ${targetRoomCode || 'Legacy'})`);
+
+      if (SERVER_MODE) {
+        io.to(targetRoomCode).emit('track-change', data);
+      } else {
+        io.emit('track-change', data);
+      }
     } else {
       console.error('Video index out of range for track change');
     }
@@ -719,35 +1656,54 @@ io.on('connection', (socket) => {
   socket.on('playlist-reorder', (data) => {
     const { fromIndex, toIndex } = data;
 
+    let targetPlaylist, targetRoomCode;
+
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+
+      if (room.adminSocketId !== socket.id) return;
+
+      targetPlaylist = room.playlist;
+    } else {
+      targetPlaylist = PLAYLIST;
+    }
+
     // Validate indices
-    if (fromIndex < 0 || fromIndex >= PLAYLIST.videos.length ||
-      toIndex < 0 || toIndex >= PLAYLIST.videos.length) {
+    if (fromIndex < 0 || fromIndex >= targetPlaylist.videos.length ||
+      toIndex < 0 || toIndex >= targetPlaylist.videos.length) {
       console.error('Invalid indices for playlist reorder');
       return;
     }
 
-    console.log(`${colors.yellow}Reordering playlist: ${fromIndex} -> ${toIndex}${colors.reset}`);
+    console.log(`${colors.yellow}Reordering playlist: ${fromIndex} -> ${toIndex} (Room: ${targetRoomCode || 'Legacy'})${colors.reset}`);
 
     // Swap the videos
-    [PLAYLIST.videos[fromIndex], PLAYLIST.videos[toIndex]] =
-      [PLAYLIST.videos[toIndex], PLAYLIST.videos[fromIndex]];
+    [targetPlaylist.videos[fromIndex], targetPlaylist.videos[toIndex]] =
+      [targetPlaylist.videos[toIndex], targetPlaylist.videos[fromIndex]];
 
     // Update mainVideoIndex if it was affected
-    if (PLAYLIST.mainVideoIndex === fromIndex) {
-      PLAYLIST.mainVideoIndex = toIndex;
-    } else if (PLAYLIST.mainVideoIndex === toIndex) {
-      PLAYLIST.mainVideoIndex = fromIndex;
+    if (targetPlaylist.mainVideoIndex === fromIndex) {
+      targetPlaylist.mainVideoIndex = toIndex;
+    } else if (targetPlaylist.mainVideoIndex === toIndex) {
+      targetPlaylist.mainVideoIndex = fromIndex;
     }
 
     // Update currentIndex if it was affected
-    if (PLAYLIST.currentIndex === fromIndex) {
-      PLAYLIST.currentIndex = toIndex;
-    } else if (PLAYLIST.currentIndex === toIndex) {
-      PLAYLIST.currentIndex = fromIndex;
+    if (targetPlaylist.currentIndex === fromIndex) {
+      targetPlaylist.currentIndex = toIndex;
+    } else if (targetPlaylist.currentIndex === toIndex) {
+      targetPlaylist.currentIndex = fromIndex;
     }
 
-    // Broadcast updated playlist to all clients
-    io.emit('playlist-update', PLAYLIST);
+    // Broadcast updated playlist to clients
+    if (SERVER_MODE) {
+      io.to(targetRoomCode).emit('playlist-update', targetPlaylist);
+    } else {
+      io.emit('playlist-update', targetPlaylist);
+    }
   });
 
   // BSL-S² (Both Side Local Sync Stream) handlers
@@ -798,26 +1754,53 @@ io.on('connection', (socket) => {
 
   // Admin requests BSL-S² check on all clients
   socket.on('bsl-check-request', () => {
-    console.log(`${colors.cyan}BSL-S² check requested by admin${colors.reset}`);
+    let targetRoomCode, targetPlaylist, targetClientBslStatus, targetAdminSocketId;
+
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+      if (room.adminSocketId !== socket.id) return;
+
+      targetPlaylist = room.playlist;
+      targetClientBslStatus = room.clientBslStatus;
+      targetAdminSocketId = room.adminSocketId;
+    } else {
+      targetPlaylist = PLAYLIST;
+      targetClientBslStatus = clientBslStatus;
+      targetAdminSocketId = adminSocketId;
+    }
+
+    console.log(`${colors.cyan}BSL-S² check requested by admin (Room: ${targetRoomCode || 'Legacy'})${colors.reset}`);
 
     // Only send to clients who haven't already selected a folder
     let promptedCount = 0;
-    io.sockets.sockets.forEach((clientSocket, socketId) => {
+
+    // In server mode, only check clients in this room
+    const socketsToPoll = SERVER_MODE ?
+      Array.from(getRoom(targetRoomCode).clients.keys()) :
+      Array.from(io.sockets.sockets.keys());
+
+    socketsToPoll.forEach((socketId) => {
       // Skip admin
-      if (socketId === adminSocketId) return;
+      if (socketId === targetAdminSocketId) return;
 
       // Skip clients who already have folder selected
-      const status = clientBslStatus.get(socketId);
+      const status = targetClientBslStatus.get(socketId);
       if (status && status.folderSelected) {
         console.log(`  Skipping ${socketId} - already has folder selected`);
         return;
       }
 
-      // Send check request to this client
-      clientSocket.emit('bsl-check-request', {
-        playlistVideos: PLAYLIST.videos.map(v => ({ filename: v.filename }))
-      });
-      promptedCount++;
+      const clientSocket = io.sockets.sockets.get(socketId);
+      if (clientSocket) {
+        // Send check request to this client
+        clientSocket.emit('bsl-check-request', {
+          playlistVideos: targetPlaylist.videos.map(v => ({ filename: v.filename }))
+        });
+        promptedCount++;
+      }
     });
 
     console.log(`${colors.cyan}BSL-S² check sent to ${promptedCount} clients${colors.reset}`);
@@ -826,13 +1809,33 @@ io.on('connection', (socket) => {
 
   // Admin requests stored BSL-S² status (without triggering check)
   socket.on('bsl-get-status', () => {
-    sendBslStatusToAdmin();
+    if (SERVER_MODE) {
+      const roomCode = socketRoomMap.get(socket.id);
+      if (roomCode) sendBslStatusToAdmin(roomCode);
+    } else {
+      sendBslStatusToAdmin();
+    }
   });
 
   // Client reports their local folder files
   socket.on('bsl-folder-selected', (data) => {
+    let targetRoomCode, targetPlaylist, targetClientBslStatus;
+
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+
+      targetPlaylist = room.playlist;
+      targetClientBslStatus = room.clientBslStatus;
+    } else {
+      targetPlaylist = PLAYLIST;
+      targetClientBslStatus = clientBslStatus;
+    }
+
     const clientId = data.clientId || socket.id; // Fallback to socket.id if no clientId
-    console.log(`${colors.cyan}Client ${clientId} (${socket.id}) reported ${data.files.length} files${colors.reset}`);
+    console.log(`${colors.cyan}Client ${clientId} (${socket.id}) reported ${data.files.length} files (Room: ${targetRoomCode || 'Legacy'})${colors.reset}`);
 
     // Store client's file list
     const matchedVideos = {};
@@ -841,9 +1844,9 @@ io.on('connection', (socket) => {
     const clientMatches = persistentBslMatches[clientId] || {};
 
     // Auto-match by filename + apply persistent matches
-    if (PLAYLIST.videos.length > 0) {
+    if (targetPlaylist.videos.length > 0) {
       data.files.forEach(clientFile => {
-        PLAYLIST.videos.forEach((playlistVideo, index) => {
+        targetPlaylist.videos.forEach((playlistVideo, index) => {
           // Check persistent match for this client (previously saved)
           if (clientMatches[clientFile.name.toLowerCase()] === playlistVideo.filename.toLowerCase()) {
             matchedVideos[index] = clientFile.name;
@@ -873,7 +1876,7 @@ io.on('connection', (socket) => {
             // 3. Size match (within ±1.5MB tolerance)
             if (clientFile.size !== undefined) {
               try {
-                const serverFilePath = path.join(__dirname, 'media', playlistVideo.filename);
+                const serverFilePath = path.join(ROOT_DIR, 'media', playlistVideo.filename);
                 const serverStats = fs.statSync(serverFilePath);
                 const sizeDiff = Math.abs(clientFile.size - serverStats.size);
                 if (sizeDiff <= SIZE_TOLERANCE) {
@@ -923,7 +1926,7 @@ io.on('connection', (socket) => {
       });
     }
 
-    clientBslStatus.set(socket.id, {
+    targetClientBslStatus.set(socket.id, {
       clientId: clientId, // Store clientId for manual match persistence
       clientName: data.clientName || clientId.slice(-6), // Display name
       folderSelected: true,
@@ -932,28 +1935,48 @@ io.on('connection', (socket) => {
     });
 
     // Send updated status to admin
-    sendBslStatusToAdmin();
+    if (SERVER_MODE) {
+      sendBslStatusToAdmin(targetRoomCode);
+    } else {
+      sendBslStatusToAdmin();
+    }
 
     // Send match results back to the client
     socket.emit('bsl-match-result', {
       matchedVideos: matchedVideos,
       totalMatched: Object.keys(matchedVideos).length,
-      totalPlaylist: PLAYLIST.videos.length
+      totalPlaylist: targetPlaylist.videos.length
     });
   });
 
   // Admin manually matches a client file to a playlist video
   socket.on('bsl-manual-match', (data) => {
-    const { clientSocketId, clientFileName, playlistIndex } = data;
-    console.log(`${colors.yellow}Manual BSL-S² match: ${clientFileName} -> playlist[${playlistIndex}]${colors.reset}`);
+    let targetRoomCode, targetPlaylist, targetClientBslStatus;
 
-    const clientStatus = clientBslStatus.get(clientSocketId);
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+      if (room.adminSocketId !== socket.id) return;
+
+      targetPlaylist = room.playlist;
+      targetClientBslStatus = room.clientBslStatus;
+    } else {
+      targetPlaylist = PLAYLIST;
+      targetClientBslStatus = clientBslStatus;
+    }
+
+    const { clientSocketId, clientFileName, playlistIndex } = data;
+    console.log(`${colors.yellow}Manual BSL-S² match: ${clientFileName} -> playlist[${playlistIndex}] (Room: ${targetRoomCode || 'Legacy'})${colors.reset}`);
+
+    const clientStatus = targetClientBslStatus.get(clientSocketId);
     if (clientStatus) {
       clientStatus.matchedVideos[playlistIndex] = clientFileName;
 
       // Save persistent match using the client's persistent ID
-      if (PLAYLIST.videos[playlistIndex] && clientStatus.clientId) {
-        const playlistFileName = PLAYLIST.videos[playlistIndex].filename;
+      if (targetPlaylist.videos[playlistIndex] && clientStatus.clientId) {
+        const playlistFileName = targetPlaylist.videos[playlistIndex].filename;
         const clientId = clientStatus.clientId;
 
         setBslMatch(clientId, clientFileName.toLowerCase(), playlistFileName.toLowerCase());
@@ -965,16 +1988,34 @@ io.on('connection', (socket) => {
       io.to(clientSocketId).emit('bsl-match-result', {
         matchedVideos: clientStatus.matchedVideos,
         totalMatched: Object.keys(clientStatus.matchedVideos).length,
-        totalPlaylist: PLAYLIST.videos.length
+        totalPlaylist: targetPlaylist.videos.length
       });
 
       // Update admin
-      sendBslStatusToAdmin();
+      if (SERVER_MODE) {
+        sendBslStatusToAdmin(targetRoomCode);
+      } else {
+        sendBslStatusToAdmin();
+      }
     }
   });
 
   // Admin sets drift for a specific client and playlist video
   socket.on('bsl-set-drift', (data) => {
+    let targetRoomCode, targetClientDriftValues;
+
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+      if (room.adminSocketId !== socket.id) return;
+
+      targetClientDriftValues = room.clientDriftValues;
+    } else {
+      targetClientDriftValues = clientDriftValues;
+    }
+
     const { clientFingerprint, playlistIndex, driftSeconds } = data;
     if (!clientFingerprint || playlistIndex === undefined) return;
 
@@ -982,38 +2023,67 @@ io.on('connection', (socket) => {
     const clampedDrift = Math.max(-60, Math.min(60, parseInt(driftSeconds) || 0));
 
     // Get or create drift object for this client
-    let clientDrifts = clientDriftValues.get(clientFingerprint);
+    let clientDrifts = targetClientDriftValues.get(clientFingerprint);
     if (!clientDrifts) {
       clientDrifts = {};
-      clientDriftValues.set(clientFingerprint, clientDrifts);
+      targetClientDriftValues.set(clientFingerprint, clientDrifts);
     }
 
     // Store drift value
     clientDrifts[playlistIndex] = clampedDrift;
-    console.log(`${colors.yellow}BSL-S² drift set: ${clientFingerprint} video[${playlistIndex}] = ${clampedDrift}s${colors.reset}`);
+    console.log(`${colors.yellow}BSL-S² drift set: ${clientFingerprint} video[${playlistIndex}] = ${clampedDrift}s (Room: ${targetRoomCode || 'Legacy'})${colors.reset}`);
 
-    // Find the client socket and notify them
-    connectedClients.forEach((info, socketId) => {
-      if (info.fingerprint === clientFingerprint) {
-        io.to(socketId).emit('bsl-drift-update', {
-          driftValues: clientDrifts
-        });
-      }
-    });
+    // If in Server Mode, only notify clients in the specific room
+    if (SERVER_MODE) {
+      const room = getRoom(targetRoomCode);
+      room.clients.forEach((c, socketId) => {
+        if (c.fingerprint === clientFingerprint) {
+          io.to(socketId).emit('bsl-drift-update', {
+            driftValues: clientDrifts
+          });
+        }
+      });
+    } else {
+      // Find the client socket and notify them (legacy)
+      connectedClients.forEach((info, socketId) => {
+        if (info.fingerprint === clientFingerprint) {
+          io.to(socketId).emit('bsl-drift-update', {
+            driftValues: clientDrifts
+          });
+        }
+      });
+    }
 
     // Update admin with new drift values
-    sendBslStatusToAdmin();
+    if (SERVER_MODE) {
+      sendBslStatusToAdmin(targetRoomCode);
+    } else {
+      sendBslStatusToAdmin();
+    }
   });
 
   // Admin sets a client's display name
   socket.on('set-client-name', (data) => {
+    let targetRoomCode;
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+      if (room.adminSocketId !== socket.id) return;
+    }
+
     const { clientId, displayName } = data;
     if (clientId && displayName) {
       setClientName(clientId, displayName);
       // Refresh local cache
       clientDisplayNames = getClientNames();
       // Update admin with new names
-      sendBslStatusToAdmin();
+      if (SERVER_MODE) {
+        sendBslStatusToAdmin(targetRoomCode);
+      } else {
+        sendBslStatusToAdmin();
+      }
     }
   });
 
@@ -1029,19 +2099,41 @@ io.on('connection', (socket) => {
 
   // Admin requests the list of connected clients
   socket.on('get-client-list', () => {
+    let targetRoomCode;
     const clients = [];
-    connectedClients.forEach((info, socketId) => {
-      // Skip admin sockets
-      if (verifiedAdminSockets.has(socketId)) return;
 
-      const displayName = clientDisplayNames[info.fingerprint] || '';
-      clients.push({
-        socketId,
-        fingerprint: info.fingerprint,
-        displayName,
-        connectedAt: info.connectedAt
+    if (SERVER_MODE) {
+      targetRoomCode = socketRoomMap.get(socket.id);
+      if (!targetRoomCode) return;
+      const room = getRoom(targetRoomCode);
+      if (!room) return;
+
+      room.clients.forEach((c, socketId) => {
+        // Skip admin sockets
+        if (room.adminSocketId === socketId) return;
+
+        const displayName = clientDisplayNames[c.fingerprint] || '';
+        clients.push({
+          socketId,
+          fingerprint: c.fingerprint,
+          displayName,
+          connectedAt: c.connectedAt
+        });
       });
-    });
+    } else {
+      connectedClients.forEach((info, socketId) => {
+        // Skip admin sockets
+        if (verifiedAdminSockets.has(socketId)) return;
+
+        const displayName = clientDisplayNames[info.fingerprint] || '';
+        clients.push({
+          socketId,
+          fingerprint: info.fingerprint,
+          displayName,
+          connectedAt: info.connectedAt
+        });
+      });
+    }
     socket.emit('client-list', clients);
   });
 
@@ -1057,16 +2149,32 @@ io.on('connection', (socket) => {
   });
 
   // Helper: Send BSL-S² status to admin
-  function sendBslStatusToAdmin() {
-    if (!adminSocketId) return;
+  function sendBslStatusToAdmin(roomCode = null) {
+    let targetAdminSocketId, targetClientBslStatus, targetClientDriftValues, targetPlaylist;
+
+    if (SERVER_MODE && roomCode) {
+      const room = getRoom(roomCode);
+      if (!room) return;
+      targetAdminSocketId = room.adminSocketId;
+      targetClientBslStatus = room.clientBslStatus;
+      targetClientDriftValues = room.clientDriftValues;
+      targetPlaylist = room.playlist;
+    } else {
+      targetAdminSocketId = adminSocketId;
+      targetClientBslStatus = clientBslStatus;
+      targetClientDriftValues = clientDriftValues;
+      targetPlaylist = PLAYLIST;
+    }
+
+    if (!targetAdminSocketId) return;
 
     const clientStatuses = [];
-    clientBslStatus.forEach((status, socketId) => {
+    targetClientBslStatus.forEach((status, socketId) => {
       const fingerprint = status.clientId;
       // Use admin-set name, or fallback to fingerprint prefix
       const displayName = clientDisplayNames[fingerprint] || fingerprint.slice(-4);
       // Get drift values for this client
-      const driftValues = clientDriftValues.get(fingerprint) || {};
+      const driftValues = targetClientDriftValues.get(fingerprint) || {};
       clientStatuses.push({
         socketId,
         clientId: fingerprint,
@@ -1080,11 +2188,11 @@ io.on('connection', (socket) => {
 
     // Calculate overall BSL-S² status per video
     const videoBslStatus = {};
-    PLAYLIST.videos.forEach((_, index) => {
+    targetPlaylist.videos.forEach((_, index) => {
       const clientsWithMatch = [];
       const clientsWithoutMatch = [];
 
-      clientBslStatus.forEach((status, socketId) => {
+      targetClientBslStatus.forEach((status, socketId) => {
         if (status.matchedVideos[index]) {
           clientsWithMatch.push(socketId);
         } else if (status.folderSelected) {
@@ -1093,7 +2201,7 @@ io.on('connection', (socket) => {
       });
 
       // Determine if BSL-S² is active based on mode
-      const totalClients = clientBslStatus.size;
+      const totalClients = targetClientBslStatus.size;
       let bslActive = false;
       if (BSL_S2_MODE === 'all') {
         bslActive = totalClients > 0 && clientsWithMatch.length === totalClients;
@@ -1109,7 +2217,7 @@ io.on('connection', (socket) => {
       };
     });
 
-    io.to(adminSocketId).emit('bsl-status-update', {
+    io.to(targetAdminSocketId).emit('bsl-status-update', {
       mode: BSL_S2_MODE,
       clients: clientStatuses,
       videoBslStatus
@@ -1118,39 +2226,79 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('A user disconnected');
-    // Clean up BSL-S² status
-    clientBslStatus.delete(socket.id);
-    // Clean up verified admin status
-    verifiedAdminSockets.delete(socket.id);
-    // Clean up connected clients tracking
-    connectedClients.delete(socket.id);
-    if (socket.id === adminSocketId) {
-      adminSocketId = null;
+
+    if (SERVER_MODE) {
+      const roomCode = socketRoomMap.get(socket.id);
+      if (roomCode) {
+        const room = getRoom(roomCode);
+        if (room) {
+          // Clean up room-specific BSL status
+          room.clientBslStatus.delete(socket.id);
+          // If this was an admin, we don't necessarily delete the room here 
+          // (that's handled by delete-room or room timeout logic if implemented)
+
+          // Update room admin
+          sendBslStatusToAdmin(roomCode);
+          // Broadcast updated client count for this room
+          broadcastClientCount(roomCode);
+        }
+        socketRoomMap.delete(socket.id);
+      }
+    } else {
+      // Legacy Mode cleanup
+      clientBslStatus.delete(socket.id);
+      verifiedAdminSockets.delete(socket.id);
+      connectedClients.delete(socket.id);
+      if (socket.id === adminSocketId) {
+        adminSocketId = null;
+      }
+      sendBslStatusToAdmin();
+      broadcastClientCount();
     }
-    // Update admin if still connected
-    sendBslStatusToAdmin();
-    // Broadcast updated client count
-    broadcastClientCount();
   });
 });
 
 // Helper: Broadcast client count to all clients
-function broadcastClientCount() {
-  // Count all connected sockets, excluding admin
-  let count = io.sockets.sockets.size;
-  if (adminSocketId && io.sockets.sockets.has(adminSocketId)) {
-    count--; // Exclude admin from count
+function broadcastClientCount(roomCode = null) {
+  if (SERVER_MODE && roomCode) {
+    const room = getRoom(roomCode);
+    if (room) {
+      let count = room.clients.size;
+      if (room.adminSocketId && room.clients.has(room.adminSocketId)) {
+        count--; // Exclude admin from count
+      }
+      io.to(roomCode).emit('client-count', count);
+    }
+  } else {
+    // Count all connected sockets, excluding admin (legacy)
+    let count = io.sockets.sockets.size;
+    if (adminSocketId && io.sockets.sockets.has(adminSocketId)) {
+      count--; // Exclude admin from count
+    }
+    io.emit('client-count', count);
   }
-  io.emit('client-count', count);
 }
 
 // Global time synchronization interval
 const syncInterval = setInterval(() => {
-  if (videoState.isPlaying) {
-    const now = Date.now();
-    const elapsed = (now - videoState.lastUpdate) / 1000;
-    videoState.currentTime += elapsed;
-    videoState.lastUpdate = now;
+  if (SERVER_MODE) {
+    // Update videoState for all active rooms
+    rooms.forEach(room => {
+      if (room.videoState.isPlaying) {
+        const now = Date.now();
+        const elapsed = (now - room.videoState.lastUpdate) / 1000;
+        room.videoState.currentTime += elapsed;
+        room.videoState.lastUpdate = now;
+      }
+    });
+  } else {
+    // Legacy Mode sync
+    if (videoState.isPlaying) {
+      const now = Date.now();
+      const elapsed = (now - videoState.lastUpdate) / 1000;
+      videoState.currentTime += elapsed;
+      videoState.lastUpdate = now;
+    }
   }
 }, 5000);
 

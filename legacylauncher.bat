@@ -316,9 +316,9 @@ echo Starting Server...
 echo.
 echo [DEBUG]: Current directory: %CD%
 echo.
-if not exist server.js (
+if not exist res\server.js (
     color 0C
-    echo [CRITICAL ERROR]: server.js not found in current directory!
+    echo [CRITICAL ERROR]: res\server.js not found in current directory!
     echo Please ensure you are running this script from the correct folder.
     color 0a
     echo.
@@ -330,7 +330,7 @@ echo [DEBUG]: Starting server with port %PORT%...
 :: Clear retry counter on successful start
 del "%RETRY_FILE%" >nul 2>&1
 
-node server.js %LOCAL_IP%
+node res\server.js %LOCAL_IP%
 if %errorlevel% neq 0 (
     echo.
     color 0C

@@ -1,10 +1,16 @@
 # Sync-Player PowerShell Startup Script
-# Equivalent to legacylauncher.bat with improved error handling and cleaner syntax, legacy launcher was last updated in 17.12.2025
+# Equivalent to legacylauncher.bat with improved error handling and cleaner syntax, legacy launcher will no longer get major updates and has last updated in 23.12.2025
 
 # Re-launch with bypass if not already bypassed (fixes right-click "Run with PowerShell")
 if ($ExecutionContext.SessionState.LanguageMode -eq 'ConstrainedLanguage' -or 
     (Get-ExecutionPolicy) -notin @('Bypass', 'Unrestricted', 'RemoteSigned')) {
     Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -NoProfile -File `"$PSCommandPath`"" -NoNewWindow -Wait
+    exit
+}
+
+# Prefer Windows Terminal
+if (-not $env:WT_SESSION -and (Get-Command wt -ErrorAction SilentlyContinue)) {
+    Start-Process wt -ArgumentList "-w -1 nt --title `"Sync-Player Admin Console`" powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
     exit
 }
 
@@ -24,10 +30,13 @@ if (Test-Path $RETRY_FILE) {
 
 # =================================================================
 # Get script location and set working directory
+# Script is in res/, root is parent folder
 # =================================================================
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $scriptDir
+$rootDir = Split-Path -Parent $scriptDir
+Set-Location $rootDir
 Write-Host "Running from: $PWD"
+Write-Host "Script location: $scriptDir"
 
 # =================================================================
 # Helper function for colored output
@@ -84,7 +93,7 @@ if (-not $nodeInstalled) {
 }
 
 # =================================================================
-# Initialize configuration
+# Initialize configuration (in root directory)
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console - Initializing"
 
@@ -128,10 +137,37 @@ video_autoplay: false
 # Set to true to enable, false to allow any machine to access admin
 admin_fingerprint_lock: false
 
-# BSL-SÂ² Advanced Matching
+# BSL-S² Advanced Matching
 # When enabled, matches files using multiple criteria (name, size, extension, MIME)
 # A match is declared if 3 or more criteria pass
-bsl_advanced_match: false
+bsl_advanced_match: true
+
+# BSL-S² Advanced Match Threshold (1-4)
+bsl_advanced_match_threshold: 1
+
+# Skip Intro Seconds
+# How many seconds the "Skip Intro" button jumps forward
+skip_intro_seconds: 87
+
+# Client Controls Configuration
+# Set to true to disable all client controls (they become view-only)
+client_controls_disabled: false
+
+# Client Sync to Server Configuration
+# This makes clients view-only even if they attempt to send control events
+client_sync_disabled: false
+
+# Server Mode
+# When enabled, logs are disabled for cleaner server operation
+server_mode: false
+
+# Chat Feature
+# Set to true to enable chat, false to disable
+chat_enabled: true
+
+# Data Hydration Optimization
+# When enabled, the server injects initial data into admin.html to save a round-trip
+data_hydration: true
 "@
     
     $defaultConfig | Out-File -FilePath "config.txt" -Encoding UTF8
@@ -139,7 +175,7 @@ bsl_advanced_match: false
 }
 
 # =================================================================
-# Create folders if needed
+# Create folders if needed (in root directory)
 # =================================================================
 if (-not (Test-Path "media")) {
     New-Item -ItemType Directory -Path "media" | Out-Null
@@ -147,7 +183,7 @@ if (-not (Test-Path "media")) {
 }
 
 # =================================================================
-# Check and Install Dependencies
+# Check and Install Dependencies (in res/ directory)
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console - Checking Dependencies"
 Write-Host "Checking required dependencies..."
@@ -155,14 +191,14 @@ Write-Host "Checking required dependencies..."
 $MISSING_DEPS = $false
 $requiredPackages = @("express", "socket.io", "helmet")
 
-if (-not (Test-Path "node_modules")) {
+if (-not (Test-Path "res\node_modules")) {
     $MISSING_DEPS = $true
     Write-Status "MISSING" "Node.js dependencies (express, socket.io, helmet)"
 }
 else {
     Write-Host "Checking for specific dependencies..."
     foreach ($pkg in $requiredPackages) {
-        if (-not (Test-Path "node_modules\$pkg")) {
+        if (-not (Test-Path "res\node_modules\$pkg")) {
             $MISSING_DEPS = $true
             Write-Status "MISSING" "$pkg package"
         }
@@ -177,13 +213,13 @@ $MISSING_FFMPEG = $false
 $ffmpegInstalled = Get-Command ffmpeg -ErrorAction SilentlyContinue
 if (-not $ffmpegInstalled) {
     $MISSING_FFMPEG = $true
-    Write-Status "MISSING" "FFmpeg (required for video processing)"
+    Write-Status "MISSING" "FFmpeg"
 }
 else {
     Write-Status "OK" "FFmpeg found"
 }
 
-# Install missing Node.js dependencies
+# Install missing Node.js dependencies (run npm from res/ directory)
 if ($MISSING_DEPS) {
     Write-Host ""
     Write-Status "REQUIRED" "This software needs Node.js dependencies to work properly."
@@ -197,7 +233,9 @@ if ($MISSING_DEPS) {
     try {
         Write-Host "Running: npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0" -ForegroundColor Gray
         Write-Host ""
+        Push-Location "res"
         cmd /c "npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
+        Pop-Location
         if ($LASTEXITCODE -ne 0) {
             throw "npm install failed with exit code $LASTEXITCODE"
         }
@@ -207,12 +245,10 @@ if ($MISSING_DEPS) {
         if (Test-Path $RETRY_FILE) { Remove-Item $RETRY_FILE -Force }
     }
     catch {
+        Pop-Location -ErrorAction SilentlyContinue
         Write-Status "ERROR" "Failed to install dependencies."
         Write-Host "Please check your internet connection and try again."
-        Write-Host "You can also try running any one of the following commands in cmd after doing cd (Path to server.js):"
-        Write-Host "npm install"
-        Write-Host "npm install express socket.io helmet"
-        Write-Host "npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
+        Write-Host "You can also try running: cd res && npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
         Write-Host ""
         
         # Auto-retry logic
@@ -266,20 +302,27 @@ if ($MISSING_FFMPEG) {
 }
 
 # =================================================================
-# Read configuration
+# Read configuration (from root directory)
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console - Reading Config"
 
 # Default values
 $config = @{
-    PORT         = 3000
-    VOLUME_STEP  = 5
-    SKIP_SECONDS = 5
-    JOIN_MODE    = "sync"
-    USE_HTTPS    = "false"
-    BSL_S2_MODE  = "any"
-    ADMIN_LOCK   = "false"
-    BSL_ADV_MATCH = "false"
+    PORT                     = 3000
+    VOLUME_STEP              = 5
+    SKIP_SECONDS             = 5
+    JOIN_MODE                = "sync"
+    USE_HTTPS                = "false"
+    BSL_S2_MODE              = "any"
+    ADMIN_LOCK               = "false"
+    BSL_ADV_MATCH            = "true"
+    BSL_ADV_MATCH_THRESHOLD  = 1
+    SKIP_INTRO_SECONDS       = 87
+    CLIENT_CONTROLS_DISABLED = "false"
+    CLIENT_SYNC_DISABLED     = "false"
+    SERVER_MODE              = "false"
+    CHAT_ENABLED             = "true"
+    DATA_HYDRATION           = "true"
 }
 
 if (Test-Path "config.txt") {
@@ -302,6 +345,13 @@ if (Test-Path "config.txt") {
                 "bsl_s2_mode" { $config.BSL_S2_MODE = $value }
                 "admin_fingerprint_lock" { $config.ADMIN_LOCK = $value }
                 "bsl_advanced_match" { $config.BSL_ADV_MATCH = $value }
+                "bsl_advanced_match_threshold" { $config.BSL_ADV_MATCH_THRESHOLD = [int]$value }
+                "skip_intro_seconds" { $config.SKIP_INTRO_SECONDS = [int]$value }
+                "client_controls_disabled" { $config.CLIENT_CONTROLS_DISABLED = $value }
+                "client_sync_disabled" { $config.CLIENT_SYNC_DISABLED = $value }
+                "server_mode" { $config.SERVER_MODE = $value }
+                "chat_enabled" { $config.CHAT_ENABLED = $value }
+                "data_hydration" { $config.DATA_HYDRATION = $value }
             }
         }
     }
@@ -352,7 +402,7 @@ catch {
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console"
 Write-Host ""
-Write-Host "Sync-Player 1.8.2" -ForegroundColor Cyan
+Write-Host "Sync-Player 1.9.0" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Settings:" -ForegroundColor Yellow
@@ -362,8 +412,13 @@ Write-Host "- Skip Seconds: $($config.SKIP_SECONDS)s" -ForegroundColor White
 Write-Host "- Join Mode: $($config.JOIN_MODE)" -ForegroundColor White
 Write-Host "- HTTPS: $($config.USE_HTTPS)" -ForegroundColor White
 Write-Host "- BSL-S2 Mode: $($config.BSL_S2_MODE)" -ForegroundColor White
-Write-Host "- BSL-S2 Adv Match: $($config.BSL_ADV_MATCH)" -ForegroundColor White
-Write-Host "- Admin Lock: $($config.ADMIN_LOCK)" -ForegroundColor White
+Write-Host "- BSL-S2 Adv Match: $($config.BSL_ADV_MATCH) (Threshold: $($config.BSL_ADV_MATCH_THRESHOLD))" -ForegroundColor White
+Write-Host "- Skip Intro: $($config.SKIP_INTRO_SECONDS)s" -ForegroundColor White
+Write-Host "- Client Controls: $(if ($config.CLIENT_CONTROLS_DISABLED -eq 'true') { 'Disabled' } else { 'Enabled' })" -ForegroundColor White
+Write-Host "- Client Sync: $(if ($config.CLIENT_SYNC_DISABLED -eq 'true') { 'Disabled' } else { 'Enabled' })" -ForegroundColor White
+Write-Host "- Server Mode: $($config.SERVER_MODE)" -ForegroundColor White
+Write-Host "- Chat: $($config.CHAT_ENABLED)" -ForegroundColor White
+Write-Host "- Data Hydration: $($config.DATA_HYDRATION)" -ForegroundColor White
 Write-Host ""
 Write-Host "Access URLs:" -ForegroundColor Yellow
 Write-Host "- Your network: http://${LOCAL_IP}:$($config.PORT)" -ForegroundColor White
@@ -378,10 +433,10 @@ Write-Status "DEBUG" "Current directory: $PWD"
 Write-Host ""
 
 # =================================================================
-# Start the server
+# Start the server (from res/ directory)
 # =================================================================
-if (-not (Test-Path "server.js")) {
-    Write-Status "CRITICAL" "server.js not found in current directory!"
+if (-not (Test-Path "res\server.js")) {
+    Write-Status "CRITICAL" "res\server.js not found!"
     Write-Host "Please ensure you are running this script from the correct folder."
     Write-Host ""
     Read-Host "Press Enter to exit"
@@ -394,7 +449,7 @@ Write-Status "DEBUG" "Starting server with port $($config.PORT)..."
 if (Test-Path $RETRY_FILE) { Remove-Item $RETRY_FILE -Force }
 
 try {
-    & node server.js $LOCAL_IP
+    & node res\server.js $LOCAL_IP
     $exitCode = $LASTEXITCODE
     if ($exitCode -ne 0) {
         throw "Server exited with code $exitCode"

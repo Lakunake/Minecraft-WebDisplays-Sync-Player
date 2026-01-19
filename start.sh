@@ -15,6 +15,7 @@ fi
 
 # =================================================================
 # Get script location and set working directory
+# Script runs from root, server.js is in res/
 # =================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -69,7 +70,7 @@ if ! command -v node &> /dev/null; then
 fi
 
 # =================================================================
-# Initialize configuration
+# Initialize configuration (in root directory)
 # =================================================================
 if [ ! -f "config.txt" ]; then
     echo "Creating default configuration..."
@@ -110,13 +111,39 @@ video_autoplay: false
 # The fingerprint is stored in admin_fingerprint.txt
 # Set to true to enable, false to allow any machine to access admin
 admin_fingerprint_lock: false
+
+# BSL-S² Advanced Matching
+# When enabled, matches files using multiple criteria (name, size, extension, MIME)
+bsl_advanced_match: true
+
+# BSL-S² Advanced Match Threshold (1-4)
+bsl_advanced_match_threshold: 1
+
+# Skip Intro Seconds
+# How many seconds the "Skip Intro" button jumps forward
+skip_intro_seconds: 87
+
+# Client Controls Configuration
+client_controls_disabled: false
+
+# Client Sync to Server Configuration
+client_sync_disabled: false
+
+# Server Mode
+server_mode: false
+
+# Chat Feature
+chat_enabled: true
+
+# Data Hydration Optimization
+data_hydration: true
 EOF
     
     echo "Default config created with all available options"
 fi
 
 # =================================================================
-# Create folders if needed
+# Create folders if needed (in root directory)
 # =================================================================
 if [ ! -d "media" ]; then
     mkdir -p media
@@ -124,20 +151,20 @@ if [ ! -d "media" ]; then
 fi
 
 # =================================================================
-# Check and Install Dependencies
+# Check and Install Dependencies (in res/ directory)
 # =================================================================
 echo "Checking required dependencies..."
 
 MISSING_DEPS=false
 REQUIRED_PACKAGES=("express" "socket.io" "helmet")
 
-if [ ! -d "node_modules" ]; then
+if [ ! -d "res/node_modules" ]; then
     MISSING_DEPS=true
     write_status "MISSING" "Node.js dependencies (express, socket.io, helmet)"
 else
     echo "Checking for specific dependencies..."
     for pkg in "${REQUIRED_PACKAGES[@]}"; do
-        if [ ! -d "node_modules/$pkg" ]; then
+        if [ ! -d "res/node_modules/$pkg" ]; then
             MISSING_DEPS=true
             write_status "MISSING" "$pkg package"
         fi
@@ -156,7 +183,7 @@ else
     write_status "OK" "FFmpeg found"
 fi
 
-# Install missing Node.js dependencies
+# Install missing Node.js dependencies (run npm from res/ directory)
 if [ "$MISSING_DEPS" = true ]; then
     echo ""
     write_status "REQUIRED" "This software needs Node.js dependencies to work properly."
@@ -166,14 +193,17 @@ if [ "$MISSING_DEPS" = true ]; then
     echo ""
     echo "Installing Node.js dependencies..."
     
+    pushd "res" > /dev/null
     if npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0; then
+        popd > /dev/null
         write_status "SUCCESS" "Dependencies installed successfully."
         MISSING_DEPS=false
         [ -f "$RETRY_FILE" ] && rm -f "$RETRY_FILE"
     else
+        popd > /dev/null
         write_status "ERROR" "Failed to install dependencies."
         echo "Please check your internet connection and try again."
-        echo "You can also try running: npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
+        echo "You can also try running: cd res && npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
         echo ""
         
         # Auto-retry logic
@@ -218,7 +248,7 @@ if [ "$MISSING_FFMPEG" = true ]; then
 fi
 
 # =================================================================
-# Read configuration
+# Read configuration (from root directory)
 # =================================================================
 # Default values
 PORT=3000
@@ -249,6 +279,14 @@ if [ -f "config.txt" ]; then
                 "use_https")              USE_HTTPS="$value" ;;
                 "bsl_s2_mode")            BSL_S2_MODE="$value" ;;
                 "admin_fingerprint_lock") ADMIN_LOCK="$value" ;;
+                "bsl_advanced_match")     BSL_ADV_MATCH="$value" ;;
+                "bsl_advanced_match_threshold") BSL_ADV_MATCH_THRESHOLD="$value" ;;
+                "skip_intro_seconds")     SKIP_INTRO_SECONDS="$value" ;;
+                "client_controls_disabled") CLIENT_CONTROLS_DISABLED="$value" ;;
+                "client_sync_disabled")   CLIENT_SYNC_DISABLED="$value" ;;
+                "server_mode")            SERVER_MODE="$value" ;;
+                "chat_enabled")           CHAT_ENABLED="$value" ;;
+                "data_hydration")         DATA_HYDRATION="$value" ;;
             esac
         fi
     done < config.txt
@@ -289,7 +327,7 @@ fi
 # Display server information
 # =================================================================
 echo ""
-echo -e "\033[36mSync-Player 1.8.1\033[0m"
+echo -e "\033[36mSync-Player 1.9.0\033[0m"
 echo -e "\033[36m==========================\033[0m"
 echo ""
 echo -e "\033[33mSettings:\033[0m"
@@ -299,7 +337,13 @@ echo "- Skip Seconds: ${SKIP_SECONDS}s"
 echo "- Join Mode: $JOIN_MODE"
 echo "- HTTPS: $USE_HTTPS"
 echo "- BSL-S2 Mode: $BSL_S2_MODE"
-echo "- Admin Lock: $ADMIN_LOCK"
+echo "- BSL-S2 Adv Match: $BSL_ADV_MATCH (Threshold: ${BSL_ADV_MATCH_THRESHOLD:-1})"
+echo "- Skip Intro: ${SKIP_INTRO_SECONDS:-87}s"
+echo "- Client Controls: ${CLIENT_CONTROLS_DISABLED:-false}"
+echo "- Client Sync: ${CLIENT_SYNC_DISABLED:-false}"
+echo "- Server Mode: ${SERVER_MODE:-false}"
+echo "- Chat: ${CHAT_ENABLED:-true}"
+echo "- Data Hydration: ${DATA_HYDRATION:-true}"
 echo ""
 echo -e "\033[33mAccess URLs:\033[0m"
 echo "- Your network: http://${LOCAL_IP}:${PORT}"
@@ -314,10 +358,10 @@ write_status "DEBUG" "Current directory: $PWD"
 echo ""
 
 # =================================================================
-# Start the server
+# Start the server (from res/ directory)
 # =================================================================
-if [ ! -f "server.js" ]; then
-    write_status "CRITICAL" "server.js not found in current directory!"
+if [ ! -f "res/server.js" ]; then
+    write_status "CRITICAL" "res/server.js not found in current directory!"
     echo "Please ensure you are running this script from the correct folder."
     echo ""
     read -p "Press Enter to exit..."
@@ -329,7 +373,7 @@ write_status "DEBUG" "Starting server with port $PORT..."
 # Clear retry counter on successful start
 [ -f "$RETRY_FILE" ] && rm -f "$RETRY_FILE"
 
-node server.js "$LOCAL_IP"
+node res/server.js "$LOCAL_IP"
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then

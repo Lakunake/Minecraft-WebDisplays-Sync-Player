@@ -4,6 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Sync-Player</title>
+  <!-- Pixel Font for Chat -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     html,
     body {
@@ -165,7 +167,7 @@
       display: none;
       justify-content: center;
       align-items: center;
-      z-index: 200;
+      z-index: 300;
     }
 
     #bsl-overlay.visible {
@@ -243,6 +245,100 @@
       gap: 10px;
     }
 
+    /* Mobile Landscape Prompt */
+    #mobile-landscape-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 250;
+    }
+
+    #mobile-landscape-overlay.visible {
+      display: flex;
+    }
+
+    .mobile-prompt {
+      background: linear-gradient(145deg, #1a1a2e, #252550);
+      border-radius: 16px;
+      padding: 35px;
+      text-align: center;
+      max-width: 340px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .mobile-prompt-icon {
+      font-size: 60px;
+      margin-bottom: 15px;
+      animation: rotate-phone 2s ease-in-out infinite;
+    }
+
+    @keyframes rotate-phone {
+
+      0%,
+      100% {
+        transform: rotate(0deg);
+      }
+
+      25% {
+        transform: rotate(-15deg);
+      }
+
+      75% {
+        transform: rotate(90deg);
+      }
+    }
+
+    .mobile-prompt h2 {
+      color: #fff;
+      margin-bottom: 10px;
+      font-size: 22px;
+    }
+
+    .mobile-prompt p {
+      color: #aaa;
+      margin-bottom: 25px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .mobile-prompt-btn {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 14px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.2s;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .mobile-prompt-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+    }
+
+    .mobile-prompt-btn.secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #888;
+    }
+
+    .mobile-prompt-btn.secondary:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      color: #ccc;
+      box-shadow: none;
+    }
+
     #media-placeholder {
       position: absolute;
       top: 0;
@@ -274,6 +370,209 @@
       background: rgba(0, 0, 0, 0.4);
       border-radius: 8px;
     }
+
+    /* Chat Widget Styles */
+    #chat-widget {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      height: 300px;
+      background: transparent;
+      z-index: 150;
+      display: none;
+      flex-direction: column;
+      font-family: 'Press Start 2P', cursive;
+      overflow: visible;
+      transition: transform 0.3s ease;
+      /* Right-anchored collapse */
+      transform: translateX(0);
+    }
+
+    #chat-widget.visible {
+      display: flex;
+    }
+
+    #chat-widget.collapsed {
+      transform: translateX(calc(100% + 20px));
+      /* Slide out fully (including 20px margin), leaving only button visible */
+    }
+
+    #chat-header {
+      position: absolute;
+      left: -30px;
+      /* Position button to the left of the main container */
+      bottom: 0px;
+      width: 30px;
+      height: 45px;
+      /* Match input height for alignment */
+      padding: 0;
+      background: rgba(0, 0, 0, 0.5);
+      /* Semi-transparent button background */
+      border-radius: 4px 0 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      z-index: 160;
+      /* Ensure button stays on top */
+      transition: opacity 0.5s ease;
+      /* Smooth fade for auto-hide */
+    }
+
+    #chat-header.idle-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #chat-header-left {
+      display: none;
+      /* Hide title */
+    }
+
+    #chat-toggle-btn {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      /* Matched to input font size */
+      padding: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      font-family: 'Press Start 2P', cursive;
+    }
+
+    #chat-badge {
+      display: none !important;
+      /* Hide badge for now */
+    }
+
+    #chat-messages {
+      flex: 1;
+      overflow-y: visible;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      /* Stack bottom-up naturally */
+      justify-content: flex-end;
+      /* Align to bottom */
+      scrollbar-width: none;
+      /* Hide scrollbar */
+      pointer-events: none;
+      /* Let clicks pass through */
+    }
+
+    #chat-messages::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chat-message {
+      margin-bottom: 6px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 6px 10px;
+      border-radius: 4px;
+      width: fit-content;
+      max-width: 100%;
+      pointer-events: auto;
+      transition: opacity 0.5s;
+    }
+
+    .chat-message.fading-slow {
+      opacity: 0;
+      transition: opacity 2s ease-out;
+    }
+
+    .chat-message.fading-fast {
+      opacity: 0;
+      transition: opacity 0.5s ease-out;
+    }
+
+    .chat-message .sender {
+      color: #a0a0ff;
+      font-size: 8px;
+      margin-right: 5px;
+      display: inline;
+    }
+
+    .chat-message .text {
+      color: #fff;
+      font-size: 8px;
+      display: inline;
+      word-wrap: break-word;
+      line-height: 1.4;
+    }
+
+    .chat-message.own .sender {
+      color: #80b0ff;
+    }
+
+    .chat-message.system {
+      background: transparent;
+      text-align: left;
+      color: #FFFF00;
+      font-size: 7px;
+      padding: 2px 5px;
+    }
+
+    /* Hide message area when collapsed (optional, but transformation handles visible hiding) */
+    /* We don't hide because we want the toggle button to be part of the widget's transform */
+
+    #chat-input-area {
+      display: flex;
+      padding: 0;
+      background: transparent;
+      border: none;
+      margin-top: 5px;
+      align-items: center;
+    }
+
+    .chat-label {
+      color: #00FF00;
+      font-size: 10px;
+      /* Increased to visual match new input size */
+      margin-right: 5px;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    #chat-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: none;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 0;
+      /* Fix clipping: Use fixed height and vertical alignment */
+      height: 45px;
+      /* Greatly increased to afford larger font */
+      padding: 0 15px;
+      /* Horizontal padding only */
+      color: #fff;
+      /* switched to monospace for better readability and to fix clipping */
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      /* Significantly larger */
+      line-height: 45px;
+      /* Match height for centering */
+      outline: none;
+    }
+
+    #chat-input:focus {
+      border-color: #00FF00;
+    }
+
+    #chat-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      /* Match input font size */
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      /* Ensure same font family */
+    }
+
+    #chat-send {
+      display: none;
+      /* Hide send button, rely on Enter */
+    }
   </style>
 </head>
 
@@ -304,6 +603,19 @@
   <div id="status"></div>
   <div id="current-track-info"></div>
 
+  <!-- Chat Widget -->
+  <div id="chat-widget">
+    <div id="chat-header">
+      <button id="chat-toggle-btn">></button>
+    </div>
+    <div id="chat-messages"></div>
+    <div id="chat-input-area">
+      <span class="chat-label">CHAT:</span>
+      <input type="text" id="chat-input" placeholder="Enter your name..." maxlength="500">
+      <button id="chat-send">➤</button>
+    </div>
+  </div>
+
   <!-- BSL-S² Folder Selection (hidden input + overlay) -->
   <input type="file" id="bsl-folder-input" webkitdirectory directory multiple hidden>
   <div id="bsl-overlay">
@@ -318,6 +630,17 @@
         <button class="bsl-btn-skip" id="bsl-skip-btn">Skip</button>
       </div>
       <div id="bsl-result" class="bsl-result" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Mobile Landscape Prompt -->
+  <div id="mobile-landscape-overlay">
+    <div class="mobile-prompt">
+      <div class="mobile-prompt-icon">📱</div>
+      <h2>Better Viewing Experience</h2>
+      <p>For the best experience, we recommend fullscreen mode with landscape orientation.</p>
+      <button class="mobile-prompt-btn" id="mobile-fullscreen-btn">🖥️ Go Fullscreen</button>
+      <button class="mobile-prompt-btn secondary" id="mobile-skip-btn">Maybe Later</button>
     </div>
   </div>
 
@@ -491,6 +814,7 @@
           case 'streamable':
           case 'gdrive':
           case 'kick':
+          case 'rumble':
           case 'iframe':
             const iframeContainer = document.getElementById('iframe-container');
             iframeContainer.classList.add('visible');
@@ -499,6 +823,7 @@
             if (platform === 'streamable') iframe.src = `https://streamable.com/e/${id}?autoplay=1`;
             else if (platform === 'gdrive') iframe.src = `https://drive.google.com/file/d/${id}/preview`;
             else if (platform === 'kick') iframe.src = `https://player.kick.com/${id}?autoplay=true`;
+            else if (platform === 'rumble') iframe.src = `https://rumble.com/embed/${id}/?autoplay=1`;
             else iframe.src = url; // Generic iframe
             break;
 
@@ -598,9 +923,33 @@
     socket.on('connect', () => {
       console.log('Connected to server');
       showTemporaryMessage('Connected', 1000);
-      socket.emit('request-initial-state');
-      // Register with server (for client management)
-      socket.emit('client-register', { fingerprint: clientFingerprint });
+
+      // Check if we're in a room (server mode URL: /watch/:roomCode)
+      const pathMatch = window.location.pathname.match(/^\/watch\/([A-Z0-9]{6})$/i);
+      if (pathMatch) {
+        const roomCode = pathMatch[1].toUpperCase();
+        const displayName = sessionStorage.getItem('sync-player-name') || 'Guest';
+        console.log('Joining room:', roomCode);
+
+        socket.emit('join-room', {
+          roomCode,
+          name: displayName,
+          fingerprint: clientFingerprint
+        }, (response) => {
+          if (response && response.success) {
+            console.log('Joined room:', response.roomName);
+            showTemporaryMessage(`Joined: ${response.roomName}`, 2000);
+          } else {
+            console.error('Failed to join room:', response?.error);
+            showTemporaryMessage('Room not found', 3000);
+            setTimeout(() => window.location.href = '/', 2000);
+          }
+        });
+      } else {
+        // Legacy mode - direct connection
+        socket.emit('request-initial-state');
+        socket.emit('client-register', { fingerprint: clientFingerprint });
+      }
     });
 
     socket.on('disconnect', () => {
@@ -609,16 +958,58 @@
       hasInitialSync = false; // Reset on disconnect
     });
 
+    // Handle room deleted event (server mode)
+    socket.on('room-deleted', () => {
+      showTemporaryMessage('Room was closed by admin', 3000);
+      setTimeout(() => window.location.href = '/', 2000);
+    });
+
+    // Handle viewer count updates (server mode)
+    socket.on('viewer-count', (count) => {
+      console.log('Viewers in room:', count);
+    });
+
     // Handle config from server
     socket.on('config', (config) => {
       skipSeconds = config.skipSeconds || 5;
       volumeStep = config.volumeStep || 0.05;
       clientControlsDisabled = config.clientControlsDisabled || false;
+
+      // Update title with room info if in server mode
+      if (config.serverMode && config.roomName) {
+        document.title = `${config.roomName} - Sync-Player`;
+      }
+
+      // Initialize chat widget if enabled
+      if (config.chatEnabled) {
+        // initChat(); // Removed legacy init
+      }
+
       console.log(`Config received: skipSeconds=${skipSeconds}, volumeStep=${volumeStep}, clientControlsDisabled=${clientControlsDisabled}`);
       if (clientControlsDisabled) {
         showTemporaryMessage('View-only mode (controls disabled)', 3000);
       }
     });
+
+    // ==================== Chat Widget ====================
+    let chatMinimized = true;
+    let unreadCount = 0;
+    const myDisplayName = sessionStorage.getItem('sync-player-name') || 'Guest';
+
+    // Legacy chat initialization removed
+
+
+    // escapeHtml function moved to common utility or kept if needed elsewhere? 
+    // It is used by legacy chat, but we can keep it if other things use it.
+    // Searching... only chat seemed to use it.
+    // I will remove the entire chat block.
+
+    // Escape HTML to prevent XSS (Keeping as util)
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
     // Handle initial state from server
     socket.on('initial-state', (state) => {
@@ -950,6 +1341,9 @@
 
     // Control zones (click on screen)
     document.addEventListener('click', (e) => {
+      // Always allow BSL overlay interactions (folder selection)
+      if (bslOverlay.contains(e.target)) return;
+
       // Skip if controls are disabled by admin
       if (clientControlsDisabled) return;
 
@@ -1781,6 +2175,407 @@
         console.log('Error handling YouTube click:', e);
       }
     });
+
+    // ==================== Mobile Landscape Prompt ====================
+
+    // Detect if user is on mobile
+    function isMobileDevice() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        || (window.innerWidth <= 768 && 'ontouchstart' in window);
+    }
+
+    // Check if user already dismissed the prompt
+    function hasSeenMobilPrompt() {
+      return localStorage.getItem('mobile-prompt-dismissed') === 'true';
+    }
+
+    // Show mobile landscape prompt
+    function showMobileLandscapePrompt() {
+      const overlay = document.getElementById('mobile-landscape-overlay');
+      if (overlay) {
+        overlay.classList.add('visible');
+      }
+    }
+
+    // Hide mobile landscape prompt
+    function hideMobileLandscapePrompt() {
+      const overlay = document.getElementById('mobile-landscape-overlay');
+      if (overlay) {
+        overlay.classList.remove('visible');
+      }
+    }
+
+    // Request fullscreen and landscape orientation
+    async function requestFullscreenLandscape() {
+      const docEl = document.documentElement;
+
+      try {
+        // Request fullscreen
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+          await docEl.webkitRequestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+          await docEl.mozRequestFullScreen();
+        } else if (docEl.msRequestFullscreen) {
+          await docEl.msRequestFullscreen();
+        }
+
+        // Try to lock to landscape orientation
+        if (screen.orientation && screen.orientation.lock) {
+          try {
+            await screen.orientation.lock('landscape');
+          } catch (e) {
+            console.log('Orientation lock not supported:', e);
+          }
+        }
+
+        showTemporaryMessage('Fullscreen enabled!', 2000);
+      } catch (e) {
+        console.log('Fullscreen request failed:', e);
+        showTemporaryMessage('Fullscreen not available', 2000);
+      }
+
+      hideMobileLandscapePrompt();
+    }
+
+    // Initialize mobile prompt
+    function initMobilePrompt() {
+      if (!isMobileDevice()) {
+        return;
+      }
+
+      const fullscreenBtn = document.getElementById('mobile-fullscreen-btn');
+      const skipBtn = document.getElementById('mobile-skip-btn');
+
+      if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', () => {
+          requestFullscreenLandscape();
+          localStorage.setItem('mobile-prompt-dismissed', 'true');
+        });
+      }
+
+      if (skipBtn) {
+        skipBtn.addEventListener('click', () => {
+          hideMobileLandscapePrompt();
+          localStorage.setItem('mobile-prompt-dismissed', 'true');
+        });
+      }
+
+      // Show prompt after a short delay to let page load
+      setTimeout(showMobileLandscapePrompt, 500);
+    }
+
+    // Initialize on page load
+    initMobilePrompt();
+
+
+    // ==================== Chat Widget Logic ====================
+
+    // Generate/Get Fingerprint (Ported from landing.html)
+    function generateFingerprint() {
+      const stored = localStorage.getItem('sync-player-fingerprint');
+      if (stored) return stored;
+
+      const fp = 'fp_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('sync-player-fingerprint', fp);
+      return fp;
+    }
+
+    // Legacy fingerprint - for non-server mode (Ported from admin.html)
+    function generateLegacyFingerprint() {
+      const components = [
+        navigator.userAgent,
+        navigator.language,
+        navigator.platform,
+        navigator.hardwareConcurrency || 'unknown',
+        navigator.deviceMemory || 'unknown',
+        screen.width + 'x' + screen.height,
+        screen.colorDepth,
+        new Date().getTimezoneOffset(),
+        (() => {
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('Sync fingerprint', 2, 2); // Changed text slightly to generic
+            return canvas.toDataURL().slice(-50);
+          } catch (e) {
+            return 'no-canvas';
+          }
+        })()
+      ];
+
+      const str = components.join('|');
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return 'legacy-' + Math.abs(hash).toString(36);
+    }
+
+    // Determine fingerprint based on mode
+    function getAppFingerprint() {
+      // Check if running in server mode (URL typically not file:// and has standard ports/paths)
+      // Or simply checking if we have a room code could be enough?
+      // admin.html checks roomPathMatch. index.html always runs as "client".
+      // Simple heuristic: If file:// protocol, definitely use legacy.
+      // If http/https, try standard first.
+
+      const isFileProtocol = window.location.protocol === 'file:';
+
+      if (isFileProtocol) {
+        // Legacy mode
+        let stored = localStorage.getItem('legacy-fingerprint');
+        if (!stored) {
+          stored = generateLegacyFingerprint();
+          localStorage.setItem('legacy-fingerprint', stored);
+        }
+        return stored;
+      } else {
+        // Standard Server Mode
+        return generateFingerprint();
+      }
+    }
+
+    const userFingerprint = getAppFingerprint();
+    let chatUsername = localStorage.getItem('chat-username');
+    const activeMessages = []; // Track active message elements for count-based fading
+
+    // Initialize chat widget
+    function initChatWidget() {
+      const chatWidget = document.getElementById('chat-widget');
+      const chatToggleBtn = document.getElementById('chat-toggle-btn');
+      const chatHeader = document.getElementById('chat-header'); // Needed for hiding
+      const chatInput = document.getElementById('chat-input');
+      const chatSendBtn = document.getElementById('chat-send');
+      const chatMessages = document.getElementById('chat-messages');
+
+      if (!chatWidget || !chatToggleBtn) return;
+
+      // Make widget visible
+      chatWidget.classList.add('visible');
+
+      // Horizontal Collapse Logic
+      const isCollapsed = localStorage.getItem('chat-collapsed') === 'true';
+      if (isCollapsed) {
+        chatWidget.classList.add('collapsed');
+        chatToggleBtn.textContent = '<';
+      } else {
+        chatToggleBtn.textContent = '>';
+      }
+
+      chatToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chatWidget.classList.toggle('collapsed');
+        const collapsed = chatWidget.classList.contains('collapsed');
+        chatToggleBtn.textContent = collapsed ? '<' : '>'; // Correct logic: < when collapsed (offscreen)
+        localStorage.setItem('chat-collapsed', collapsed.toString());
+
+        // Reset idle timer on toggle
+        resetIdleTimer();
+      });
+
+      // Auto-Hide Logic for Toggle Button
+      let idleTimer;
+
+      function resetIdleTimer() {
+        // Always show first
+        chatHeader.classList.remove('idle-hidden');
+
+        clearTimeout(idleTimer);
+
+        // Only hide if:
+        // 1. Chat is collapsed (button says '<')
+        // 2. Playlist is active (videos > 0)
+        // 3. User is idle for 3 seconds
+
+        // Check conditions for STARTING the timer
+        // Note: we check currentPlaylist inside the timer or here? 
+        // Better here to avoid setting timer unnecessarily.
+
+        const isCollapsed = chatWidget.classList.contains('collapsed');
+        const hasPlaylist = typeof currentPlaylist !== 'undefined' && currentPlaylist.videos && currentPlaylist.videos.length > 0;
+
+        if (isCollapsed && hasPlaylist) {
+          idleTimer = setTimeout(() => {
+            // Re-check conditions just in case they changed during wait
+            const stillCollapsed = chatWidget.classList.contains('collapsed');
+            const stillHasPlaylist = typeof currentPlaylist !== 'undefined' && currentPlaylist.videos && currentPlaylist.videos.length > 0;
+
+            if (stillCollapsed && stillHasPlaylist) {
+              chatHeader.classList.add('idle-hidden');
+            }
+          }, 3000);
+        }
+      }
+
+      // Listen for mouse movement to reset timer
+      document.addEventListener('mousemove', resetIdleTimer);
+      document.addEventListener('click', resetIdleTimer);
+      document.addEventListener('keydown', resetIdleTimer);
+
+      // Initialize timer
+      resetIdleTimer();
+
+      // Username / Message Logic
+      // Check for Server Mode name (higher priority)
+      const serverName = sessionStorage.getItem('sync-player-name');
+
+      if (serverName) {
+        // Server Mode: Use the name from landing page/session
+        chatUsername = serverName;
+        chatInput.placeholder = "Type a message...";
+      } else {
+        // Legacy Mode: Check local storage or ask user
+        const localName = localStorage.getItem('chat-username');
+        if (localName) {
+          chatUsername = localName;
+          chatInput.placeholder = "Type a message...";
+        } else {
+          chatInput.placeholder = "Enter your name...";
+        }
+      }
+
+      function handleInput(text) {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+
+        // Command processing
+        if (trimmed.toLowerCase() === '/fullscreen') {
+          if (typeof requestFullscreenLandscape === 'function') {
+            requestFullscreenLandscape();
+          }
+          chatInput.value = '';
+          return;
+        }
+
+        if (!chatUsername) {
+          // First input is username (Legacy Mode only)
+          chatUsername = text.trim().substring(0, 20); // Limit length
+
+          // Only save to local storage if we are NOT in server mode (i.e. no serverName from session)
+          if (!sessionStorage.getItem('sync-player-name')) {
+            localStorage.setItem('chat-username', chatUsername);
+          }
+
+          chatInput.placeholder = "Type a message...";
+
+          // Optionally send a "joined" message or just set local state
+          // For now, we just set the name and reset input
+          chatInput.value = '';
+          return;
+        }
+
+        if (!chatUsername) {
+          console.warn('Chat username missing, defaulting to Guest for send');
+          chatUsername = 'Guest';
+        }
+
+        console.log('Sending chat:', { fingerprint: userFingerprint, username: chatUsername, message: text });
+
+        if (typeof socket !== 'undefined') {
+          socket.emit('chat-message', {
+            fingerprint: userFingerprint,
+            sender: chatUsername, // Updated from username to sender to match server protocol
+            message: text
+          });
+        }
+
+        // Clear input after sending
+        chatInput.value = '';
+      }
+
+      // Handle Enter key
+      chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleInput(chatInput.value);
+        }
+      });
+
+      chatSendBtn.addEventListener('click', () => {
+        handleInput(chatInput.value);
+      });
+    }
+
+    // Add message to UI with Fading Logic
+    function addChatMessage(data) {
+      console.log('Received chat message:', data);
+      const chatMessages = document.getElementById('chat-messages');
+      if (!chatMessages || !data) return;
+
+      // Filter out duplicate/bad data if needed, or just display.
+      // Check data.sender (default) or legacy data.username
+      const safeUsername = data.sender || data.username || 'Guest';
+
+      // Check if message content is valid
+      if (!data.message) return;
+
+      const msgEl = document.createElement('div');
+      msgEl.className = 'chat-message';
+      if (data.fingerprint === userFingerprint) msgEl.classList.add('own');
+
+      const senderEl = document.createElement('span');
+      senderEl.className = 'sender';
+      senderEl.innerHTML = safeUsername + ':';
+
+      const textEl = document.createElement('span');
+      textEl.className = 'text';
+      textEl.innerHTML = data.message;
+
+      msgEl.appendChild(senderEl);
+      msgEl.appendChild(textEl);
+
+      chatMessages.appendChild(msgEl);
+      chatMessages.scrollTop = chatMessages.scrollHeight; // Auto scroll to bottom
+
+      // Track active message
+      activeMessages.push(msgEl);
+
+      // 1. Time-based fading (5 seconds -> 2s fade)
+      setTimeout(() => {
+        if (!msgEl.classList.contains('fading-fast')) {
+          msgEl.classList.add('fading-slow');
+          // Remove from DOM after fade (2s + buffer)
+          setTimeout(() => {
+            if (msgEl.parentNode) msgEl.remove();
+            const index = activeMessages.indexOf(msgEl);
+            if (index > -1) activeMessages.splice(index, 1);
+          }, 2100);
+        }
+      }, 5000);
+
+      // 2. Count-based fading (>5 messages -> 0.5s fade on oldest)
+      if (activeMessages.length > 5) {
+        // Get the oldest message that isn't already effectively gone/fast-fading
+        // The array is ordered by time. Index 0 is oldest.
+        // We need to fade out activeMessages[0] ... activeMessages[length - 6]
+
+        while (activeMessages.length > 5) {
+          const oldestMsg = activeMessages.shift(); // Remove from tracking
+          if (oldestMsg && !oldestMsg.classList.contains('fading-slow') && !oldestMsg.classList.contains('fading-fast')) {
+            oldestMsg.classList.add('fading-fast');
+            // Remove after 0.5s
+            setTimeout(() => {
+              if (oldestMsg.parentNode) oldestMsg.remove();
+            }, 600);
+          }
+        }
+      }
+    }
+
+    // Initialize chat
+    initChatWidget();
+
+    // Listen for incoming messages
+    if (typeof socket !== 'undefined') {
+      socket.on('chat-message', (data) => {
+        addChatMessage(data);
+      });
+    }
   </script>
 </body>
 

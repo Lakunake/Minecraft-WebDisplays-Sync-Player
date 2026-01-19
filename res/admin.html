@@ -3,12 +3,17 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sync-Player Admin Panel</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+    }
+
+    :root {
+      scroll-behavior: smooth;
     }
 
     body {
@@ -155,6 +160,15 @@
       color: #2196F3;
     }
 
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex: 1;
+      justify-content: flex-end;
+      margin-left: 20px;
+    }
+
     .connection-status {
       display: flex;
       align-items: center;
@@ -196,6 +210,12 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 20px;
+    }
+
+    .dashboard-main {
+      display: flex;
+      gap: 20px;
+      flex: 1;
     }
 
     .stat-card {
@@ -270,6 +290,7 @@
       flex-direction: column;
       gap: 20px;
       flex: 1;
+      will-change: transform, opacity;
     }
 
     .view.active {
@@ -345,6 +366,10 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
     }
 
     .file-icon {
@@ -363,6 +388,7 @@
       border-left: 3px solid transparent;
       position: relative;
       overflow: hidden;
+      will-change: transform, opacity;
     }
 
     .playlist-item.slide-in {
@@ -608,6 +634,11 @@
       color: #FFC107;
     }
 
+    .badge-rumble {
+      background: rgba(136, 176, 75, 0.3);
+      color: #88b04b;
+    }
+
     .move-buttons {
       display: flex;
       flex-direction: column;
@@ -686,6 +717,14 @@
     .btn-sm {
       padding: 6px 12px;
       font-size: 12px;
+    }
+
+    .btn:active,
+    .nav-item:active,
+    .quick-btn:active,
+    .control-btn:active,
+    .btn-move:active {
+      transform: scale(0.95) !important;
     }
 
     /* Remote Control Section - 3 Column Layout */
@@ -1126,16 +1165,21 @@
       border: 1px solid rgba(244, 67, 54, 0.3);
       color: #f44336;
       border-radius: 8px;
+      text-align: center;
     }
 
     .hevc-warning.visible {
       display: flex;
       flex: 1;
-      margin: 0 20px;
+      margin: 0;
       padding: 8px 16px;
       align-items: center;
       justify-content: center;
-      animation: fadeIn 0.3s ease;
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    .hevc-warning.fade-out {
+      animation: fadeOut 0.3s ease forwards;
     }
 
     /* VPN/Proxy Warning */
@@ -1150,11 +1194,11 @@
     .vpn-warning.visible {
       display: flex;
       flex: 1;
-      margin: 0 20px;
+      margin: 0;
       padding: 8px 16px;
       align-items: center;
       justify-content: center;
-      animation: fadeIn 0.3s ease;
+      animation: fadeIn 0.3s ease forwards;
     }
 
     .vpn-warning.fade-out {
@@ -1176,7 +1220,7 @@
     @keyframes fadeIn {
       from {
         opacity: 0;
-        transform: translateY(-5px);
+        transform: translateY(-10px);
       }
 
       to {
@@ -1355,6 +1399,288 @@
     #admin-ui.authenticated {
       display: contents;
     }
+
+    /* --- Mobile Responsive Enhancements --- */
+    @media (max-width: 900px) {
+      body {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 5px 15px;
+        gap: 15px;
+        position: sticky;
+        top: 0;
+        backdrop-filter: blur(15px);
+        background: rgba(10, 10, 25, 0.9);
+        z-index: 1000;
+      }
+
+      .sidebar-logo,
+      .nav-indicator,
+      .sidebar-spacer,
+      .quick-controls-bottom,
+      .nav-tooltip {
+        display: none !important;
+      }
+
+      .nav-item {
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+        margin-bottom: 0;
+      }
+
+      .main-content {
+        padding: 10px;
+        height: auto;
+        overflow: visible;
+        flex: none;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .dashboard-main {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .dashboard-main .panel {
+        min-width: 0 !important;
+      }
+
+      .remote-layout {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        height: auto;
+      }
+
+      .remote-playlist-panel {
+        max-height: 350px;
+        overflow-y: auto;
+        order: 2;
+      }
+
+      .remote-thumbnail-panel {
+        order: 1;
+      }
+
+      .remote-controls-panel {
+        order: 3;
+      }
+
+      .remote-bottom-panel {
+        order: 4;
+      }
+
+      .media-playlist-layout {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 5px;
+      }
+
+      .status-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        width: 100%;
+      }
+
+      .hevc-warning.visible,
+      .vpn-warning.visible {
+        margin: 5px 0;
+        width: 100%;
+        font-size: 12px;
+      }
+
+      .modal-content {
+        width: 95% !important;
+        padding: 15px !important;
+        max-height: 90vh;
+      }
+
+      .panel {
+        min-width: 0 !important;
+        width: 100% !important;
+      }
+
+      .video-thumbnail {
+        min-height: 180px;
+      }
+
+      .btn-sm {
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+
+      .quick-btn {
+        width: 50px;
+        height: 50px;
+      }
+
+      .btn-move {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .panel {
+        padding: 15px;
+      }
+
+      #logs-container {
+        font-size: 13px !important;
+        gap: 6px !important;
+      }
+
+      .sidebar,
+      .modal-content,
+      .file-list,
+      #logs-container {
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
+    /* Landscape Mode - Compact layout for short viewports */
+    @media (max-height: 550px) and (orientation: landscape) {
+      body {
+        flex-direction: row;
+      }
+
+      .sidebar {
+        width: 60px;
+        height: 100vh;
+        flex-direction: column;
+        position: fixed;
+        left: 0;
+        top: 0;
+        border-bottom: none;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 10px 0;
+      }
+
+      .main-content {
+        margin-left: 60px;
+        padding: 5px 15px;
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .header {
+        padding: 5px 0;
+        margin-bottom: 5px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .header h1 {
+        font-size: 16px;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .dashboard-main {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .dashboard-main .panel {
+        flex: 1 1 300px;
+        min-width: 0 !important;
+      }
+
+      .stat-card {
+        padding: 10px;
+      }
+
+      .stat-icon {
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+      }
+
+      .stat-info h3 {
+        font-size: 18px;
+      }
+
+      .remote-layout {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        height: auto;
+        min-height: 0;
+        overflow-x: auto;
+        padding-bottom: 15px;
+        /* Space for scrollbar */
+      }
+
+      .remote-playlist-panel {
+        width: 250px;
+        flex-shrink: 0;
+        max-height: 70vh;
+      }
+
+      .remote-thumbnail-panel {
+        flex: 1;
+        min-width: 300px;
+        max-height: 70vh;
+      }
+
+      .remote-controls-panel {
+        width: 200px;
+        flex-shrink: 0;
+        max-height: 70vh;
+      }
+
+      .remote-bottom-panel {
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      .video-thumbnail {
+        height: 120px;
+        aspect-ratio: auto;
+        margin-bottom: 5px;
+      }
+
+      .video-thumbnail-icon {
+        font-size: 32px;
+      }
+
+      .control-buttons {
+        margin-bottom: 5px;
+        gap: 5px;
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .control-btn {
+        padding: 8px;
+        font-size: 12px;
+      }
+
+      .view.active {
+        animation: none;
+      }
+    }
   </style>
 </head>
 
@@ -1403,19 +1729,22 @@
       <!-- Header -->
       <header class="header glass">
         <h1>Sync-<span>Player</span> Admin</h1>
-        <div id="hevc-warning" class="hevc-warning" style="font-size: 13px;">
-          <strong>⚠️ HEVC Codec Warning:</strong>&nbsp;MKV files often use HEVC (H.265) codecs which may require HEVC
-          extensions for browser playback. Consider using&nbsp;<a
-            href="https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35" target="_blank"
-            style="color: #2196F3;">BSL-S² (Local Sync)</a>!
-        </div>
-        <div id="vpn-warning" class="vpn-warning" style="font-size: 13px;">
-          <strong>⚠️ VPN/Proxy Detected:</strong>&nbsp;<span id="vpn-warning-list"></span> - May cause connection issues
-          for clients.
-        </div>
-        <div class="connection-status glass">
-          <div class="status-dot" id="connection-dot"></div>
-          <span id="connection-text">Connecting...</span>
+        <div class="status-group">
+          <div id="hevc-warning" class="hevc-warning" style="font-size: 13px;">
+            <strong>⚠️ HEVC Codec Warning:</strong>&nbsp;MKV files often use HEVC (H.265) codecs which may require HEVC
+            extensions for browser playback. Consider using&nbsp;<a
+              href="https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35" target="_blank"
+              style="color: #2196F3;">BSL-S² (Local Sync)</a>!
+          </div>
+          <div id="vpn-warning" class="vpn-warning" style="font-size: 13px;">
+            <strong>⚠️ VPN/Proxy Detected:</strong>&nbsp;<span id="vpn-warning-list"></span> - May cause connection
+            issues
+            for clients.
+          </div>
+          <div class="connection-status glass">
+            <div class="status-dot" id="connection-dot"></div>
+            <span id="connection-text">Connecting...</span>
+          </div>
         </div>
       </header>
 
@@ -1447,7 +1776,7 @@
           </div>
         </div>
 
-        <div style="display: flex; gap: 20px; flex: 1;">
+        <div class="dashboard-main">
           <div class="panel glass-strong" style="flex: 1;">
             <div class="panel-header">
               <h2>Quick Actions</h2>
@@ -1536,6 +1865,19 @@
                 <span id="cfg-admin-lock">-</span>
               </div>
             </div>
+
+            <!-- Server Mode Room Controls (hidden by default) -->
+            <div id="server-mode-controls"
+              style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+              <div
+                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(33,150,243,0.1); border-radius: 6px; margin-bottom: 10px;">
+                <span style="color: #2196F3;">Room Code</span>
+                <span id="room-code-display" style="font-family: monospace; font-weight: bold; color: #2196F3;">-</span>
+              </div>
+              <button class="btn btn-danger" onclick="deleteCurrentRoom()" style="width: 100%;">
+                🗑️ Delete Room
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1599,7 +1941,7 @@
 
           <!-- Center: Large Thumbnail -->
           <div class="panel glass-strong remote-thumbnail-panel">
-            <div class="video-thumbnail" style="flex: 1; margin-bottom: 0; aspect-ratio: auto;">
+            <div class="video-thumbnail" style="flex: 1; margin-bottom: 0;">
               <span class="video-thumbnail-icon">🎬</span>
               <div class="video-info">
                 <h3 id="current-video-name">No video playing</h3>
@@ -1746,6 +2088,53 @@
     let skipIntroSeconds = 90;
     const thumbnailCache = {}; // Cache for loaded thumbnails
 
+    // DOM Cache for performance
+    const dom = {
+      logs: null,
+      playlist: null,
+      fileBrowser: null,
+      remotePlaylist: null,
+      bslBody: null,
+      connectionDot: null,
+      connectionText: null,
+      currentTime: null
+    };
+
+    function initDomCache() {
+      dom.logs = document.getElementById('logs-container');
+      dom.playlist = document.getElementById('playlist-container');
+      dom.fileBrowser = document.getElementById('file-browser');
+      dom.remotePlaylist = document.getElementById('remote-playlist-list');
+      dom.bslBody = document.getElementById('bsl-modal-body');
+      dom.connectionDot = document.getElementById('connection-dot');
+      dom.connectionText = document.getElementById('connection-text');
+      dom.currentTime = document.getElementById('current-time-display');
+    }
+
+    // Client-side escape utility
+    function escapeHTML(text) {
+      if (typeof text !== 'string') return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', initDomCache);
+
+    // Throttle helper for high-frequency socket events
+    function throttle(func, limit) {
+      let inThrottle;
+      return function () {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+          func.apply(context, args);
+          inThrottle = true;
+          setTimeout(() => inThrottle = false, limit);
+        }
+      }
+    }
+
     // Platform Themes (Colors & Icons)
     // Platform Themes (Colors & Icons)
     const PLATFORM_THEMES = {
@@ -1789,22 +2178,41 @@
     }
 
     // Apply platform theme to a thumbnail background element
-    function applyPlatformTheme(element, video) {
+    function applyPlatformTheme(element, video, isDark = false) {
       const key = getPlatformKey(video);
       const theme = PLATFORM_THEMES[key] || PLATFORM_THEMES['local'];
 
       // Set background color 
       element.style.backgroundColor = theme.color;
-      element.style.backgroundImage = `linear-gradient(135deg, ${theme.color}dd, ${theme.color}66)`;
+      if (isDark) {
+        // Create a darker gradient
+        element.style.backgroundImage = `linear-gradient(135deg, rgba(0,0,0,0.4), rgba(0,0,0,0.6)), linear-gradient(135deg, ${theme.color}aa, ${theme.color}44)`;
+      } else {
+        element.style.backgroundImage = `linear-gradient(135deg, ${theme.color}dd, ${theme.color}66)`;
+      }
 
       // Add themed class for visibility
       element.classList.add('themed');
 
-      // Return theme info including text color
-      return { icon: theme.icon, textColor: theme.textColor || '#FFFFFF' };
+      // Return theme info
+      return {
+        icon: theme.icon,
+        textColor: theme.textColor || '#FFFFFF',
+        platformName: video.platformName || (key.charAt(0).toUpperCase() + key.slice(1))
+      };
     }
 
-    // Generate admin fingerprint for device identification
+    // Generate fingerprint for device identification (MUST match landing page!)
+    function generateFingerprint() {
+      const stored = localStorage.getItem('sync-player-fingerprint');
+      if (stored) return stored;
+
+      const fp = 'fp_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('sync-player-fingerprint', fp);
+      return fp;
+    }
+
+    // Legacy admin fingerprint - for non-server mode
     function generateAdminFingerprint() {
       const components = [
         navigator.userAgent,
@@ -1841,6 +2249,14 @@
 
     // Get or store admin fingerprint
     function getAdminFingerprint() {
+      // For server mode rooms, use the same fingerprint as landing page
+      const roomPathMatch = window.location.pathname.match(/^\/admin\/([A-Z0-9]{6})$/i);
+      if (roomPathMatch) {
+        // Server mode - use sync-player-fingerprint for consistency with landing page
+        return generateFingerprint();
+      }
+
+      // Legacy mode - use admin-fingerprint
       let stored = localStorage.getItem('admin-fingerprint');
       if (stored) {
         return stored;
@@ -1852,6 +2268,18 @@
 
     const adminFingerprint = getAdminFingerprint();
     console.log('Admin fingerprint:', adminFingerprint);
+
+    // Server mode room state
+    let currentRoomCode = null;
+    let currentRoomName = null;
+    let isServerMode = false;
+
+    // Check if we're in a room (server mode URL: /admin/:roomCode)
+    const roomPathMatch = window.location.pathname.match(/^\/admin\/([A-Z0-9]{6})$/i);
+    if (roomPathMatch) {
+      currentRoomCode = roomPathMatch[1].toUpperCase();
+      console.log('Room code from URL:', currentRoomCode);
+    }
 
     // Config display
     socket.on('config', (cfg) => {
@@ -1867,14 +2295,92 @@
       skipSeconds = cfg.skipSeconds || 5;
       skipIntroSeconds = cfg.skipIntroSeconds || 90;
       document.getElementById('skip-intro-text').textContent = skipIntroSeconds + 's';
+
+      // Server mode room info
+      if (cfg.serverMode) {
+        isServerMode = true;
+        if (cfg.roomName) {
+          currentRoomName = cfg.roomName;
+          document.title = `Admin: ${cfg.roomName} - Sync-Player`;
+        }
+        // Show server mode room controls
+        const serverModeControls = document.getElementById('server-mode-controls');
+        if (serverModeControls && currentRoomCode) {
+          serverModeControls.style.display = 'block';
+          document.getElementById('room-code-display').textContent = currentRoomCode;
+        }
+      }
     });
 
     // Request config on load
     socket.on('connect', () => {
-      socket.emit('get-config');
+      // If we have a room code, join as admin
+      if (currentRoomCode) {
+        console.log('Joining room as admin:', currentRoomCode);
+        socket.emit('join-room', {
+          roomCode: currentRoomCode,
+          name: 'Admin',
+          fingerprint: adminFingerprint
+        }, (response) => {
+          if (response && response.success) {
+            console.log('Joined room as admin:', response);
+            currentRoomName = response.roomName;
+            if (response.isAdmin) {
+              // Server mode: Hide auth screen and show admin UI
+              const authScreen = document.getElementById('auth-screen');
+              const adminUI = document.getElementById('admin-ui');
+              if (authScreen) authScreen.classList.add('hidden');
+              if (adminUI) adminUI.classList.add('authenticated');
+              console.log('Admin authenticated for room:', currentRoomCode);
+            } else {
+              alert('You are not the admin of this room. Redirecting...');
+              window.location.href = `/watch/${currentRoomCode}`;
+            }
+          } else {
+            console.error('Failed to join room:', response?.error);
+            alert('Room not found or access denied');
+            window.location.href = '/';
+          }
+        });
+      } else {
+        // Legacy mode - normal admin registration
+        socket.emit('get-config');
+      }
     });
     if (socket.connected) {
-      socket.emit('get-config');
+      if (currentRoomCode) {
+        socket.emit('join-room', {
+          roomCode: currentRoomCode,
+          name: 'Admin',
+          fingerprint: adminFingerprint
+        });
+      } else {
+        socket.emit('get-config');
+      }
+    }
+
+    // Handle room deleted (if another admin deleted it)
+    socket.on('room-deleted', () => {
+      alert('This room has been deleted.');
+      window.location.href = '/';
+    });
+
+    // Delete room function (for server mode)
+    function deleteCurrentRoom() {
+      if (!currentRoomCode || !isServerMode) return;
+
+      if (confirm('Are you sure you want to delete this room? All viewers will be disconnected.')) {
+        socket.emit('delete-room', {
+          roomCode: currentRoomCode,
+          fingerprint: adminFingerprint
+        }, (response) => {
+          if (response && response.success) {
+            window.location.href = '/';
+          } else {
+            alert('Failed to delete room: ' + (response?.error || 'Unknown error'));
+          }
+        });
+      }
     }
 
     // Live server playlist and index for remote controls
@@ -1954,6 +2460,22 @@
 
     // Fetch available files from server
     async function loadFiles() {
+      // Check for hydrated data from server (saves a round-trip)
+      if (window.INITIAL_DATA && window.INITIAL_DATA.files) {
+        displayFiles(window.INITIAL_DATA.files);
+        // Also hydrate playlist if available
+        if (window.INITIAL_DATA.playlist) {
+          playlist = window.INITIAL_DATA.playlist;
+          mainVideoIndex = window.INITIAL_DATA.currentVideoIndex ?? -1;
+          updatePlaylistDisplay();
+          updateDashboardStats();
+        }
+        // Important: clear it so we don't re-use stale data if we manually refresh parts
+        // and delete it to save memory
+        // delete window.INITIAL_DATA; 
+        return;
+      }
+
       try {
         const response = await fetch('/api/files');
         const files = await response.json();
@@ -1967,14 +2489,14 @@
 
     // Display files in the file browser
     function displayFiles(files) {
-      const fileBrowser = document.getElementById('file-browser');
+      const fileBrowser = dom.fileBrowser || document.getElementById('file-browser');
 
       if (files.length === 0) {
         fileBrowser.innerHTML = '<div class="empty-message">No media files found in videos folder</div>';
         return;
       }
 
-      fileBrowser.innerHTML = '';
+      const fragment = document.createDocumentFragment();
 
       files.forEach((file) => {
         const fileItem = document.createElement('div');
@@ -1982,7 +2504,7 @@
 
         const fileName = document.createElement('span');
         fileName.className = 'file-name';
-        fileName.innerHTML = `<span class="file-icon">🎬</span> ${file.filename}`;
+        fileName.innerHTML = `<span class="file-icon">🎬</span> ${file.escapedFilename || escapeHTML(file.filename)}`;
 
         if (file.filename.endsWith('.mkv')) {
           fileName.innerHTML += ' <span style="color: #FF9800;">⚠️</span>';
@@ -1995,8 +2517,11 @@
 
         fileItem.appendChild(fileName);
         fileItem.appendChild(addBtn);
-        fileBrowser.appendChild(fileItem);
+        fragment.appendChild(fileItem);
       });
+
+      fileBrowser.innerHTML = '';
+      fileBrowser.appendChild(fragment);
     }
 
     // Add a file to the playlist
@@ -2150,84 +2675,56 @@
 
     // Update playlist display
     function updatePlaylistDisplay() {
-      const container = document.getElementById('playlist-container');
+      const container = dom.playlist || document.getElementById('playlist-container');
+      if (!container) return;
 
       if (playlist.length === 0) {
         container.innerHTML = '<div class="empty-message">No files in playlist yet</div>';
         return;
       }
 
-      container.innerHTML = '';
+      const fragment = document.createDocumentFragment();
 
       playlist.forEach((item, index) => {
         const playlistItem = document.createElement('div');
         playlistItem.className = `playlist-item ${index === mainVideoIndex ? 'main' : ''} ${item.isNew ? 'slide-in' : ''}`;
 
-        // Add thumbnail background for all videos (blurred, clears when main)
         const thumbnailBg = document.createElement('div');
         thumbnailBg.className = 'thumbnail-bg';
         playlistItem.appendChild(thumbnailBg);
 
-        // Apply platform theme
         const themeInfo = applyPlatformTheme(thumbnailBg, item);
         playlistItem.style.color = themeInfo.textColor;
 
-        // Remove icon fallback (user requested no icons for unfetchable)
-
-        // Check if this is an image file - use itself as thumbnail
-        const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
-        const isImage = imageExtensions.some(ext => item.filename.toLowerCase().endsWith(ext));
+        const isImage = ['.png', '.jpg', '.jpeg', '.webp', '.gif'].some(ext => item.filename.toLowerCase().endsWith(ext));
 
         if (isImage) {
-          // Image files are their own thumbnails
           thumbnailBg.style.backgroundImage = `url('/media/${encodeURIComponent(item.filename)}')`;
-          thumbnailBg.classList.add('cached');
-          thumbnailBg.classList.remove('themed'); // Remove solid color if image exists
-          playlistItem.style.color = ''; // Reset text color
-
-
-          if (index === mainVideoIndex) {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                thumbnailBg.classList.add('cleared');
-              });
-            });
-          }
-        }
-        // Handle YouTube entries
-        else if (item.isYouTube && item.thumbnail) {
-          // YouTube videos have thumbnail URL pre-fetched
-          thumbnailBg.style.backgroundImage = `url('${item.thumbnail}')`;
-          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.add('cached', 'loaded');
           thumbnailBg.classList.remove('themed');
           playlistItem.style.color = '';
-
           if (index === mainVideoIndex) {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                thumbnailBg.classList.add('cleared');
-              });
-            });
+            requestAnimationFrame(() => requestAnimationFrame(() => thumbnailBg.classList.add('cleared')));
           }
         }
-        // Check if thumbnail is already cached (local video files)
+        else if (item.thumbnail && typeof item.thumbnail === 'string') {
+          thumbnailBg.style.backgroundImage = `url('${item.thumbnail}')`;
+          thumbnailBg.classList.add('cached', 'loaded');
+          thumbnailBg.classList.remove('themed');
+          playlistItem.style.color = '';
+          if (index === mainVideoIndex) {
+            requestAnimationFrame(() => requestAnimationFrame(() => thumbnailBg.classList.add('cleared')));
+          }
+        }
         else if (thumbnailCache[item.filename]) {
           thumbnailBg.style.backgroundImage = `url('${thumbnailCache[item.filename]}')`;
-          // Use 'cached' class - appears instantly with opacity 0.5
-          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.add('cached', 'loaded');
           thumbnailBg.classList.remove('themed');
           playlistItem.style.color = '';
-
-          // If this is the main video, animate the blur removal
           if (index === mainVideoIndex) {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                thumbnailBg.classList.add('cleared');
-              });
-            });
+            requestAnimationFrame(() => requestAnimationFrame(() => thumbnailBg.classList.add('cleared')));
           }
-        } else if (!item.isYouTube) {
-          // Fetch and set thumbnail (only for local files)
+        } else if (!item.isYouTube && !item.isExternal) {
           fetch(`/api/thumbnail/${encodeURIComponent(item.filename)}`)
             .then(response => response.json())
             .then(data => {
@@ -2236,49 +2733,38 @@
                 thumbnailBg.style.backgroundImage = `url('${data.thumbnail}')`;
                 thumbnailBg.classList.remove('themed');
                 playlistItem.style.color = '';
-                // Trigger transition after image loads
                 const img = new Image();
                 img.onload = () => {
                   thumbnailBg.classList.add('loaded');
-                  if (index === mainVideoIndex) {
-                    thumbnailBg.classList.add('cleared');
-                  }
+                  if (index === mainVideoIndex) thumbnailBg.classList.add('cleared');
                 };
                 img.src = data.thumbnail;
               }
             })
-            .catch(err => console.log('Could not load thumbnail:', err));
+            .catch(() => { });
         }
 
-        // Number
         const number = document.createElement('span');
         number.className = 'playlist-number';
         number.textContent = index + 1;
         playlistItem.appendChild(number);
 
-        // Name
         const name = document.createElement('span');
         name.className = 'playlist-name';
         name.textContent = item.filename;
         name.title = item.filename;
         playlistItem.appendChild(name);
 
-        // Badges
         const badges = document.createElement('div');
         badges.className = 'playlist-badges';
 
-        // Add platform badge for external content
         if (item.isExternal || item.isYouTube) {
           const platformBadge = document.createElement('span');
-          const badgeClass = item.badge || 'badge-youtube';
-          const platformName = item.platformName || 'YouTube';
-          const syncIcon = item.syncLevel === 'full' ? '' : item.syncLevel === 'limited' ? '⚠️ ' : '📺 ';
-          platformBadge.className = `badge ${badgeClass}`;
-          platformBadge.textContent = `${syncIcon}${platformName}`;
+          platformBadge.className = `badge ${item.badge || 'badge-youtube'}`;
+          platformBadge.textContent = `${item.syncLevel === 'full' ? '' : item.syncLevel === 'limited' ? '⚠️ ' : '📺 '}${item.platformName || 'YouTube'}`;
           badges.appendChild(platformBadge);
         }
 
-        // Add Image badge if this is an image file
         if (isImage) {
           const imgBadge = document.createElement('span');
           imgBadge.className = 'badge badge-image';
@@ -2286,9 +2772,7 @@
           badges.appendChild(imgBadge);
         }
 
-        // Add Audio badge if this is an audio file
-        const audioExtensions = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'];
-        const isAudio = audioExtensions.some(ext => item.filename.toLowerCase().endsWith(ext));
+        const isAudio = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'].some(ext => item.filename.toLowerCase().endsWith(ext));
         if (isAudio) {
           const audioBadge = document.createElement('span');
           audioBadge.className = 'badge badge-audio';
@@ -2304,7 +2788,6 @@
         }
         playlistItem.appendChild(badges);
 
-        // Move buttons
         const moveDiv = document.createElement('div');
         moveDiv.className = 'move-buttons';
 
@@ -2312,34 +2795,36 @@
         upBtn.className = 'btn-move';
         upBtn.textContent = '▲';
         upBtn.disabled = index === 0;
-        upBtn.onclick = () => movePlaylistItem(index, -1);
+        upBtn.onclick = (e) => { e.stopPropagation(); movePlaylistItem(index, -1); };
         moveDiv.appendChild(upBtn);
 
         const downBtn = document.createElement('button');
         downBtn.className = 'btn-move';
         downBtn.textContent = '▼';
         downBtn.disabled = index === playlist.length - 1;
-        downBtn.onclick = () => movePlaylistItem(index, 1);
+        downBtn.onclick = (e) => { e.stopPropagation(); movePlaylistItem(index, 1); };
         moveDiv.appendChild(downBtn);
         playlistItem.appendChild(moveDiv);
 
-        // Actions
         if (index !== mainVideoIndex) {
           const setMainBtn = document.createElement('button');
           setMainBtn.className = 'btn btn-sm btn-secondary';
           setMainBtn.textContent = 'Set Main';
-          setMainBtn.onclick = () => setAsMain(index);
+          setMainBtn.onclick = (e) => { e.stopPropagation(); setAsMain(index); };
           playlistItem.appendChild(setMainBtn);
         }
 
         const removeBtn = document.createElement('button');
         removeBtn.className = 'btn btn-sm btn-danger';
         removeBtn.textContent = '✕';
-        removeBtn.onclick = () => removeFromPlaylist(index);
+        removeBtn.onclick = (e) => { e.stopPropagation(); removeFromPlaylist(index); };
         playlistItem.appendChild(removeBtn);
 
-        container.appendChild(playlistItem);
+        fragment.appendChild(playlistItem);
       });
+
+      container.innerHTML = '';
+      container.appendChild(fragment);
     }
 
     // Update HEVC warning
@@ -2349,9 +2834,21 @@
 
       // Only show if we have MKV files AND we are in the media view
       if (hasMKV && currentViewName === 'media') {
-        warning.classList.add('visible');
+        if (!warning.classList.contains('visible')) {
+          warning.classList.remove('fade-out');
+          warning.classList.add('visible');
+        }
       } else {
-        warning.classList.remove('visible');
+        if (warning.classList.contains('visible') && !warning.classList.contains('fade-out')) {
+          warning.classList.add('fade-out');
+          setTimeout(() => {
+            // Check again if it should still be hidden (avoid race conditions)
+            const stillNotNeeded = !playlist.some(item => item.filename.endsWith('.mkv')) || currentViewName !== 'media';
+            if (stillNotNeeded && warning.classList.contains('fade-out')) {
+              warning.classList.remove('visible', 'fade-out');
+            }
+          }, 300);
+        }
       }
     }
 
@@ -2404,7 +2901,7 @@
 
     // Logging functions
     function addLog(message, type = 'info') {
-      const container = document.getElementById('logs-container');
+      const container = dom.logs || document.getElementById('logs-container');
       if (!container) return;
 
       // Remove "Waiting for events..." message if present
@@ -2429,7 +2926,11 @@
       entry.innerHTML = `<span style="color:#666">[${time}]</span> ${message}`;
 
       container.appendChild(entry);
-      container.scrollTop = container.scrollHeight;
+
+      // Batch scroll update with next frame
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
 
       // Limit to 50 entries
       while (container.children.length > 50) {
@@ -2523,14 +3024,15 @@
 
     // Render remote playlist sidebar
     function renderRemotePlaylistSidebar() {
-      const container = document.getElementById('remote-playlist-list');
+      const container = dom.remotePlaylist || document.getElementById('remote-playlist-list');
+      if (!container) return;
 
       if (!serverPlaylist || !serverPlaylist.videos || serverPlaylist.videos.length === 0) {
         container.innerHTML = '<div class="empty-message">No playlist active</div>';
         return;
       }
 
-      container.innerHTML = '';
+      const fragment = document.createDocumentFragment();
 
       serverPlaylist.videos.forEach((video, index) => {
         const item = document.createElement('div');
@@ -2539,11 +3041,10 @@
         if (index === currentServerIndex) item.classList.add('current');
         if (index === serverPlaylist.mainVideoIndex) item.classList.add('main');
 
-        // Click to jump to this video
-        item.addEventListener('click', () => {
+        item.onclick = () => {
           socket.emit('playlist-jump', index);
           showStatus(`Jumping to video ${index + 1}...`, 'info');
-        });
+        };
 
         const number = document.createElement('span');
         number.className = 'playlist-number';
@@ -2553,74 +3054,59 @@
         const name = document.createElement('span');
         name.className = 'playlist-name';
         name.title = video.filename;
-        // Wrap text in span for scroll animation
         const nameText = document.createElement('span');
-        nameText.textContent = video.filename + '          ' + video.filename;  // Duplicate with spacing for seamless scroll
+        nameText.textContent = video.filename + '          ' + video.filename;
         name.appendChild(nameText);
         item.appendChild(name);
 
         const badges = document.createElement('div');
         badges.className = 'playlist-badges';
 
-        // Add platform badge for external content
         if (video.isExternal || video.isYouTube) {
           const platformBadge = document.createElement('span');
-          const badgeClass = video.badge || 'badge-youtube';
-          const platformName = video.platformName || 'YouTube';
+          platformBadge.className = `badge ${video.badge || 'badge-youtube'}`;
           const syncIcon = video.syncLevel === 'full' ? '✅' : video.syncLevel === 'limited' ? '⚠️' : '📺';
-          platformBadge.className = `badge ${badgeClass}`;
-          platformBadge.textContent = `${syncIcon} ${platformName}`;
+          platformBadge.textContent = `${syncIcon} ${video.platformName || 'YouTube'}`;
           badges.appendChild(platformBadge);
         }
 
-        // Add thumbnail background
         const thumbnailBg = document.createElement('div');
         thumbnailBg.className = 'thumbnail-bg';
         item.appendChild(thumbnailBg);
 
-        // Apply platform theme
         const platformIcon = applyPlatformTheme(thumbnailBg, video);
 
-        // Add centered icon fallback
         const iconFallback = document.createElement('div');
         iconFallback.className = 'thumbnail-icon-fallback';
         iconFallback.textContent = platformIcon;
-        iconFallback.style.position = 'absolute';
-        iconFallback.style.top = '50%';
-        iconFallback.style.left = '50%';
-        iconFallback.style.transform = 'translate(-50%, -50%)';
-        iconFallback.style.fontSize = '24px';
-        iconFallback.style.zIndex = '1';
+        iconFallback.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:24px; z-index:1;';
         thumbnailBg.appendChild(iconFallback);
 
-        // Check if this is an image file
-        const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
-        const isImage = imageExtensions.some(ext => video.filename.toLowerCase().endsWith(ext));
+        const isImage = ['.png', '.jpg', '.jpeg', '.webp', '.gif'].some(ext => video.filename.toLowerCase().endsWith(ext));
 
         if (isImage) {
           thumbnailBg.style.backgroundImage = `url('/media/${encodeURIComponent(video.filename)}')`;
-          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.add('cached', 'loaded');
           thumbnailBg.classList.remove('themed');
           item.style.color = '';
         }
-        else if (video.isYouTube && video.thumbnail) {
+        else if (video.thumbnail && typeof video.thumbnail === 'string') {
           thumbnailBg.style.backgroundImage = `url('${video.thumbnail}')`;
-          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.add('cached', 'loaded');
           thumbnailBg.classList.remove('themed');
           item.style.color = '';
         }
         else if (thumbnailCache[video.filename]) {
           thumbnailBg.style.backgroundImage = `url('${thumbnailCache[video.filename]}')`;
-          thumbnailBg.classList.add('cached');
+          thumbnailBg.classList.add('cached', 'loaded');
           thumbnailBg.classList.remove('themed');
           item.style.color = '';
         }
-        else if (!video.isYouTube) {
-          // Fetch thumbnail/cover art
+        else if (!video.isYouTube && !video.isExternal) {
           fetch(`/api/thumbnail/${encodeURIComponent(video.filename)}`)
             .then(res => res.json())
             .then(data => {
-              if (data.thumbnail) {
+              if (data.thumbnail && typeof data.thumbnail === 'string') {
                 thumbnailCache[video.filename] = data.thumbnail;
                 thumbnailBg.style.backgroundImage = `url('${data.thumbnail}')`;
                 thumbnailBg.classList.add('loaded');
@@ -2638,9 +3124,7 @@
           badges.appendChild(imgBadge);
         }
 
-        // Add Audio badge if this is an audio file
-        const audioExtensions = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'];
-        const isAudio = audioExtensions.some(ext => video.filename.toLowerCase().endsWith(ext));
+        const isAudio = ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav'].some(ext => video.filename.toLowerCase().endsWith(ext));
         if (isAudio) {
           const audioBadge = document.createElement('span');
           audioBadge.className = 'badge badge-audio';
@@ -2669,19 +3153,22 @@
         upBtn.className = 'btn-move';
         upBtn.textContent = '▲';
         upBtn.disabled = index === 0;
-        upBtn.onclick = () => movePlaylistItemRemote(index, -1);
+        upBtn.onclick = (e) => { e.stopPropagation(); movePlaylistItemRemote(index, -1); };
         moveDiv.appendChild(upBtn);
 
         const downBtn = document.createElement('button');
         downBtn.className = 'btn-move';
         downBtn.textContent = '▼';
         downBtn.disabled = index === serverPlaylist.videos.length - 1;
-        downBtn.onclick = () => movePlaylistItemRemote(index, 1);
+        downBtn.onclick = (e) => { e.stopPropagation(); movePlaylistItemRemote(index, 1); };
         moveDiv.appendChild(downBtn);
         item.appendChild(moveDiv);
 
-        container.appendChild(item);
+        fragment.appendChild(item);
       });
+
+      container.innerHTML = '';
+      container.appendChild(fragment);
     }
 
     // Render remote track controls
@@ -2729,26 +3216,33 @@
         thumbnailEl.style.backgroundImage = `url('/media/${encodeURIComponent(videoInfo.filename)}')`;
         thumbnailEl.style.backgroundSize = 'cover';
         thumbnailEl.style.backgroundPosition = 'center';
+        thumbnailEl.classList.remove('themed');
         if (thumbnailIcon) thumbnailIcon.style.display = 'none';
         currentThumbnailFilename = videoInfo.filename; // Prevent refetch
       }
       // Handle any video with a thumbnail (YouTube, Twitch, Vimeo, etc.)
-      else if (videoInfo.thumbnail) {
+      else if (videoInfo.thumbnail && typeof videoInfo.thumbnail === 'string') {
         thumbnailEl.style.backgroundImage = `url('${videoInfo.thumbnail}')`;
         thumbnailEl.style.backgroundSize = 'cover';
         thumbnailEl.style.backgroundPosition = 'center';
+        thumbnailEl.classList.remove('themed');
         if (thumbnailIcon) thumbnailIcon.style.display = 'none';
 
         // Use a unique ID or filename for cache key
         const cacheKey = videoInfo.isYouTube ? videoInfo.youtubeId : videoInfo.filename;
         currentThumbnailFilename = cacheKey;
-      } else {
+      } else if (!videoInfo.isExternal && !videoInfo.isYouTube) {
         // Local video - fetch thumbnail from server
-        // Check if audio to show better default icon
-        // const isAudio = ... (Already handled by applyPlatformTheme)
-        // if (thumbnailIcon) thumbnailIcon.textContent = ... (Already set)
-
         fetchThumbnail(videoInfo.filename);
+      } else {
+        // External content without valid thumbnail - use platform fallback
+        applyPlatformTheme(thumbnailEl, videoInfo, true); // Use dark mode
+        if (thumbnailIcon) {
+          thumbnailIcon.textContent = platformInfo.platformName;
+          thumbnailIcon.style.display = 'block';
+          thumbnailIcon.style.fontSize = '24px';
+          thumbnailIcon.style.fontWeight = 'bold';
+        }
       }
 
       // Audio tracks
@@ -3090,7 +3584,7 @@
     });
 
     // Log sync events and update time display
-    socket.on('sync', (state) => {
+    const throttledSyncHandler = throttle((state) => {
       if (state.isPlaying !== undefined) {
         addLog(`Playback: ${state.isPlaying ? 'Playing' : 'Paused'}`, 'info');
       }
@@ -3103,9 +3597,12 @@
         const timeStr = hours > 0
           ? `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
           : `${mins}:${secs.toString().padStart(2, '0')}`;
-        document.getElementById('current-time-display').textContent = `Current: ${timeStr} (${totalSecs}s)`;
+        const displayEl = dom.currentTime || document.getElementById('current-time-display');
+        if (displayEl) displayEl.textContent = `Current: ${timeStr} (${totalSecs}s)`;
       }
-    });
+    }, 1000); // Only update UI once per second
+
+    socket.on('sync', throttledSyncHandler);
 
     // Admin authentication handlers
     socket.on('connect', () => {
@@ -3213,7 +3710,8 @@
     });
 
     function renderBslModal(data) {
-      const modalBody = document.getElementById('bsl-modal-body');
+      const modalBody = dom.bslBody || document.getElementById('bsl-modal-body');
+      if (!modalBody) return;
 
       if (!data.clients || data.clients.length === 0) {
         modalBody.innerHTML = '<div class="empty-message">No clients have selected folders yet</div>';
@@ -3403,6 +3901,15 @@
         name: 'Direct URL',
         badge: 'badge-url',
         syncLevel: 'full'
+      },
+      rumble: {
+        patterns: [
+          /rumble\.com\/embed\/([a-zA-Z0-9]+)/,
+          /rumble\.com\/([a-zA-Z0-9-]+)\.html/
+        ],
+        name: 'Rumble',
+        badge: 'badge-rumble',
+        syncLevel: 'autoplay'
       }
     };
 
@@ -3458,6 +3965,9 @@
           case 'directUrl':
             title = url.split('/').pop().split('?')[0] || 'Video';
             return { title, author: 'Direct URL', thumbnail: null };
+          case 'rumble':
+            oembedUrl = `https://rumble.com/api/Media/oembed.json?url=${encodeURIComponent(url)}`;
+            break;
         }
 
         if (oembedUrl) {
@@ -3467,6 +3977,16 @@
             title = data.title || title;
             author = data.author_name || data.provider_name || author;
             thumbnail = data.thumbnail_url || thumbnail;
+
+            // For Rumble, we need to extract the REAL embed ID from the html field if possible
+            // The public ID in the URL often differs from the embed ID
+            if (platform === 'rumble' && data.html) {
+              const embedMatch = data.html.match(/src="https:\/\/rumble\.com\/embed\/([a-zA-Z0-9]+)\/?"/);
+              if (embedMatch && embedMatch[1]) {
+                // Return the extracted embed ID as the 'id' effectively overriding the regex one
+                return { title, author, thumbnail, id: embedMatch[1] };
+              }
+            }
           }
         }
       } catch (error) {
@@ -3534,6 +4054,11 @@
           badge: detected.config.badge,
           ...info
         };
+
+        // If fetchExternalInfo returned a specific ID (like for Rumble), use it
+        if (info.id) {
+          currentExternalData.id = info.id;
+        }
 
         // Update preview
         const thumbEl = document.getElementById('external-thumb');

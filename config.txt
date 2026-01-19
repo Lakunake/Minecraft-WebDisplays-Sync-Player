@@ -3,7 +3,7 @@
 # Lines starting with # are comments
 
 # Server port (1024-49151)
-port: 3001
+port: 3000
 
 # Volume step percentage (1-20)
 volume_step: 5
@@ -35,7 +35,7 @@ video_autoplay: false
 # When enabled, only the first machine to access /admin will be allowed
 # The fingerprint is stored in admin_fingerprint.txt
 # Set to true to enable, false to allow any machine to access admin
-admin_fingerprint_lock: true
+admin_fingerprint_lock: false
 
 # BSL-S² Advanced Matching
 # When enabled, BSL-S² will check multiple criteria beyond just filename with 4 criterias
@@ -47,7 +47,7 @@ bsl_advanced_match: true
 # Criteria: (1) Filename, (2) Extension, (3) File Size ±1.5MB, (4) MIME type
 bsl_advanced_match_threshold: 1
 
-# Skip Intro Seconds (hidden from config displays)
+# Skip Intro Seconds
 # How many seconds the "Skip Intro" button jumps forward
 skip_intro_seconds: 87
 
@@ -60,3 +60,18 @@ client_controls_disabled: false
 # When disabled, client control events are ignored by the server
 # This makes clients view-only even if they attempt to send control events
 client_sync_disabled: false
+
+# Server Mode
+# When enabled, logs are disabled for cleaner server operation
+# Set to true to enable server mode
+server_mode: true
+
+# Chat Feature
+# Enable/disable the chat widget for viewers
+# Set to true to enable chat, false to disable
+chat_enabled: true
+
+# Data Hydration Optimization
+# When enabled, the server injects initial data into admin.html to save a round-trip
+# Set to true to enable (improves startup time for all devices), false for standard static serving
+data_hydration: true

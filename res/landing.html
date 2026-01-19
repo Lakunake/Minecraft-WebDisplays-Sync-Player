@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sync-Player - Watch Together</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Animated background particles */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(33, 150, 243, 0.3);
+            border-radius: 50%;
+            animation: float 15s infinite;
+        }
+
+        .particle:nth-child(1) {
+            left: 10%;
+            animation-delay: 0s;
+            animation-duration: 20s;
+        }
+
+        .particle:nth-child(2) {
+            left: 20%;
+            animation-delay: 2s;
+            animation-duration: 18s;
+        }
+
+        .particle:nth-child(3) {
+            left: 30%;
+            animation-delay: 4s;
+            animation-duration: 22s;
+        }
+
+        .particle:nth-child(4) {
+            left: 40%;
+            animation-delay: 1s;
+            animation-duration: 16s;
+        }
+
+        .particle:nth-child(5) {
+            left: 50%;
+            animation-delay: 3s;
+            animation-duration: 19s;
+        }
+
+        .particle:nth-child(6) {
+            left: 60%;
+            animation-delay: 5s;
+            animation-duration: 21s;
+        }
+
+        .particle:nth-child(7) {
+            left: 70%;
+            animation-delay: 2s;
+            animation-duration: 17s;
+        }
+
+        .particle:nth-child(8) {
+            left: 80%;
+            animation-delay: 4s;
+            animation-duration: 23s;
+        }
+
+        .particle:nth-child(9) {
+            left: 90%;
+            animation-delay: 1s;
+            animation-duration: 15s;
+        }
+
+        .particle:nth-child(10) {
+            left: 15%;
+            animation-delay: 3s;
+            animation-duration: 20s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+                transform: translateY(90vh) scale(1);
+            }
+
+            90% {
+                opacity: 1;
+                transform: translateY(10vh) scale(1);
+            }
+
+            100% {
+                transform: translateY(0vh) scale(0);
+                opacity: 0;
+            }
+        }
+
+        /* Glassmorphism Base */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+        }
+
+        .glass-strong {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+        }
+
+        /* Main Container */
+        .landing-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+        }
+
+        /* Header/Logo Section */
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #2196F3 0%, #1565C0 100%);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 32px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 40px rgba(33, 150, 243, 0.4);
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes logoGlow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 40px rgba(33, 150, 243, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 60px rgba(33, 150, 243, 0.6);
+            }
+        }
+
+        .logo-section h1 {
+            font-size: 36px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .logo-section h1 span {
+            color: #2196F3;
+        }
+
+        .logo-section p {
+            color: #888;
+            font-size: 16px;
+        }
+
+        /* Cards Container */
+        .cards-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 700px) {
+            .cards-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Room Cards */
+        .room-card {
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .room-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #2196F3 0%, #1565C0 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .room-card:hover::before {
+            opacity: 1;
+        }
+
+        .room-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .room-card.create::before {
+            background: linear-gradient(90deg, #4CAF50 0%, #388E3C 100%);
+        }
+
+        .room-card.join::before {
+            background: linear-gradient(90deg, #9C27B0 0%, #7B1FA2 100%);
+        }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+
+        .room-card:hover .card-icon {
+            transform: scale(1.1);
+        }
+
+        .card-icon.create {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            box-shadow: 0 0 30px rgba(76, 175, 80, 0.2);
+        }
+
+        .card-icon.join {
+            background: rgba(156, 39, 176, 0.2);
+            color: #9C27B0;
+            box-shadow: 0 0 30px rgba(156, 39, 176, 0.2);
+        }
+
+        .room-card h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .room-card p {
+            color: #888;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        /* Input Fields */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .input-field::placeholder {
+            color: #666;
+        }
+
+        .input-field:focus {
+            border-color: #2196F3;
+            background: rgba(33, 150, 243, 0.05);
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.1);
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-create {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            color: white;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-create:hover {
+            box-shadow: 0 6px 30px rgba(76, 175, 80, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-join {
+            background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+            color: white;
+            box-shadow: 0 4px 20px rgba(156, 39, 176, 0.3);
+        }
+
+        .btn-join:hover {
+            box-shadow: 0 6px 30px rgba(156, 39, 176, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* Room Code Display */
+        .room-code-display {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .room-code-display.visible {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .room-code-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .room-code-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #4CAF50;
+            font-family: 'Consolas', monospace;
+            letter-spacing: 4px;
+        }
+
+        .copy-hint {
+            font-size: 11px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* Error Message */
+        .error-message {
+            display: none;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 8px;
+            color: #f44336;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .error-message.visible {
+            display: block;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translateX(-5px);
+            }
+
+            40%,
+            80% {
+                transform: translateX(5px);
+            }
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: #2196F3;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer a:hover {
+            color: #64B5F6;
+        }
+
+        /* Room Options (for create) */
+        .room-options {
+            margin-bottom: 16px;
+        }
+
+        .option-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .option-row:last-child {
+            border-bottom: none;
+        }
+
+        .option-label {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: rgba(76, 175, 80, 0.5);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        /* Active Rooms Section */
+        .active-rooms {
+            margin-top: 40px;
+        }
+
+        .active-rooms h3 {
+            font-size: 16px;
+            color: #888;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .rooms-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .room-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            transition: all 0.2s;
+        }
+
+        .room-item:hover {
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        .room-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .room-status {
+            width: 10px;
+            height: 10px;
+            background: #4CAF50;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .room-name {
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .room-viewers {
+            font-size: 12px;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-quick-join {
+            padding: 8px 16px;
+            background: rgba(33, 150, 243, 0.2);
+            border: none;
+            border-radius: 6px;
+            color: #2196F3;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-quick-join:hover {
+            background: rgba(33, 150, 243, 0.4);
+        }
+
+        /* No Rooms Message */
+        .no-rooms {
+            text-align: center;
+            padding: 30px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .no-rooms-icon {
+            font-size: 40px;
+            opacity: 0.3;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Background Particles -->
+    <div class="bg-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <div class="landing-container">
+        <!-- Logo Section -->
+        <div class="logo-section">
+            <div class="logo">▶</div>
+            <h1>Sync<span>-Player</span></h1>
+            <p>Watch videos together in perfect sync</p>
+        </div>
+
+        <!-- Room Cards -->
+        <div class="cards-container">
+            <!-- Create Room Card -->
+            <div class="room-card glass-strong create">
+                <div class="card-icon create">➕</div>
+                <h2>Create a Room</h2>
+                <p>Start a new watch party and invite your friends to join using the room code.</p>
+
+                <div class="input-group">
+                    <label>Room Name (Optional)</label>
+                    <input type="text" class="input-field" id="roomName" placeholder="My Watch Party" maxlength="30">
+                </div>
+
+                <div class="room-options">
+                    <div class="option-row">
+                        <span class="option-label">Private Room</span>
+                        <div class="toggle-switch" id="togglePrivate" onclick="toggleOption(this)"></div>
+                    </div>
+                </div>
+
+                <button class="btn btn-create" onclick="createRoom()">
+                    <span>🎬</span> Create Room
+                </button>
+
+                <div class="room-code-display" id="roomCodeDisplay">
+                    <div class="room-code-label">Your Room Code</div>
+                    <div class="room-code-value" id="generatedCode">ABC123</div>
+                    <div class="copy-hint">Click to copy • Share with friends</div>
+                </div>
+            </div>
+
+            <!-- Join Room Card -->
+            <div class="room-card glass-strong join">
+                <div class="card-icon join">🚪</div>
+                <h2>Join a Room</h2>
+                <p>Enter a room code to join an existing watch party and sync with others.</p>
+
+                <div class="input-group">
+                    <label>Room Code</label>
+                    <input type="text" class="input-field" id="roomCode" placeholder="Enter 6-digit code" maxlength="6"
+                        style="text-transform: uppercase; letter-spacing: 3px; text-align: center; font-size: 18px;">
+                </div>
+
+                <div class="input-group">
+                    <label>Your Display Name</label>
+                    <input type="text" class="input-field" id="displayName" placeholder="Enter your name"
+                        maxlength="20">
+                </div>
+
+                <button class="btn btn-join" onclick="joinRoom()">
+                    <span>🎉</span> Join Room
+                </button>
+
+                <div class="error-message" id="joinError">
+                    Room not found. Please check the code and try again.
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Public Rooms -->
+        <div class="active-rooms glass">
+            <h3>Public Rooms</h3>
+            <div class="rooms-list" id="roomsList">
+                <!-- Rooms will be populated dynamically -->
+                <div class="no-rooms" id="noRooms">
+                    <div class="no-rooms-icon">📺</div>
+                    <p>No public rooms available. Create one!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Sync-Player v1.9.0 • <a href="https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player"
+                    target="_blank">GitHub</a></p>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Generate browser fingerprint for admin identification
+        function generateFingerprint() {
+            const stored = localStorage.getItem('sync-player-fingerprint');
+            if (stored) return stored;
+
+            const fp = 'fp_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('sync-player-fingerprint', fp);
+            return fp;
+        }
+
+        const fingerprint = generateFingerprint();
+        const socket = io();
+
+        // Check for URL error parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error') === 'room_not_found') {
+            showError('Room not found or has been deleted.');
+        }
+
+        // Socket connection handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            fetchPublicRooms();
+        });
+
+        socket.on('rooms-updated', (rooms) => {
+            updateRoomsList(rooms);
+        });
+
+        // Toggle switch functionality
+        function toggleOption(element) {
+            element.classList.toggle('active');
+        }
+
+        // Create room via socket
+        function createRoom() {
+            const roomName = document.getElementById('roomName').value || 'Watch Party';
+            const isPrivate = document.getElementById('togglePrivate').classList.contains('active');
+
+            socket.emit('create-room', {
+                name: roomName,
+                isPrivate,
+                fingerprint
+            }, (response) => {
+                if (response.success) {
+                    // Show the generated code
+                    document.getElementById('generatedCode').textContent = response.roomCode;
+                    document.getElementById('roomCodeDisplay').classList.add('visible');
+
+                    // Copy functionality
+                    document.getElementById('roomCodeDisplay').onclick = () => {
+                        navigator.clipboard.writeText(response.roomCode);
+                        document.querySelector('.copy-hint').textContent = 'Copied! ✓';
+                        setTimeout(() => {
+                            document.querySelector('.copy-hint').textContent = 'Click to copy • Share with friends';
+                        }, 2000);
+                    };
+
+                    // Redirect to admin panel after short delay
+                    setTimeout(() => {
+                        window.location.href = `/admin/${response.roomCode}`;
+                    }, 1500);
+                } else {
+                    showError(response.error || 'Failed to create room');
+                }
+            });
+        }
+
+        // Join room via socket
+        function joinRoom() {
+            const roomCode = document.getElementById('roomCode').value.toUpperCase();
+            const displayName = document.getElementById('displayName').value || 'Guest';
+
+            if (roomCode.length !== 6) {
+                showError('Please enter a valid 6-digit room code.');
+                return;
+            }
+
+            // First check if room exists via API
+            fetch(`/api/rooms/${roomCode}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Room not found');
+                    return res.json();
+                })
+                .then(room => {
+                    // Store display name for the watch page
+                    sessionStorage.setItem('sync-player-name', displayName);
+                    sessionStorage.setItem('sync-player-room', roomCode);
+                    // Redirect to watch page
+                    window.location.href = `/watch/${roomCode}`;
+                })
+                .catch(err => {
+                    showError('Room not found. Please check the code and try again.');
+                });
+        }
+
+        // Quick join from public rooms list
+        function quickJoin(roomCode) {
+            document.getElementById('roomCode').value = roomCode;
+            document.getElementById('roomCode').focus();
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('joinError');
+            errorEl.textContent = message;
+            errorEl.classList.add('visible');
+            setTimeout(() => {
+                errorEl.classList.remove('visible');
+            }, 3000);
+        }
+
+        // Auto-format room code input
+        document.getElementById('roomCode').addEventListener('input', function (e) {
+            this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                if (document.activeElement.id === 'roomCode' || document.activeElement.id === 'displayName') {
+                    joinRoom();
+                } else if (document.activeElement.id === 'roomName') {
+                    createRoom();
+                }
+            }
+        });
+
+        // Fetch public rooms from server
+        function fetchPublicRooms() {
+            fetch('/api/rooms')
+                .then(res => res.json())
+                .then(rooms => {
+                    updateRoomsList(rooms);
+                })
+                .catch(err => {
+                    console.error('Failed to fetch rooms:', err);
+                    updateRoomsList([]);
+                });
+        }
+
+        function updateRoomsList(rooms) {
+            const list = document.getElementById('roomsList');
+            const noRooms = document.getElementById('noRooms');
+
+            // Remove example items first
+            list.querySelectorAll('.room-item').forEach(item => item.remove());
+
+            if (!rooms || rooms.length === 0) {
+                noRooms.style.display = 'block';
+            } else {
+                noRooms.style.display = 'none';
+                rooms.forEach(room => {
+                    const div = document.createElement('div');
+                    div.className = 'room-item';
+                    div.innerHTML = `
+                        <div class="room-info">
+                            <div class="room-status"></div>
+                            <span class="room-name">${escapeHtml(room.name)}</span>
+                            <span class="room-viewers">👥 ${room.viewers} viewer${room.viewers !== 1 ? 's' : ''}</span>
+                        </div>
+                        <button class="btn-quick-join" onclick="quickJoin('${room.code}')">Join</button>
+                    `;
+                    list.insertBefore(div, noRooms);
+                });
+            }
+        }
+
+        // HTML escape helper
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initial fetch
+        fetchPublicRooms();
+    </script>
+</body>
+
+</html>
