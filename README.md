@@ -26,7 +26,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 * Lightweight Node.js + Express server
 * Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
 * Automatic video preloading for smooth transitions
-* Dynamic Audio/Subtitle track changing
+* Dynamic Audio/Subtitle track changing (upcoming rewrite)
 * Minimal UI in view mode
 * Modernized UI with Glassmorphism in admin panel
 * HTTP/HTTPS switch and [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
