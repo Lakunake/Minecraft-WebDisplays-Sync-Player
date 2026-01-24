@@ -174,4 +174,5 @@ See [LICENSE](LICENSE) for more details.
 
 Created by **Lakunake**
 Built using Node.js and many node modules
+
 Contact: johnwebdisplay@gmail.com        (Obviously not my real name)
