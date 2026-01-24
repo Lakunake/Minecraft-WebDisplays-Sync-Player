@@ -71,7 +71,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 
 > [!NOTE]
 > Ensure [Node.js](https://nodejs.org/) is installed before proceeding.
-> Run "npm install express@5.1.0 socket.io@4.8.1" at cmd in case of the auto install failing.
+> Run "npm install" at cmd in case of the auto install failing.
 
 ### Method 1: LAN or Public IP (Direct Hosting),
 > Best for Many people and Repeated users, complex-ish setup
