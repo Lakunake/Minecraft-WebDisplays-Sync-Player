@@ -107,7 +107,7 @@ set MISSING_DEPS=0
 if not exist node_modules (
     set MISSING_DEPS=1
     color 06
-    echo [MISSING]: Node.js dependencies (express, socket.io, helmet)
+    echo [MISSING]: Node.js dependencies (express, socket.io, etc.)
     color 0a
 ) else (
     echo Checking for specific dependencies...
@@ -151,21 +151,21 @@ if %MISSING_DEPS% equ 1 (
     echo.
     color 06
     echo [REQUIRED]: This software needs Node.js dependencies to work properly.
-    echo Missing packages: express, socket.io, helmet
+    echo Missing packages: express, socket.io, helmet, etc.
     color 0a
     echo.
     echo Press ENTER to install dependencies automatically, or Ctrl+C to exit.
     pause >nul
     echo.
     echo Installing Node.js dependencies...
-    call npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0
+    call npm install
     
     if %errorlevel% neq 0 (
         color 0C
         echo [ERROR]: Failed to install dependencies.
         color 0a
         echo Please check your internet connection and try again.
-        echo You can also try running: npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0
+        echo You can also try running: npm install
         echo.
         
         :: Auto-retry logic
@@ -293,7 +293,7 @@ if "%LOCAL_IP%"=="" set LOCAL_IP=localhost
 :: =================================================================
 title Admin Console
 echo.
-echo Sync-Player 1.8.1
+echo Sync-Player 1.9.2
 echo ==========================
 echo.
 echo Settings:

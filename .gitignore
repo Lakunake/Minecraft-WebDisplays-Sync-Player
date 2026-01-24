@@ -1,3 +1,31 @@
+# Legacy .env files
+.env
+
+# Memory/data files
+memory/
+
+# SSL certificates
+*.pem
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Thumbnails cache
+sync-player-thumbnails/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+
 # Logs
 logs
 *.log

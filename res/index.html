@@ -407,7 +407,7 @@
       height: 45px;
       /* Match input height for alignment */
       padding: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: transparent;
       /* Semi-transparent button background */
       border-radius: 4px 0 0 4px;
       display: flex;
@@ -419,6 +419,7 @@
       /* Ensure button stays on top */
       transition: opacity 0.5s ease;
       /* Smooth fade for auto-hide */
+      opacity: 0.7;
     }
 
     #chat-header.idle-hidden {
@@ -470,13 +471,14 @@
 
     .chat-message {
       margin-bottom: 6px;
-      background: rgba(0, 0, 0, 0.4);
+      background: transparent;
       padding: 6px 10px;
       border-radius: 4px;
       width: fit-content;
       max-width: 100%;
       pointer-events: auto;
       transition: opacity 0.5s;
+      opacity: 1;
     }
 
     .chat-message.fading-slow {
@@ -534,11 +536,12 @@
       /* Increased to visual match new input size */
       margin-right: 5px;
       text-shadow: 1px 1px 0 #000;
+      opacity: 0.7;
     }
 
     #chat-input {
       flex: 1;
-      background: rgba(0, 0, 0, 0.3);
+      background: transparent;
       border: none;
       border-bottom: 2px solid rgba(255, 255, 255, 0.2);
       border-radius: 0;
@@ -555,6 +558,7 @@
       line-height: 45px;
       /* Match height for centering */
       outline: none;
+      opacity: 0.8;
     }
 
     #chat-input:focus {
@@ -862,6 +866,55 @@
     let skipSeconds = 5;
     let volumeStep = 0.05;
     let clientControlsDisabled = false; // When true, client controls are view-only
+    let chatEnabled = true; // When false, chat widget is hidden
+    let maxVolume = 100; // Maximum volume cap (100-1000%)
+
+    // Web Audio API for volume amplification above 100%
+    let audioContext = null;
+    let gainNode = null;
+    let audioSource = null;
+    let currentVolume = 100; // Track current volume as percentage (0-maxVolume)
+
+    // Initialize Web Audio API for volume boost
+    function initAudioContext() {
+      if (audioContext) return; // Already initialized
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioSource = audioContext.createMediaElementSource(video);
+        gainNode = audioContext.createGain();
+        audioSource.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        console.log('Web Audio API initialized for volume amplification');
+      } catch (e) {
+        console.error('Failed to initialize Web Audio API:', e);
+      }
+    }
+
+    // Set volume with amplification support
+    function setVolume(percent) {
+      currentVolume = Math.max(0, Math.min(maxVolume, percent));
+
+      if (currentVolume <= 100) {
+        // Normal volume range (0-100%)
+        video.volume = currentVolume / 100;
+        if (gainNode) gainNode.gain.value = 1;
+      } else {
+        // Amplified volume (>100%)
+        // Initialize audio context on first amplification (requires user interaction)
+        if (!audioContext) initAudioContext();
+        video.volume = 1; // Max browser volume
+        if (gainNode) {
+          // Gain value: 1.0 = 100%, 2.0 = 200%, etc.
+          gainNode.gain.value = currentVolume / 100;
+        }
+      }
+      return currentVolume;
+    }
+
+    // Get current volume percentage
+    function getVolume() {
+      return currentVolume;
+    }
 
     let lastUpdate = Date.now();
     let hasInitialSync = false; // Prevent new clients from broadcasting until synced
@@ -974,18 +1027,24 @@
       skipSeconds = config.skipSeconds || 5;
       volumeStep = config.volumeStep || 0.05;
       clientControlsDisabled = config.clientControlsDisabled || false;
+      chatEnabled = config.chatEnabled !== false; // Default to true
+      maxVolume = config.maxVolume || 100; // Default to 100%
 
       // Update title with room info if in server mode
       if (config.serverMode && config.roomName) {
         document.title = `${config.roomName} - Sync-Player`;
       }
 
-      // Initialize chat widget if enabled
-      if (config.chatEnabled) {
-        // initChat(); // Removed legacy init
+      // Hide chat widget if disabled
+      if (!chatEnabled) {
+        const chatWidget = document.getElementById('chat-widget');
+        if (chatWidget) {
+          chatWidget.classList.remove('visible');
+          chatWidget.style.display = 'none';
+        }
       }
 
-      console.log(`Config received: skipSeconds=${skipSeconds}, volumeStep=${volumeStep}, clientControlsDisabled=${clientControlsDisabled}`);
+      console.log(`Config received: skipSeconds=${skipSeconds}, volumeStep=${volumeStep}, clientControlsDisabled=${clientControlsDisabled}, chatEnabled=${chatEnabled}, maxVolume=${maxVolume}`);
       if (clientControlsDisabled) {
         showTemporaryMessage('View-only mode (controls disabled)', 3000);
       }
@@ -1393,11 +1452,11 @@
           video.pause();
         }
       } else if (x < center) {
-        video.volume = Math.max(0, video.volume - volumeStep);
-        showTemporaryMessage(`Volume: ${Math.round(video.volume * 100)}%`);
+        const newVol = setVolume(getVolume() - (volumeStep * 100));
+        showTemporaryMessage(`Volume: ${Math.round(newVol)}%`);
       } else {
-        video.volume = Math.min(1, video.volume + volumeStep);
-        showTemporaryMessage(`Volume: ${Math.round(video.volume * 100)}%`);
+        const newVol = setVolume(getVolume() + (volumeStep * 100));
+        showTemporaryMessage(`Volume: ${Math.round(newVol)}%`);
       }
     });
 
@@ -2355,6 +2414,12 @@
       const chatMessages = document.getElementById('chat-messages');
 
       if (!chatWidget || !chatToggleBtn) return;
+
+      // Only show chat widget if chat is enabled
+      if (!chatEnabled) {
+        chatWidget.style.display = 'none';
+        return;
+      }
 
       // Make widget visible
       chatWidget.classList.add('visible');

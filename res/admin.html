@@ -1810,7 +1810,7 @@
             </div>
             <div id="logs-container"
               style="max-height: 570px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-family: monospace; padding-bottom: 10px;">
-              <div class="log-entry" style="color: #888;">Waiting for events...</div>
+              <div class="log-entry" style="color: #888; opacity: 1;">Waiting for events...</div>
             </div>
           </div>
 
@@ -2118,6 +2118,50 @@
       div.textContent = text;
       return div.innerHTML;
     }
+
+    // CSRF Token Management
+    let csrfToken = window.CSRF_TOKEN || '';
+
+    // Helper for authenticated fetch requests (includes CSRF token)
+    async function authenticatedFetch(url, options = {}) {
+      const headers = {
+        ...options.headers,
+        'X-CSRF-Token': csrfToken
+      };
+
+      const response = await fetch(url, { ...options, headers });
+
+      // If token expired (403), try to refresh it
+      if (response.status === 403) {
+        try {
+          const tokenRes = await fetch('/api/csrf-token');
+          if (tokenRes.ok) {
+            const data = await tokenRes.json();
+            csrfToken = data.token;
+            // Retry the request with new token
+            headers['X-CSRF-Token'] = csrfToken;
+            return fetch(url, { ...options, headers });
+          }
+        } catch (e) {
+          console.error('Failed to refresh CSRF token:', e);
+        }
+      }
+
+      return response;
+    }
+
+    // Refresh CSRF token periodically (every 12 hours)
+    setInterval(async () => {
+      try {
+        const res = await fetch('/api/csrf-token');
+        if (res.ok) {
+          const data = await res.json();
+          csrfToken = data.token;
+        }
+      } catch (e) {
+        console.error('CSRF token refresh failed:', e);
+      }
+    }, 12 * 60 * 60 * 1000);
 
     document.addEventListener('DOMContentLoaded', initDomCache);
 
@@ -3416,24 +3460,30 @@
 
       let html = '';
       clients.forEach(client => {
+        const safeDisplayName = escapeHTML(client.displayName || 'Unnamed');
+        const safeSocketId = escapeHTML(client.socketId?.slice(-8) || '');
+        const safeFingerprint = escapeHTML(client.fingerprint || 'Unknown');
+        const safeDisplayValue = escapeHTML(client.displayName || '');
+        const safeFingerprintData = escapeHTML(client.fingerprint || '');
+
         html += `
           <div class="bsl-client-card">
             <div class="bsl-client-header">
-              <strong style="color: #2196F3;">${client.displayName || 'Unnamed'}</strong>
+              <strong style="color: #2196F3;">${safeDisplayName}</strong>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-family: monospace;">
               <div style="display: flex; justify-content: space-between;">
                 <span style="color: #888;">Socket ID:</span>
-                <span style="color: #9C27B0;">${client.socketId.slice(-8)}</span>
+                <span style="color: #9C27B0;">${safeSocketId}</span>
               </div>
               <div style="display: flex; justify-content: space-between;">
                 <span style="color: #888;">Fingerprint:</span>
-                <span style="color: #FF9800;">${client.fingerprint || 'Unknown'}</span>
+                <span style="color: #FF9800;">${safeFingerprint}</span>
               </div>
               <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
                 <label style="color: #888;">Display Name:</label>
-                <input type="text" value="${client.displayName || ''}" 
-                  data-fingerprint="${client.fingerprint || ''}"
+                <input type="text" value="${safeDisplayValue}" 
+                  data-fingerprint="${safeFingerprintData}"
                   placeholder="Enter name..."
                   onchange="updateClientName(this)"
                   style="flex: 1; padding: 6px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: #e0e0e0; font-size: 12px;">
@@ -3590,7 +3640,8 @@
       }
       // Update time display
       if (state.currentTime !== undefined) {
-        const totalSecs = Math.floor(state.currentTime);
+        // Clamp to 0 to prevent negative values from rewind
+        const totalSecs = Math.max(0, Math.floor(state.currentTime));
         const hours = Math.floor(totalSecs / 3600);
         const mins = Math.floor((totalSecs % 3600) / 60);
         const secs = totalSecs % 60;
@@ -3674,12 +3725,13 @@
         // Initialize nav indicator now that UI is visible
         initNavIndicator();
       } else {
-        // Show access denied message in auth screen
+        // Show access denied message in auth screen (escape the reason to prevent XSS)
+        const safeReason = escapeHTML(result.reason || 'Access denied');
         authContent.innerHTML = `
           <div class="auth-denied">
             <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
             <h1 style="color: #f44336; margin-bottom: 15px;">Access Denied</h1>
-            <p style="color: #ccc; margin-bottom: 20px;">${result.reason}</p>
+            <p style="color: #ccc; margin-bottom: 20px;">${safeReason}</p>
             <p style="color: #888; font-size: 14px;">
               If you need to reset admin access, delete the file:<br>
               <code style="background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 4px;">memory.json</code>
@@ -3722,8 +3774,10 @@
 
       data.clients.forEach((client, clientIdx) => {
         const matchCount = Object.keys(client.matchedVideos).length;
-        const displayName = client.clientName || `Client ${clientIdx + 1}`;
-        const fingerprintShort = (client.clientId || '').slice(-4);
+        const displayName = escapeHTML(client.clientName || `Client ${clientIdx + 1}`);
+        const safeClientId = escapeHTML(client.clientId || '');
+        const fingerprintShort = escapeHTML((client.clientId || '').slice(-4));
+        const safeSocketId = escapeHTML(client.socketId || '');
         const driftValues = client.driftValues || {};
 
         html += `
@@ -3733,8 +3787,8 @@
             <input type="text" 
                    class="client-name-input" 
                    value="${displayName}" 
-                   data-client-id="${client.clientId}"
-                   title="Fingerprint: ${client.clientId}"
+                   data-client-id="${safeClientId}"
+                   title="Fingerprint: ${safeClientId}"
                    style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
                           border-radius: 4px; padding: 4px 8px; color: white; width: 150px; font-size: 13px;"
                    onchange="setClientName(this)"
@@ -3752,6 +3806,7 @@
           html += '<div class="empty-message">No video files found</div>';
         } else {
           client.files.forEach(file => {
+            const safeFileName = escapeHTML(file.name || '');
             const matchedIdx = Object.entries(client.matchedVideos)
               .find(([idx, name]) => name === file.name)?.[0];
 
@@ -3759,7 +3814,7 @@
 
             html += `
           <div class="bsl-file-item">
-            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">${file.name}</span>
+            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">${safeFileName}</span>
             <div style="display: flex; align-items: center; gap: 8px;">
               ${matchedIdx !== undefined ? `
                 <div style="display: flex; align-items: center; gap: 4px;" title="Drift: offset client playback time (±60s)">
@@ -3768,7 +3823,7 @@
                          class="bsl-drift-input"
                          value="${currentDrift}"
                          min="-60" max="60" step="1"
-                         data-client-fingerprint="${client.clientId}"
+                         data-client-fingerprint="${safeClientId}"
                          data-playlist-index="${matchedIdx}"
                          onchange="handleDriftChange(this)"
                          style="width: 50px; padding: 2px 4px; background: rgba(255,255,255,0.05); 
@@ -3778,12 +3833,12 @@
                 </div>
               ` : ''}
               <select class="bsl-match-select" 
-                      data-client-id="${client.socketId}" 
-                      data-file-name="${file.name}"
+                      data-client-id="${safeSocketId}" 
+                      data-file-name="${safeFileName}"
                       onchange="handleManualMatch(this)">
                 <option value="-1" ${!matchedIdx ? 'selected' : ''}>Not matched</option>
                 ${playlist.map((v, i) => `
-                  <option value="${i}" ${matchedIdx == i ? 'selected' : ''}>${v.filename}</option>
+                  <option value="${i}" ${matchedIdx == i ? 'selected' : ''}>${escapeHTML(v.filename)}</option>
                 `).join('')}
               </select>
             </div>

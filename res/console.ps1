@@ -1,5 +1,5 @@
 # Sync-Player PowerShell Startup Script
-# Equivalent to legacylauncher.bat with improved error handling and cleaner syntax, legacy launcher will no longer get major updates and has last updated in 23.12.2025
+# Equivalent to legacylauncher.bat with improved error handling and cleaner syntax, legacy launcher will no longer get major updates
 
 # Re-launch with bypass if not already bypassed (fixes right-click "Run with PowerShell")
 if ($ExecutionContext.SessionState.LanguageMode -eq 'ConstrainedLanguage' -or 
@@ -97,82 +97,10 @@ if (-not $nodeInstalled) {
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console - Initializing"
 
-if (-not (Test-Path "config.txt")) {
-    Write-Host "Creating default configuration..."
-    
-    $defaultConfig = @"
-# Sync-Player Configuration
-# Lines starting with # are comments
-
-# Server port (1024-49151)
-port: 3000
-
-# Volume step percentage (1-20)
-volume_step: 5
-
-# Skip seconds (1-60)
-skip_seconds: 5
-
-# Join mode: sync or reset
-join_mode: sync
-
-# HTTPS Configuration
-use_https: false
-ssl_key_file: key.pem
-ssl_cert_file: cert.pem
-
-# BSL-S2 (Both Side Local Sync Stream) Configuration
-# Mode: 'any' = BSL-S2 active if ANY client has the local file
-#       'all' = BSL-S2 only active if ALL clients have the local file
-bsl_s2_mode: any
-
-# Video Autoplay Configuration
-# Set to true to automatically play videos when loaded
-# Set to false to start videos paused
-video_autoplay: false
-
-# Admin Fingerprint Lock
-# When enabled, only the first machine to access /admin will be allowed
-# The fingerprint is stored in admin_fingerprint.txt
-# Set to true to enable, false to allow any machine to access admin
-admin_fingerprint_lock: false
-
-# BSL-S² Advanced Matching
-# When enabled, matches files using multiple criteria (name, size, extension, MIME)
-# A match is declared if 3 or more criteria pass
-bsl_advanced_match: true
-
-# BSL-S² Advanced Match Threshold (1-4)
-bsl_advanced_match_threshold: 1
-
-# Skip Intro Seconds
-# How many seconds the "Skip Intro" button jumps forward
-skip_intro_seconds: 87
-
-# Client Controls Configuration
-# Set to true to disable all client controls (they become view-only)
-client_controls_disabled: false
-
-# Client Sync to Server Configuration
-# This makes clients view-only even if they attempt to send control events
-client_sync_disabled: false
-
-# Server Mode
-# When enabled, logs are disabled for cleaner server operation
-server_mode: false
-
-# Chat Feature
-# Set to true to enable chat, false to disable
-chat_enabled: true
-
-# Data Hydration Optimization
-# When enabled, the server injects initial data into admin.html to save a round-trip
-data_hydration: true
-"@
-    
-    $defaultConfig | Out-File -FilePath "config.txt" -Encoding UTF8
-    Write-Host "Default config created with all available options"
-}
+# =================================================================
+# Initialize configuration (in root directory)
+# =================================================================
+# Config creation is now handled in the 'Read configuration' phase if no config exists
 
 # =================================================================
 # Create folders if needed (in root directory)
@@ -189,11 +117,11 @@ $Host.UI.RawUI.WindowTitle = "Admin Console - Checking Dependencies"
 Write-Host "Checking required dependencies..."
 
 $MISSING_DEPS = $false
-$requiredPackages = @("express", "socket.io", "helmet")
+$requiredPackages = @("express", "socket.io", "helmet", "express-rate-limit", "rate-limiter-flexible", "cookie-parser")
 
 if (-not (Test-Path "res\node_modules")) {
     $MISSING_DEPS = $true
-    Write-Status "MISSING" "Node.js dependencies (express, socket.io, helmet)"
+    Write-Status "MISSING" "Node.js dependencies (express, socket.io, etc.)"
 }
 else {
     Write-Host "Checking for specific dependencies..."
@@ -223,7 +151,7 @@ else {
 if ($MISSING_DEPS) {
     Write-Host ""
     Write-Status "REQUIRED" "This software needs Node.js dependencies to work properly."
-    Write-Host "Missing packages: express, socket.io, helmet"
+    Write-Status "INFO" "Installing dependencies from package.json..."
     Write-Host ""
     Write-Host "Press ENTER to install dependencies automatically, or Ctrl+C to exit."
     Read-Host
@@ -231,10 +159,10 @@ if ($MISSING_DEPS) {
     Write-Host "Installing Node.js dependencies..."
     
     try {
-        Write-Host "Running: npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0" -ForegroundColor Gray
+        Write-Host "Running: npm install" -ForegroundColor Gray
         Write-Host ""
         Push-Location "res"
-        cmd /c "npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
+        cmd /c "npm install"
         Pop-Location
         if ($LASTEXITCODE -ne 0) {
             throw "npm install failed with exit code $LASTEXITCODE"
@@ -248,7 +176,7 @@ if ($MISSING_DEPS) {
         Pop-Location -ErrorAction SilentlyContinue
         Write-Status "ERROR" "Failed to install dependencies."
         Write-Host "Please check your internet connection and try again."
-        Write-Host "You can also try running: cd res && npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
+        Write-Host "You can also try running: cd res && npm install"
         Write-Host ""
         
         # Auto-retry logic
@@ -325,13 +253,52 @@ $config = @{
     DATA_HYDRATION           = "true"
 }
 
-if (Test-Path "config.txt") {
+# Helper to map env vars to config keys
+$envMap = @{
+    "SYNC_PORT"                      = "PORT"
+    "SYNC_VOLUME_STEP"               = "VOLUME_STEP"
+    "SYNC_SKIP_SECONDS"              = "SKIP_SECONDS"
+    "SYNC_JOIN_MODE"                 = "JOIN_MODE"
+    "SYNC_USE_HTTPS"                 = "USE_HTTPS"
+    "SYNC_BSL_MODE"                  = "BSL_S2_MODE"
+    "SYNC_ADMIN_FINGERPRINT_LOCK"    = "ADMIN_LOCK"
+    "SYNC_BSL_ADVANCED_MATCH"        = "BSL_ADV_MATCH"
+    "SYNC_BSL_MATCH_THRESHOLD"       = "BSL_ADV_MATCH_THRESHOLD"
+    "SYNC_SKIP_INTRO_SECONDS"        = "SKIP_INTRO_SECONDS"
+    "SYNC_CLIENT_CONTROLS_DISABLED"  = "CLIENT_CONTROLS_DISABLED"
+    "SYNC_CLIENT_SYNC_DISABLED"      = "CLIENT_SYNC_DISABLED"
+    "SYNC_SERVER_MODE"               = "SERVER_MODE"
+    "SYNC_CHAT_ENABLED"              = "CHAT_ENABLED"
+    "SYNC_DATA_HYDRATION"            = "DATA_HYDRATION"
+}
+
+# 1. Read config.env (Primary)
+if (Test-Path "config.env") {
+    $envContent = Get-Content "config.env"
+    foreach ($line in $envContent) {
+        if ($line -match "^\s*#") { continue } # Skip comments
+        if ($line -match "^\s*([^=]+?)\s*=\s*(.*)\s*$") {
+            $key = $matches[1].Trim()
+            $val = $matches[2].Trim()
+            
+            if ($envMap.ContainsKey($key)) {
+                $configKey = $envMap[$key]
+                # Type conversion for integers
+                if ($configKey -match "(PORT|VOLUME|SECONDS|THRESHOLD)") {
+                    try { $config[$configKey] = [int]$val } catch {}
+                } else {
+                    $config[$configKey] = $val
+                }
+            }
+        }
+    }
+    # Write-Host "Configuration loaded from config.env" -ForegroundColor Cyan
+}
+# 2. Read config.txt (Fallback)
+elseif (Test-Path "config.txt") {
     $configContent = Get-Content "config.txt"
     foreach ($line in $configContent) {
-        # Skip comments and empty lines
         if ($line -match "^\s*#" -or $line -match "^\s*$") { continue }
-        
-        # Parse key: value pairs
         if ($line -match "^\s*(\w+)\s*:\s*(.+?)\s*$") {
             $key = $matches[1]
             $value = $matches[2]
@@ -355,9 +322,51 @@ if (Test-Path "config.txt") {
             }
         }
     }
+    # Write-Host "Configuration loaded from config.txt (legacy)" -ForegroundColor Cyan
 }
 else {
-    Write-Status "WARNING" "config.txt not found, using default values"
+    # Create default config.env if nothing exists
+    Write-Host "Creating default configuration (config.env)..."
+    
+    $defaultEnv = @"
+# ====================================
+# Sync-Player Environment Configuration
+# ====================================
+# Format: VARIABLE_NAME=value
+
+# Server Settings
+SYNC_PORT=3000
+
+# Playback Settings
+SYNC_VOLUME_STEP=5
+SYNC_MAX_VOLUME=100
+SYNC_SKIP_SECONDS=5
+SYNC_SKIP_INTRO_SECONDS=87
+SYNC_VIDEO_AUTOPLAY=false
+SYNC_JOIN_MODE=sync
+
+# Features
+SYNC_CHAT_ENABLED=true
+SYNC_DATA_HYDRATION=true
+SYNC_SERVER_MODE=false
+
+# Client Controls
+SYNC_CLIENT_CONTROLS_DISABLED=false
+SYNC_CLIENT_SYNC_DISABLED=false
+
+# BSL-S² Sync
+SYNC_BSL_MODE=any
+SYNC_BSL_ADVANCED_MATCH=true
+SYNC_BSL_MATCH_THRESHOLD=1
+
+# Security
+SYNC_USE_HTTPS=false
+SYNC_SSL_KEY_FILE=key.pem
+SYNC_SSL_CERT_FILE=cert.pem
+SYNC_ADMIN_FINGERPRINT_LOCK=false
+"@
+    $defaultEnv | Out-File -FilePath "config.env" -Encoding UTF8
+    Write-Host "Default config.env created"
 }
 
 # =================================================================
@@ -402,23 +411,18 @@ catch {
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console"
 Write-Host ""
-Write-Host "Sync-Player 1.9.0" -ForegroundColor Cyan
+Write-Host "Sync-Player 1.9.2" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Settings:" -ForegroundColor Yellow
 Write-Host "- Server Port: $($config.PORT)" -ForegroundColor White
-Write-Host "- Volume Step: $($config.VOLUME_STEP)%" -ForegroundColor White
-Write-Host "- Skip Seconds: $($config.SKIP_SECONDS)s" -ForegroundColor White
 Write-Host "- Join Mode: $($config.JOIN_MODE)" -ForegroundColor White
 Write-Host "- HTTPS: $($config.USE_HTTPS)" -ForegroundColor White
 Write-Host "- BSL-S2 Mode: $($config.BSL_S2_MODE)" -ForegroundColor White
-Write-Host "- BSL-S2 Adv Match: $($config.BSL_ADV_MATCH) (Threshold: $($config.BSL_ADV_MATCH_THRESHOLD))" -ForegroundColor White
-Write-Host "- Skip Intro: $($config.SKIP_INTRO_SECONDS)s" -ForegroundColor White
 Write-Host "- Client Controls: $(if ($config.CLIENT_CONTROLS_DISABLED -eq 'true') { 'Disabled' } else { 'Enabled' })" -ForegroundColor White
 Write-Host "- Client Sync: $(if ($config.CLIENT_SYNC_DISABLED -eq 'true') { 'Disabled' } else { 'Enabled' })" -ForegroundColor White
 Write-Host "- Server Mode: $($config.SERVER_MODE)" -ForegroundColor White
 Write-Host "- Chat: $($config.CHAT_ENABLED)" -ForegroundColor White
-Write-Host "- Data Hydration: $($config.DATA_HYDRATION)" -ForegroundColor White
 Write-Host ""
 Write-Host "Access URLs:" -ForegroundColor Yellow
 Write-Host "- Your network: http://${LOCAL_IP}:$($config.PORT)" -ForegroundColor White
@@ -449,7 +453,7 @@ Write-Status "DEBUG" "Starting server with port $($config.PORT)..."
 if (Test-Path $RETRY_FILE) { Remove-Item $RETRY_FILE -Force }
 
 try {
-    & node res\server.js $LOCAL_IP
+    & node --env-file-if-exists=config.env res\server.js $LOCAL_IP
     $exitCode = $LASTEXITCODE
     if ($exitCode -ne 0) {
         throw "Server exited with code $exitCode"

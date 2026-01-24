@@ -1,13 +1,16 @@
 {
   "name": "sync-player",
-  "version": "1.9.0",
+  "version": "1.9.2",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node --env-file-if-exists=../config.env server.js"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
     "helmet": "^8.0.0",
+    "rate-limiter-flexible": "^9.0.1",
     "socket.io": "^4.8.1"
   }
 }

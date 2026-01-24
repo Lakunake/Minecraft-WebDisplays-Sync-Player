@@ -156,7 +156,7 @@ fi
 echo "Checking required dependencies..."
 
 MISSING_DEPS=false
-REQUIRED_PACKAGES=("express" "socket.io" "helmet")
+REQUIRED_PACKAGES=("express" "socket.io" "helmet" "express-rate-limit" "rate-limiter-flexible" "cookie-parser")
 
 if [ ! -d "res/node_modules" ]; then
     MISSING_DEPS=true
@@ -194,7 +194,7 @@ if [ "$MISSING_DEPS" = true ]; then
     echo "Installing Node.js dependencies..."
     
     pushd "res" > /dev/null
-    if npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0; then
+    if npm install; then
         popd > /dev/null
         write_status "SUCCESS" "Dependencies installed successfully."
         MISSING_DEPS=false
@@ -203,7 +203,7 @@ if [ "$MISSING_DEPS" = true ]; then
         popd > /dev/null
         write_status "ERROR" "Failed to install dependencies."
         echo "Please check your internet connection and try again."
-        echo "You can also try running: cd res && npm install express@5.1.0 socket.io@4.8.1 helmet@8.0.0"
+        echo "You can also try running: cd res && npm install"
         echo ""
         
         # Auto-retry logic
@@ -327,7 +327,7 @@ fi
 # Display server information
 # =================================================================
 echo ""
-echo -e "\033[36mSync-Player 1.9.0\033[0m"
+echo -e "\033[36mSync-Player 1.9.2\033[0m"
 echo -e "\033[36m==========================\033[0m"
 echo ""
 echo -e "\033[33mSettings:\033[0m"

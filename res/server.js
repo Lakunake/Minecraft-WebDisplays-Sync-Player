@@ -4,8 +4,11 @@ const https = require('https');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-const { exec } = require('child_process');
+const { execFile, exec } = require('child_process');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { RateLimiterMemory } = require('rate-limiter-flexible');
+const cookieParser = require('cookie-parser');
 
 // Root directory (parent of res/ where server.js lives)
 const ROOT_DIR = path.join(__dirname, '..');
@@ -56,7 +59,7 @@ function validateStartupLocation() {
     console.log(`${colors.cyan}Recommended: Run from project root:${colors.reset}`);
     console.log(`  Windows: run.bat`);
     console.log(`  Linux/Mac: ./start.sh`);
-    console.log(`  Manual: node res/server.js`);
+    console.log(`  Manual: node --env-file-if-exists=config.env res/server.js`);
     console.log('');
   }
 }
@@ -111,9 +114,111 @@ function readConfig() {
     client_sync_disabled: 'false',
     server_mode: 'false',
     chat_enabled: 'true',
-    data_hydration: 'true'
+    data_hydration: 'true',
+    max_volume: '100'
   };
 }
+
+// Config loading relies on Node.js native --env-file (see startup scripts)
+
+// Read config.txt as fallback
+const fileConfig = readConfig();
+
+// Environment-first configuration with config.txt fallback
+// Helper to get config value with validation
+function getConfig(envKey, fileKey, fallback, validator = null) {
+  const envValue = process.env[envKey];
+  const fileValue = fileConfig[fileKey];
+  let value = envValue !== undefined ? envValue : (fileValue !== undefined ? fileValue : fallback);
+
+  if (validator) {
+    const result = validator(value);
+    if (!result.valid) {
+      console.warn(`${colors.yellow}Warning: Invalid value for ${envKey || fileKey}: ${result.error}. Using default: ${fallback}${colors.reset}`);
+      return fallback;
+    }
+    return result.value !== undefined ? result.value : value;
+  }
+  return value;
+}
+
+// Validators
+const validators = {
+  port: (v) => {
+    const num = parseInt(v);
+    if (isNaN(num) || num < 1024 || num > 49151) {
+      return { valid: false, error: 'Must be 1024-49151' };
+    }
+    return { valid: true, value: num };
+  },
+  positiveInt: (v) => {
+    const num = parseInt(v);
+    if (isNaN(num) || num < 1) {
+      return { valid: false, error: 'Must be positive integer' };
+    }
+    return { valid: true, value: num };
+  },
+  boolean: (v) => {
+    const val = String(v).toLowerCase();
+    return { valid: true, value: val === 'true' || val === '1' };
+  },
+  booleanDefaultTrue: (v) => {
+    const val = String(v).toLowerCase();
+    return { valid: true, value: val !== 'false' && val !== '0' };
+  },
+  joinMode: (v) => {
+    if (!['sync', 'reset'].includes(v)) {
+      return { valid: false, error: 'Must be "sync" or "reset"' };
+    }
+    return { valid: true };
+  },
+  bslMode: (v) => {
+    if (!['any', 'all'].includes(v)) {
+      return { valid: false, error: 'Must be "any" or "all"' };
+    }
+    return { valid: true };
+  },
+  range: (min, max) => (v) => {
+    const num = parseInt(v);
+    if (isNaN(num) || num < min || num > max) {
+      return { valid: false, error: `Must be ${min}-${max}` };
+    }
+    return { valid: true, value: num };
+  }
+};
+
+// Build unified config object from env + file
+const config = {
+  port: String(getConfig('SYNC_PORT', 'port', '3000', validators.port)),
+  volume_step: String(getConfig('SYNC_VOLUME_STEP', 'volume_step', '5', validators.range(1, 20))),
+  skip_seconds: String(getConfig('SYNC_SKIP_SECONDS', 'skip_seconds', '5', validators.range(5, 60))),
+  join_mode: getConfig('SYNC_JOIN_MODE', 'join_mode', 'sync', validators.joinMode),
+  use_https: getConfig('SYNC_USE_HTTPS', 'use_https', 'false'),
+  ssl_key_file: getConfig('SYNC_SSL_KEY_FILE', 'ssl_key_file', 'key.pem'),
+  ssl_cert_file: getConfig('SYNC_SSL_CERT_FILE', 'ssl_cert_file', 'cert.pem'),
+  bsl_s2_mode: getConfig('SYNC_BSL_MODE', 'bsl_s2_mode', 'any', validators.bslMode),
+  video_autoplay: getConfig('SYNC_VIDEO_AUTOPLAY', 'video_autoplay', 'false'),
+  admin_fingerprint_lock: getConfig('SYNC_ADMIN_FINGERPRINT_LOCK', 'admin_fingerprint_lock', 'false'),
+  bsl_advanced_match: getConfig('SYNC_BSL_ADVANCED_MATCH', 'bsl_advanced_match', 'true'),
+  bsl_advanced_match_threshold: String(getConfig('SYNC_BSL_MATCH_THRESHOLD', 'bsl_advanced_match_threshold', '1', validators.range(1, 4))),
+  skip_intro_seconds: String(getConfig('SYNC_SKIP_INTRO_SECONDS', 'skip_intro_seconds', '87', validators.positiveInt)),
+  client_controls_disabled: getConfig('SYNC_CLIENT_CONTROLS_DISABLED', 'client_controls_disabled', 'false'),
+  client_sync_disabled: getConfig('SYNC_CLIENT_SYNC_DISABLED', 'client_sync_disabled', 'false'),
+  server_mode: getConfig('SYNC_SERVER_MODE', 'server_mode', 'false'),
+  chat_enabled: getConfig('SYNC_CHAT_ENABLED', 'chat_enabled', 'true'),
+  data_hydration: getConfig('SYNC_DATA_HYDRATION', 'data_hydration', 'true'),
+  max_volume: String(getConfig('SYNC_MAX_VOLUME', 'max_volume', '100', validators.range(100, 1000)))
+};
+
+// Log config source (Disabled)
+const usingEnv = Object.keys(process.env).some(k => k.startsWith('SYNC_'));
+/*
+if (usingEnv) {
+  console.log(`${colors.cyan}Configuration loaded from config.env${colors.reset}`);
+} else {
+  console.log(`${colors.cyan}Configuration loaded from config.txt (legacy)${colors.reset}`);
+}
+*/
 
 // Helper to escape HTML to prevent XSS
 function escapeHTML(text) {
@@ -126,7 +231,41 @@ function escapeHTML(text) {
     .replace(/'/g, '&#39;');
 }
 
-const config = readConfig();
+// Filename validation for defense-in-depth (even with execFile)
+// Returns { valid: boolean, error?: string, sanitized?: string }
+function validateFilename(filename) {
+  // Check if filename is a non-empty string
+  if (typeof filename !== 'string' || filename.length === 0) {
+    return { valid: false, error: 'Filename must be a non-empty string' };
+  }
+
+  // Check maximum length
+  if (filename.length > 255) {
+    return { valid: false, error: 'Filename too long (max 255 characters)' };
+  }
+
+  // Reject path traversal attempts
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return { valid: false, error: 'Path traversal characters not allowed' };
+  }
+
+  // Reject shell metacharacters (defense-in-depth)
+  const shellMetachars = /[;&|$`<>\n\r]/;
+  if (shellMetachars.test(filename)) {
+    return { valid: false, error: 'Filename contains disallowed shell metacharacters' };
+  }
+
+  // Whitelist: alphanumeric, spaces, hyphens, underscores, parentheses, brackets, dots
+  const safePattern = /^[\w\s\-.()\[\]]+$/;
+  if (!safePattern.test(filename)) {
+    return { valid: false, error: 'Filename contains disallowed characters' };
+  }
+
+  // Use path.basename as final sanitization
+  const sanitized = path.basename(filename);
+
+  return { valid: true, sanitized };
+}
 
 const app = express();
 let server;
@@ -172,6 +311,7 @@ const CLIENT_SYNC_DISABLED = config.client_sync_disabled === 'true'; // defaults
 const SERVER_MODE = config.server_mode === 'true'; // defaults to false
 const CHAT_ENABLED = config.chat_enabled !== 'false'; // defaults to true
 const DATA_HYDRATION = config.data_hydration !== 'false'; // defaults to true
+const MAX_VOLUME = Math.min(1000, Math.max(100, parseInt(config.max_volume) || 100)); // 100-1000, defaults to 100
 
 // Server mode - disable console logs and enable room-based architecture
 if (SERVER_MODE) {
@@ -494,13 +634,91 @@ const BSL_MATCHES_FILE = path.join(MEMORY_DIR, 'bsl_matches.json');
 
 // ==================== Unified Memory Storage ====================
 const MEMORY_FILE = path.join(MEMORY_DIR, 'memory.json');
+const KEY_FILE = path.join(MEMORY_DIR, '.key');
+const crypto = require('crypto');
+
+// Get or generate encryption key (32 bytes for AES-256)
+function getEncryptionKey() {
+  // First, check environment variable
+  if (process.env.SYNC_PLAYER_KEY) {
+    // Hash the env key to ensure it's exactly 32 bytes
+    return crypto.createHash('sha256').update(process.env.SYNC_PLAYER_KEY).digest();
+  }
+
+  // Check for existing key file
+  if (fs.existsSync(KEY_FILE)) {
+    const keyHex = fs.readFileSync(KEY_FILE, 'utf8').trim();
+    return Buffer.from(keyHex, 'hex');
+  }
+
+  // Generate new key and save it
+  const newKey = crypto.randomBytes(32);
+  fs.writeFileSync(KEY_FILE, newKey.toString('hex'), { mode: 0o600 });
+  console.log(`${colors.green}Generated new encryption key for memory storage${colors.reset}`);
+  return newKey;
+}
+
+const ENCRYPTION_KEY = getEncryptionKey();
+
+// Encrypt data using AES-256-GCM
+function encryptData(plaintext) {
+  const iv = crypto.randomBytes(12); // 96-bit IV for GCM
+  const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+
+  let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+
+  const authTag = cipher.getAuthTag();
+
+  // Format: iv:authTag:ciphertext
+  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+}
+
+// Decrypt data using AES-256-GCM
+function decryptData(encryptedData) {
+  const parts = encryptedData.split(':');
+  if (parts.length !== 3) {
+    throw new Error('Invalid encrypted data format');
+  }
+
+  const iv = Buffer.from(parts[0], 'hex');
+  const authTag = Buffer.from(parts[1], 'hex');
+  const ciphertext = parts[2];
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+  decipher.setAuthTag(authTag);
+
+  let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
+}
+
+// Check if data is encrypted (starts with hex IV pattern)
+function isEncrypted(data) {
+  // Encrypted format: 24 hex chars (IV) + ':' + 32 hex chars (authTag) + ':' + ciphertext
+  return /^[a-f0-9]{24}:[a-f0-9]{32}:/.test(data);
+}
 
 // Load unified memory (contains all persistent data)
 function loadMemory() {
   try {
     if (fs.existsSync(MEMORY_FILE)) {
-      const data = fs.readFileSync(MEMORY_FILE, 'utf8');
-      return JSON.parse(data);
+      const rawData = fs.readFileSync(MEMORY_FILE, 'utf8');
+
+      // Check if data is encrypted or plaintext (migration support)
+      if (isEncrypted(rawData)) {
+        // Decrypt and parse
+        const decrypted = decryptData(rawData);
+        return JSON.parse(decrypted);
+      } else {
+        // Plaintext - parse and re-save encrypted (migration)
+        console.log(`${colors.yellow}Migrating memory.json to encrypted format...${colors.reset}`);
+        const data = JSON.parse(rawData);
+        saveMemory(data); // This will save encrypted
+        console.log(`${colors.green}Memory encryption migration complete${colors.reset}`);
+        return data;
+      }
     }
     // Check for legacy files and migrate
     const legacy = {
@@ -523,7 +741,7 @@ function loadMemory() {
     // Save migrated data if any legacy data found
     if (legacy.adminFingerprint || Object.keys(legacy.clientNames).length > 0 || Object.keys(legacy.bslMatches).length > 0) {
       saveMemory(legacy);
-      console.log(`${colors.green}Migrated legacy storage files to memory.json${colors.reset}`);
+      console.log(`${colors.green}Migrated legacy storage files to encrypted memory.json${colors.reset}`);
     }
 
     return legacy;
@@ -533,10 +751,12 @@ function loadMemory() {
   return { adminFingerprint: null, clientNames: {}, bslMatches: {} };
 }
 
-// Save unified memory
+// Save unified memory (encrypted)
 function saveMemory(mem) {
   try {
-    fs.writeFileSync(MEMORY_FILE, JSON.stringify(mem, null, 2));
+    const plaintext = JSON.stringify(mem, null, 2);
+    const encrypted = encryptData(plaintext);
+    fs.writeFileSync(MEMORY_FILE, encrypted);
   } catch (error) {
     console.error('Error saving memory:', error);
   }
@@ -593,6 +813,61 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Disabled to allow video playback
 }));
 
+// Cookie parser for CSRF tokens
+app.use(cookieParser());
+
+// CSRF Token Management
+const csrfTokens = new Map(); // sessionId -> { token, expires }
+const CSRF_TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+
+function generateCsrfToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function getOrCreateCsrfToken(sessionId) {
+  const existing = csrfTokens.get(sessionId);
+  if (existing && existing.expires > Date.now()) {
+    return existing.token;
+  }
+
+  const token = generateCsrfToken();
+  csrfTokens.set(sessionId, { token, expires: Date.now() + CSRF_TOKEN_EXPIRY });
+
+  // Cleanup old tokens periodically
+  if (csrfTokens.size > 1000) {
+    const now = Date.now();
+    for (const [key, val] of csrfTokens) {
+      if (val.expires < now) csrfTokens.delete(key);
+    }
+  }
+
+  return token;
+}
+
+function validateCsrfToken(sessionId, token) {
+  const stored = csrfTokens.get(sessionId);
+  if (!stored || stored.expires < Date.now()) return false;
+  return stored.token === token;
+}
+
+// CSRF validation middleware for state-changing operations
+function csrfProtection(req, res, next) {
+  // Skip for GET, HEAD, OPTIONS (safe methods)
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  const sessionId = req.cookies.sync_session;
+  const token = req.headers['x-csrf-token'] || req.body?._csrf;
+
+  if (!sessionId || !token || !validateCsrfToken(sessionId, token)) {
+    console.log(`${colors.red}CSRF validation failed${colors.reset}`);
+    return res.status(403).json({ error: 'CSRF token validation failed' });
+  }
+
+  next();
+}
+
 app.use(express.static(ROOT_DIR));
 app.use('/media', express.static(path.join(ROOT_DIR, 'media')));
 
@@ -629,9 +904,12 @@ async function getTracksForFile(filename) {
   const tracks = { audio: [], subtitles: [] };
 
   return new Promise((resolve) => {
-    const command = `ffprobe -v quiet -print_format json -show_streams "${filePath}"`;
-
-    exec(command, (error, stdout, stderr) => {
+    execFile('ffprobe', [
+      '-v', 'quiet',
+      '-print_format', 'json',
+      '-show_streams',
+      filePath
+    ], (error, stdout, stderr) => {
       if (error) {
         console.error('Error running ffprobe:', error);
         resolve(tracks);
@@ -685,8 +963,26 @@ async function serveHydratedAdmin(req, res, roomCode = null) {
   const adminPath = path.join(__dirname, 'admin.html');
   if (!fs.existsSync(adminPath)) return res.status(404).send('Admin page not found');
 
+  // Generate or retrieve session ID for CSRF
+  let sessionId = req.cookies.sync_session;
+  if (!sessionId) {
+    sessionId = crypto.randomBytes(16).toString('hex');
+    res.cookie('sync_session', sessionId, {
+      httpOnly: true,
+      sameSite: 'strict',
+      maxAge: CSRF_TOKEN_EXPIRY
+    });
+  }
+
+  // Generate CSRF token for this session
+  const csrfToken = getOrCreateCsrfToken(sessionId);
+
   if (!DATA_HYDRATION) {
-    return res.sendFile(adminPath);
+    // Even without hydration, inject CSRF token
+    let html = fs.readFileSync(adminPath, 'utf8');
+    const csrfScript = `<script>window.CSRF_TOKEN = '${csrfToken}';</script>`;
+    html = html.replace('<head>', `<head>\n    ${csrfScript}`);
+    return res.send(html);
   }
 
   try {
@@ -699,7 +995,7 @@ async function serveHydratedAdmin(req, res, roomCode = null) {
     const files = await getMediaFiles();
 
     // Determine state based on room or legacy
-    let initialState = { files: files };
+    let initialState = { files: files, csrfToken: csrfToken };
     if (SERVER_MODE && roomCode) {
       const room = getRoom(roomCode);
       if (room) {
@@ -713,7 +1009,7 @@ async function serveHydratedAdmin(req, res, roomCode = null) {
 
     // Securely stringify and escape </script> to prevent script injection
     const jsonState = JSON.stringify(initialState).replace(/<\/script>/g, '<\\/script>');
-    const hydrationScript = `<script>window.INITIAL_DATA = ${jsonState};</script>`;
+    const hydrationScript = `<script>window.INITIAL_DATA = ${jsonState}; window.CSRF_TOKEN = '${csrfToken}';</script>`;
     // Inject before first script or head
     html = html.replace('<head>', `<head>\n    ${hydrationScript}`);
 
@@ -730,6 +1026,22 @@ app.get('/admin', (req, res) => {
   } else {
     serveHydratedAdmin(req, res);
   }
+});
+
+// CSRF token endpoint for admin panel
+app.get('/api/csrf-token', (req, res) => {
+  let sessionId = req.cookies.sync_session;
+  if (!sessionId) {
+    sessionId = crypto.randomBytes(16).toString('hex');
+    res.cookie('sync_session', sessionId, {
+      httpOnly: true,
+      sameSite: 'strict',
+      maxAge: CSRF_TOKEN_EXPIRY
+    });
+  }
+
+  const token = getOrCreateCsrfToken(sessionId);
+  res.json({ token });
 });
 
 app.get('/admin/:roomCode', (req, res) => {
@@ -814,15 +1126,57 @@ function getMediaFiles() {
   });
 }
 
-app.get('/api/files', async (req, res) => {
+// Rate limiters for expensive operations
+// Helper: Check if request is from localhost
+const isLocalhost = (req) => {
+  const ip = req.ip || req.connection.remoteAddress;
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+};
+
+const filesRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 35, // 35 requests per minute per IP
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: isLocalhost // Bypass for localhost
+});
+
+const tracksRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute per IP
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: isLocalhost // Bypass for localhost
+});
+
+const thumbnailRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 50, // 50 requests per minute per IP
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: isLocalhost // Bypass for localhost
+});
+
+app.get('/api/files', filesRateLimiter, async (req, res) => {
   const files = await getMediaFiles();
   res.json(files);
 });
 
-app.get('/api/tracks/:filename', async (req, res) => {
+app.get('/api/tracks/:filename', tracksRateLimiter, async (req, res) => {
   const filename = req.params.filename;
+
+  // Validate filename before processing
+  const validation = validateFilename(filename);
+  if (!validation.valid) {
+    console.log(`${colors.yellow}Invalid filename rejected in /api/tracks: ${validation.error}${colors.reset}`);
+    return res.status(400).json({ error: validation.error });
+  }
+
   try {
-    const tracks = await getTracksForFile(filename);
+    const tracks = await getTracksForFile(validation.sanitized);
     res.json(tracks);
   } catch (error) {
     console.error('Error reading track info:', error);
@@ -845,8 +1199,12 @@ app.use('/thumbnails', express.static(THUMBNAIL_DIR));
 // Get video duration using ffprobe
 function getVideoDuration(videoPath) {
   return new Promise((resolve, reject) => {
-    const command = `ffprobe -v quiet -print_format json -show_format "${videoPath}"`;
-    exec(command, (error, stdout) => {
+    execFile('ffprobe', [
+      '-v', 'quiet',
+      '-print_format', 'json',
+      '-show_format',
+      videoPath
+    ], (error, stdout) => {
       if (error) {
         reject(error);
         return;
@@ -863,9 +1221,17 @@ function getVideoDuration(videoPath) {
 }
 
 // Generate thumbnail from video using FFmpeg (720p, random frame from first third)
-app.get('/api/thumbnail/:filename', async (req, res) => {
+app.get('/api/thumbnail/:filename', thumbnailRateLimiter, async (req, res) => {
   const filename = req.params.filename;
-  const safeFilename = path.basename(filename);
+
+  // Validate filename before processing
+  const validation = validateFilename(filename);
+  if (!validation.valid) {
+    console.log(`${colors.yellow}Invalid filename rejected in /api/thumbnail: ${validation.error}${colors.reset}`);
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const safeFilename = validation.sanitized;
   const videoPath = path.join(ROOT_DIR, 'media', safeFilename);
   const thumbnailFilename = safeFilename.replace(/\.[^.]+$/, '.jpg');
   const thumbnailPath = path.join(THUMBNAIL_DIR, thumbnailFilename);
@@ -888,9 +1254,13 @@ app.get('/api/thumbnail/:filename', async (req, res) => {
     console.log(`${colors.cyan}Extracting cover art from audio file: ${safeFilename}${colors.reset}`);
 
     // Extract embedded cover art from audio file
-    const coverCommand = `ffmpeg -i "${videoPath}" -an -vcodec copy -y "${thumbnailPath}"`;
-
-    exec(coverCommand, (error) => {
+    execFile('ffmpeg', [
+      '-i', videoPath,
+      '-an',
+      '-vcodec', 'copy',
+      '-y',
+      thumbnailPath
+    ], (error) => {
       if (error) {
         console.log(`${colors.yellow}No embedded cover art found in: ${safeFilename}${colors.reset}`);
         // Return a default audio icon or null
@@ -914,14 +1284,27 @@ app.get('/api/thumbnail/:filename', async (req, res) => {
     console.log(`${colors.cyan}Generating 720p thumbnail for ${safeFilename} at ${seekTime}s (duration: ${duration}s)${colors.reset}`);
 
     // Generate 720p thumbnail (-vf scale=-1:720 maintains aspect ratio with 720 height)
-    const command = `ffmpeg -ss ${seekTime} -i "${videoPath}" -vframes 1 -vf "scale=-1:720" -q:v 2 -y "${thumbnailPath}"`;
-
-    exec(command, (error) => {
+    execFile('ffmpeg', [
+      '-ss', String(seekTime),
+      '-i', videoPath,
+      '-vframes', '1',
+      '-vf', 'scale=-1:720',
+      '-q:v', '2',
+      '-y',
+      thumbnailPath
+    ], (error) => {
       if (error) {
         console.error('FFmpeg thumbnail error:', error.message);
         // Fallback to 1 second
-        const fallbackCommand = `ffmpeg -ss 1 -i "${videoPath}" -vframes 1 -vf "scale=-1:720" -q:v 2 -y "${thumbnailPath}"`;
-        exec(fallbackCommand, (err2) => {
+        execFile('ffmpeg', [
+          '-ss', '1',
+          '-i', videoPath,
+          '-vframes', '1',
+          '-vf', 'scale=-1:720',
+          '-q:v', '2',
+          '-y',
+          thumbnailPath
+        ], (err2) => {
           if (err2) {
             console.error('FFmpeg fallback error:', err2.message);
             return res.status(500).json({ error: 'Failed to generate thumbnail' });
@@ -936,8 +1319,15 @@ app.get('/api/thumbnail/:filename', async (req, res) => {
   } catch (error) {
     console.error('Error getting video duration:', error);
     // Fallback: just try at 10 seconds
-    const fallbackCommand = `ffmpeg -ss 10 -i "${videoPath}" -vframes 1 -vf "scale=-1:720" -q:v 2 -y "${thumbnailPath}"`;
-    exec(fallbackCommand, (err) => {
+    execFile('ffmpeg', [
+      '-ss', '10',
+      '-i', videoPath,
+      '-vframes', '1',
+      '-vf', 'scale=-1:720',
+      '-q:v', '2',
+      '-y',
+      thumbnailPath
+    ], (err) => {
       if (err) {
         return res.status(500).json({ error: 'Failed to generate thumbnail' });
       }
@@ -946,9 +1336,147 @@ app.get('/api/thumbnail/:filename', async (req, res) => {
   }
 });
 
+// Socket.io rate limiter (generous limits with short cooldown)
+const socketRateLimiter = new RateLimiterMemory({
+  points: 100, // 100 events
+  duration: 10, // per 10 seconds
+  blockDuration: 5 // block for 5 seconds if exceeded
+});
+
 // Socket.io handling
 io.on('connection', (socket) => {
   console.log(`${colors.cyan}A user connected: ${socket.id}${colors.reset}`);
+
+  // Get client IP for rate limiting
+  const clientIp = socket.handshake.address;
+  const isLocalhostSocket = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+
+  // Socket.io rate limiting middleware
+  socket.use(async (packet, next) => {
+    // Skip rate limiting for localhost
+    if (isLocalhostSocket) return next();
+
+    try {
+      await socketRateLimiter.consume(clientIp);
+      next();
+    } catch (rejRes) {
+      console.log(`${colors.yellow}Socket rate limit exceeded for ${clientIp}${colors.reset}`);
+      socket.emit('rate-limit-error', {
+        message: 'Too many requests, please slow down',
+        retryAfter: Math.ceil(rejRes.msBeforeNext / 1000)
+      });
+      // Don't call next() - block the event
+    }
+  });
+
+  // ==================== Input Validation Helpers ====================
+  // Safe filename pattern: alphanumeric, spaces, hyphens, underscores, dots, parentheses
+  const SAFE_FILENAME_PATTERN = /^[\w\s\-.\(\)\[\]]+$/;
+
+  function isValidInteger(val) {
+    return Number.isInteger(val) || (typeof val === 'string' && /^-?\d+$/.test(val));
+  }
+
+  function isValidNumber(val) {
+    return typeof val === 'number' && !isNaN(val) && isFinite(val);
+  }
+
+  function isInRange(val, min, max) {
+    const num = typeof val === 'string' ? parseInt(val, 10) : val;
+    return isValidNumber(num) && num >= min && num <= max;
+  }
+
+  function isSafeFilename(filename) {
+    if (typeof filename !== 'string' || filename.length === 0 || filename.length > 255) return false;
+    // Reject path traversal attempts
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) return false;
+    return SAFE_FILENAME_PATTERN.test(filename);
+  }
+
+  function validatePlaylistIndex(index, playlist) {
+    if (!isValidInteger(index)) return false;
+    const idx = typeof index === 'string' ? parseInt(index, 10) : index;
+    return idx >= 0 && idx < playlist.videos.length;
+  }
+
+  function validateTrackIndex(index) {
+    if (!isValidInteger(index)) return false;
+    const idx = typeof index === 'string' ? parseInt(index, 10) : index;
+    return idx >= -1; // -1 = off, 0+ = track index
+  }
+
+  function validateCurrentTime(time) {
+    return isValidNumber(time) && time >= 0;
+  }
+
+  function validateDriftSeconds(drift) {
+    return isInRange(drift, -60, 60);
+  }
+
+  // ==================== Admin Authorization Middleware ====================
+  // Whitelist of admin-only events that require authorization
+  const ADMIN_ONLY_EVENTS = [
+    'set-playlist',
+    'playlist-reorder',
+    'playlist-jump',
+    'track-change',
+    'skip-to-next-video',
+    'bsl-admin-register',
+    'bsl-check-request',
+    'bsl-get-status',
+    'bsl-manual-match',
+    'bsl-set-drift',
+    'set-client-name',
+    'get-client-list',
+    'set-client-display-name',
+    'get-config',
+    'delete-room',
+    'create-room'
+  ];
+
+  // Check if socket is an authorized admin
+  function isSocketAdmin(socketId) {
+    if (SERVER_MODE) {
+      // Server mode: check if socket is admin of their room
+      const roomCode = socketRoomMap.get(socketId);
+      if (!roomCode) return false;
+      const room = getRoom(roomCode);
+      if (!room) return false;
+      return room.adminSocketId === socketId;
+    } else {
+      // Legacy mode: check verified admin sockets
+      // If lock is disabled, everyone is an admin
+      if (!ADMIN_FINGERPRINT_LOCK) return true;
+      return verifiedAdminSockets.has(socketId);
+    }
+  }
+
+  // Middleware to intercept and authorize admin-only events
+  socket.use((packet, next) => {
+    const eventName = packet[0];
+
+    // Check if this is an admin-only event
+    if (ADMIN_ONLY_EVENTS.includes(eventName)) {
+      // Special case: create-room and bsl-admin-register are allowed for any socket
+      // (they establish admin status, not require it)
+      if (eventName === 'create-room' || eventName === 'bsl-admin-register') {
+        return next();
+      }
+
+      // Check if socket is an authorized admin
+      if (!isSocketAdmin(socket.id)) {
+        console.log(`${colors.red}Unauthorized admin event blocked: ${eventName} from ${socket.id}${colors.reset}`);
+        // Optionally emit an error event to the client
+        socket.emit('admin-error', {
+          event: eventName,
+          message: 'Unauthorized: Admin access required'
+        });
+        return; // Block the event
+      }
+    }
+
+    next();
+  });
 
   // ==================== Server Mode Room Events ====================
   if (SERVER_MODE) {
@@ -1018,7 +1546,8 @@ io.on('connection', (socket) => {
         roomCode: room.code,
         roomName: room.name,
         isAdmin,
-        chatEnabled: CHAT_ENABLED
+        chatEnabled: CHAT_ENABLED,
+        maxVolume: MAX_VOLUME
       });
 
       // Send current room state
@@ -1157,7 +1686,8 @@ io.on('connection', (socket) => {
       videoAutoplay: VIDEO_AUTOPLAY,
       clientControlsDisabled: CLIENT_CONTROLS_DISABLED,
       serverMode: false,
-      chatEnabled: CHAT_ENABLED
+      chatEnabled: CHAT_ENABLED,
+      maxVolume: MAX_VOLUME
     });
 
     // Send playlist to client
@@ -1236,6 +1766,27 @@ io.on('connection', (socket) => {
 
   // Listen for control events from clients
   socket.on('control', (data) => {
+    // Validate input data
+    if (!data || typeof data !== 'object') return;
+
+    // Validate currentTime if present
+    if (data.currentTime !== undefined && !validateCurrentTime(data.currentTime)) {
+      console.log(`${colors.yellow}Invalid currentTime in control event: ${data.currentTime}${colors.reset}`);
+      return;
+    }
+
+    // Validate time for seek action
+    if (data.action === 'seek' && !validateCurrentTime(data.time)) {
+      console.log(`${colors.yellow}Invalid seek time: ${data.time}${colors.reset}`);
+      return;
+    }
+
+    // Validate trackIndex for selectTrack action
+    if (data.action === 'selectTrack' && !validateTrackIndex(data.trackIndex)) {
+      console.log(`${colors.yellow}Invalid trackIndex in control event: ${data.trackIndex}${colors.reset}`);
+      return;
+    }
+
     if (SERVER_MODE) {
       const roomCode = socketRoomMap.get(socket.id);
       if (!roomCode) return;
@@ -1287,6 +1838,16 @@ io.on('connection', (socket) => {
     }
 
     // Legacy Mode logic
+    // Check if client controls are disabled (server-side enforcement)
+    const isLegacyAdmin = verifiedAdminSockets.has(socket.id);
+    if (CLIENT_CONTROLS_DISABLED && !isLegacyAdmin) {
+      console.log(`${colors.yellow}Rejecting control event from non-admin (client_controls_disabled)${colors.reset}`);
+      socket.emit('control-rejected', {
+        message: 'Controls are disabled. Only admin can control playback.'
+      });
+      return;
+    }
+
     // Block client sync events if disabled (admin controls still work via action-based events)
     if (CLIENT_SYNC_DISABLED && !data.action) {
       console.log(`${colors.yellow}Ignoring client sync event (client_sync_disabled)${colors.reset}`);
@@ -1537,6 +2098,14 @@ io.on('connection', (socket) => {
 
   // Jump to specific video in playlist (from admin)
   socket.on('playlist-jump', (index) => {
+    // Validate index is a valid integer
+    if (!isValidInteger(index)) {
+      console.log(`${colors.yellow}Invalid playlist-jump index type: ${typeof index}${colors.reset}`);
+      return;
+    }
+
+    const parsedIndex = typeof index === 'string' ? parseInt(index, 10) : index;
+
     let targetPlaylist, targetVideoState, targetRoomCode;
 
     if (SERVER_MODE) {
@@ -1554,8 +2123,9 @@ io.on('connection', (socket) => {
       targetVideoState = videoState;
     }
 
-    if (index < 0 || index >= targetPlaylist.videos.length) {
-      console.log('Invalid playlist jump index:', index);
+    // Validate index is within playlist bounds
+    if (!validatePlaylistIndex(parsedIndex, targetPlaylist)) {
+      console.log(`${colors.yellow}Invalid playlist-jump index: ${parsedIndex} (playlist length: ${targetPlaylist.videos.length})${colors.reset}`);
       return;
     }
 
@@ -1582,6 +2152,12 @@ io.on('connection', (socket) => {
 
   // Handle track selection changes from admin
   socket.on('track-change', (data) => {
+    // Validate input object
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid track-change data: not an object');
+      return;
+    }
+
     console.log('Track change received:', data);
 
     let targetPlaylist, targetVideoState, targetRoomCode;
@@ -1601,18 +2177,19 @@ io.on('connection', (socket) => {
       targetVideoState = videoState;
     }
 
-    if (data.videoIndex === undefined || data.videoIndex < 0) {
-      console.error('Invalid video index for track change');
+    // Validate videoIndex
+    if (!isValidInteger(data.videoIndex) || data.videoIndex < 0) {
+      console.error('Invalid video index for track change:', data.videoIndex);
       return;
     }
 
     if (!data.type || !['audio', 'subtitle'].includes(data.type)) {
-      console.error('Invalid track type for track change');
+      console.error('Invalid track type for track change:', data.type);
       return;
     }
 
-    if (data.trackIndex === undefined || data.trackIndex < -1) {
-      console.error('Invalid track index for track change');
+    if (!validateTrackIndex(data.trackIndex)) {
+      console.error('Invalid track index for track change:', data.trackIndex);
       return;
     }
 
@@ -1743,9 +2320,11 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Add to verified admins
-      verifiedAdminSockets.add(socket.id);
     }
+
+
+    // Add to verified admins (always verify if lock is disabled or check passed)
+    verifiedAdminSockets.add(socket.id);
 
     adminSocketId = socket.id;
     console.log(`${colors.green}Admin registered for BSL-S²: ${socket.id}${fingerprint ? ` (fingerprint: ${fingerprint})` : ''}${colors.reset}`);
@@ -2002,6 +2581,12 @@ io.on('connection', (socket) => {
 
   // Admin sets drift for a specific client and playlist video
   socket.on('bsl-set-drift', (data) => {
+    // Validate input object
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid bsl-set-drift data: not an object');
+      return;
+    }
+
     let targetRoomCode, targetClientDriftValues;
 
     if (SERVER_MODE) {
@@ -2017,7 +2602,23 @@ io.on('connection', (socket) => {
     }
 
     const { clientFingerprint, playlistIndex, driftSeconds } = data;
-    if (!clientFingerprint || playlistIndex === undefined) return;
+
+    // Validate required fields
+    if (!clientFingerprint || typeof clientFingerprint !== 'string') {
+      console.error('Invalid clientFingerprint for bsl-set-drift');
+      return;
+    }
+
+    if (!isValidInteger(playlistIndex) || playlistIndex < 0) {
+      console.error('Invalid playlistIndex for bsl-set-drift:', playlistIndex);
+      return;
+    }
+
+    // Validate drift range
+    if (!validateDriftSeconds(driftSeconds)) {
+      console.error('Invalid driftSeconds for bsl-set-drift (must be -60 to +60):', driftSeconds);
+      return;
+    }
 
     // Clamp drift to reasonable range (-60 to +60 seconds)
     const clampedDrift = Math.max(-60, Math.min(60, parseInt(driftSeconds) || 0));
