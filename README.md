@@ -147,7 +147,7 @@ bsl_advanced_match: t/f     # Whether or not if BSL-S² should use Advanced matc
 ...threshold: [1-4]         # How many criterias should advanced match check
 skip_intro_seconds:         # How many seconds the "Skip Intro" button jumps forward
 controls_disabled: t/f      # If controls of clients should be disabled
-sync_disabled: t/f          # If clients should keep control of their own vid but should not send those controls to serv and get overridden by serv
+sync_disabled: t/f          # If clients should keep control of their own video but should not send those controls to server and get overridden by server
 chat_enabled: t/f           # Yeah
 data_hydration: t/f         # When enabled, the server injects initial data into admin.html to save a round-trip, improves overall performance
 max_volume: [100-1000]      # How much should clients be able to crank the volume up to
