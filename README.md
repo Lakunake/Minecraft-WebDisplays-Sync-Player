@@ -41,7 +41,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 
 ---
 
-## 🕹️ Controls
+## Controls
 
 ### Client Controls (Touch/Click Interface):
 | Zone                                   | Action                   | Sync Behavior |
@@ -69,7 +69,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 
 ---
 
-## 🌐 Hosting Tutorials
+## Hosting Tutorials
 
 > [!NOTE]
 > Ensure [Node.js](https://nodejs.org/) is installed before proceeding.
@@ -173,5 +173,5 @@ See [LICENSE](LICENSE) for more details.
 ## 🙏 Credits
 
 Created by **Lakunake**
-Built using Node.js, Express, and Socket.IO
+Built using Node.js and many node modules
 Contact: johnwebdisplay@gmail.com        (Obviously not my real name)
