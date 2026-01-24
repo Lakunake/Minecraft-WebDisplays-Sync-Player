@@ -29,7 +29,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 * Dynamic Audio/Subtitle track changing *(upcoming rewrite)*
 * Minimal UI in view mode
 * Modernized UI with Glassmorphism in admin panel
-* HTTP/HTTPS switch and 
+* HTTP/HTTPS switch
 * Improved safety in multiple measures [ⓘ](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/1.9.2) + [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
 * [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
 * Client Remembering
