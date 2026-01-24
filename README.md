@@ -37,6 +37,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 * Server mode if you want to do simultaneous watch parties
 * A toggleable chat with proper escaping
 * A different look of the admin panel for mobile
+* Very easily configureable experience
 
 ---
 
@@ -123,7 +124,7 @@ launcher.vbs           # Small script that re-opens the server in Terminal if op
 console.ps1            # Script that verifies dependencies, initializes settings, and keeps the server running with error recovery.
 run.bat                # Windows startup script
 start.sh               # Linux startup script
-config.txt             # Configuration file (port, settings, etc.)
+config.env             # Configuration file, this is plain text (port, settings, etc.)
 legacylauncher.bat     # Old startup script that is not updated but reliable, written in batch
 ```
 
