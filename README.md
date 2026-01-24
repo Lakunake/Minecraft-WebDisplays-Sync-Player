@@ -29,7 +29,8 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 * Dynamic Audio/Subtitle track changing *(upcoming rewrite)*
 * Minimal UI in view mode
 * Modernized UI with Glassmorphism in admin panel
-* HTTP/HTTPS switch and [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
+* HTTP/HTTPS switch and 
+* Improved safety in multiple measures [ⓘ](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/1.9.2) + [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
 * [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
 * Client Remembering
 * Machine fingerprint based locking
@@ -76,9 +77,8 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 ### Method 1: LAN or Public IP (Direct Hosting),
 > Best for Many people and Repeated users, complex-ish setup
 
-> [!WARNING]
-> This project of mine is still lacks critical safety measures required for directhosting, only use if you're going to host on lan
-
+> [!NOTE]
+> Though many security features are implemented, direct hosting can still be risky for attacks
 
 1. Run `run.bat` in your folder
 2. Make sure your selected port is open in your firewall/router
@@ -100,7 +100,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 1. Fork the repository: [https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player](https://github.com/Lakunake/Minecraft-WebDisplays-Video-Player)
 2. Connect your repository to your hosting service
 3. Set build command: `npm install`
-4. Set start command: `node server.js`
+4. Set start command: `node --env-file-if-exists=../config.env server.js`
 5. Deploy and access your video player via the provided URL
 > [!WARNING]
 > Not recommended due to the free plan limitations of websites
