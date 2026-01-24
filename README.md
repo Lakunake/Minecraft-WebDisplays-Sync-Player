@@ -136,8 +136,8 @@ Edit `config.txt` to customize:
 
 ```ini
 port: 3000                  # Server port
-volume_step: 5              # Volume adjustment percentage
-skip_seconds: 5             # Skip duration in seconds
+volume_step: [1-20]         # Volume adjustment percentage
+skip_seconds: [5-60]        # Skip duration in seconds
 join_mode: sync/reset       # Decides what happens when a new user joins the watch party (more info in actual config)
 HTTPS: t/f                  # Whether you want to use https or not, but you also need cert and key files
 bsl_s2_mode: any/all        # Changing requirements of BSL-S² to if all clients should have file or not
