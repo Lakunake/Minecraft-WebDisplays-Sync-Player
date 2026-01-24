@@ -155,7 +155,7 @@ max_volume: [100-1000]      # How much should clients be able to crank the volum
 
 ---
 
-## 📜 License
+## License
 
 **Short name**: `AGPLv3`
 **URL**: [gnu.org/licenses/agpl-3.0.html](https://www.gnu.org/licenses/agpl-3.0.html)
