@@ -150,6 +150,7 @@ controls_disabled: t/f      # If controls of clients should be disabled
 sync_disabled: t/f          # If clients should keep control of their own vid but should not send those controls to serv and get overridden by serv
 chat_enabled: t/f           # Yeah
 data_hydration: t/f         # When enabled, the server injects initial data into admin.html to save a round-trip, improves overall performance
+max_volume: [100-1000]      # How much should clients be able to crank the volume up to
 ```
 
 ---
