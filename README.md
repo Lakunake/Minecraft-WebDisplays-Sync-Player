@@ -135,7 +135,7 @@ legacylauncher.bat     # Old startup script that is not updated but reliable, wr
 Edit `config.txt` to customize:
 
 ```ini
-port: 3000                  # Server port
+port: [1024-49151]          # Server port
 volume_step: [1-20]         # Volume adjustment percentage
 skip_seconds: [5-60]        # Skip duration in seconds
 join_mode: sync/reset       # Decides what happens when a new user joins the watch party (more info in actual config)
