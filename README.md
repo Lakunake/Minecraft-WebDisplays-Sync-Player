@@ -52,6 +52,8 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 | **Between Left Edge and Center**       | 🔉 Decrease volume (5%)  | ❌ Local only  |
 | **Between Center and Right Edge**      | 🔊 Increase volume (5%)  | ❌ Local only  |
 
+There are also 2 chat commands called /fullscreen and /rename, they work as the name implies
+
 ![Controls](https://cdn.modrinth.com/data/N3CzASyr/images/dee2ac0695a18044f60e62bf75c5d3a94de57bd6.png "Visualised Controls (<3 comic sans)")
 > Of course use Left Click if you're not in minecraft while using this
 
