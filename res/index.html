@@ -2640,6 +2640,17 @@
       socket.on('chat-message', (data) => {
         addChatMessage(data);
       });
+
+      // Listen for name updates (when user uses /rename command)
+      socket.on('name-updated', (data) => {
+        if (data && data.newName) {
+          chatUsername = data.newName;
+          // Update storage so name persists
+          sessionStorage.setItem('sync-player-name', data.newName);
+          localStorage.setItem('chat-username', data.newName);
+          console.log('Name updated to:', data.newName);
+        }
+      });
     }
   </script>
 </body>

@@ -659,6 +659,7 @@ const clientDriftValues = new Map();
 const BSL_MATCHES_FILE = path.join(MEMORY_DIR, 'bsl_matches.json');
 
 // ==================== Unified Memory Storage ====================
+// Admin fingerprint is encrypted, clientNames and bslMatches are plain JSON
 const MEMORY_FILE = path.join(MEMORY_DIR, 'memory.json');
 const KEY_FILE = path.join(MEMORY_DIR, '.key');
 const crypto = require('crypto');
@@ -726,63 +727,62 @@ function isEncrypted(data) {
   return /^[a-f0-9]{24}:[a-f0-9]{32}:/.test(data);
 }
 
-// Load unified memory (contains all persistent data)
+// Load unified memory
+// Format: { encrypted: "iv:authTag:ciphertext", clientNames: {}, bslMatches: {} }
 function loadMemory() {
   try {
     if (fs.existsSync(MEMORY_FILE)) {
       const rawData = fs.readFileSync(MEMORY_FILE, 'utf8');
 
-      // Check if data is encrypted or plaintext (migration support)
+      // Check if old fully-encrypted format (migration)
       if (isEncrypted(rawData)) {
-        // Decrypt and parse
+        console.log(`${colors.yellow}Migrating from old encrypted format...${colors.reset}`);
         const decrypted = decryptData(rawData);
-        return JSON.parse(decrypted);
-      } else {
-        // Plaintext - parse and re-save encrypted (migration)
-        console.log(`${colors.yellow}Migrating memory.json to encrypted format...${colors.reset}`);
-        const data = JSON.parse(rawData);
-        saveMemory(data); // This will save encrypted
-        console.log(`${colors.green}Memory encryption migration complete${colors.reset}`);
-        return data;
+        const oldData = JSON.parse(decrypted);
+        // Migrate to new format
+        const newFormat = {
+          encrypted: oldData.adminFingerprint ? encryptData(oldData.adminFingerprint) : null,
+          clientNames: oldData.clientNames || {},
+          bslMatches: oldData.bslMatches || {}
+        };
+        saveMemory(newFormat);
+        console.log(`${colors.green}Migration complete${colors.reset}`);
+        return newFormat;
       }
-    }
-    // Check for legacy files and migrate
-    const legacy = {
-      adminFingerprint: null,
-      clientNames: {},
-      bslMatches: {}
-    };
 
-    // Migrate from old files if they exist
+      // New JSON format
+      const data = JSON.parse(rawData);
+      return {
+        encrypted: data.encrypted || null,
+        clientNames: data.clientNames || {},
+        bslMatches: data.bslMatches || {}
+      };
+    }
+
+    // Check for legacy admin fingerprint file and migrate
+    let encryptedFp = null;
     if (fs.existsSync(path.join(ROOT_DIR, 'admin_fingerprint.txt'))) {
-      legacy.adminFingerprint = fs.readFileSync(path.join(ROOT_DIR, 'admin_fingerprint.txt'), 'utf8').trim();
-    }
-    if (fs.existsSync(path.join(ROOT_DIR, 'client_names.json'))) {
-      legacy.clientNames = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'client_names.json'), 'utf8'));
-    }
-    if (fs.existsSync(BSL_MATCHES_FILE)) {
-      legacy.bslMatches = JSON.parse(fs.readFileSync(BSL_MATCHES_FILE, 'utf8'));
+      const adminFp = fs.readFileSync(path.join(ROOT_DIR, 'admin_fingerprint.txt'), 'utf8').trim();
+      encryptedFp = encryptData(adminFp);
+      console.log(`${colors.green}Migrated legacy admin fingerprint${colors.reset}`);
     }
 
-    // Save migrated data if any legacy data found
-    if (legacy.adminFingerprint || Object.keys(legacy.clientNames).length > 0 || Object.keys(legacy.bslMatches).length > 0) {
-      saveMemory(legacy);
-      console.log(`${colors.green}Migrated legacy storage files to encrypted memory.json${colors.reset}`);
-    }
-
-    return legacy;
+    return { encrypted: encryptedFp, clientNames: {}, bslMatches: {} };
   } catch (error) {
     console.error('Error loading memory:', error);
   }
-  return { adminFingerprint: null, clientNames: {}, bslMatches: {} };
+  return { encrypted: null, clientNames: {}, bslMatches: {} };
 }
 
-// Save unified memory (encrypted)
+// Save unified memory - encrypted field for admin fp, plain for rest
 function saveMemory(mem) {
   try {
-    const plaintext = JSON.stringify(mem, null, 2);
-    const encrypted = encryptData(plaintext);
-    fs.writeFileSync(MEMORY_FILE, encrypted);
+    const toSave = {
+      encrypted: mem.encrypted || null,
+      clientNames: mem.clientNames || {},
+      bslMatches: mem.bslMatches || {}
+    };
+    fs.writeFileSync(MEMORY_FILE, JSON.stringify(toSave, null, 2));
   } catch (error) {
     console.error('Error saving memory:', error);
   }
@@ -791,43 +791,48 @@ function saveMemory(mem) {
 // Load memory at startup
 let memory = loadMemory();
 
-// Convenience accessors
+// Admin fingerprint accessors (encrypted)
 function getAdminFingerprint() {
-  return memory.adminFingerprint;
+  if (!memory.encrypted) return null;
+  try {
+    return decryptData(memory.encrypted);
+  } catch {
+    return null;
+  }
 }
 
 function setAdminFingerprint(fp) {
-  memory.adminFingerprint = fp;
+  memory.encrypted = encryptData(fp);
   saveMemory(memory);
   console.log(`${colors.green}Admin fingerprint registered: ${fp}${colors.reset}`);
 }
 
+// Client names accessors (plain, persisted)
+let clientDisplayNames = memory.clientNames || {};
+
 function getClientNames() {
-  return memory.clientNames || {};
+  return clientDisplayNames;
 }
 
 function setClientName(clientId, name) {
-  if (!memory.clientNames) memory.clientNames = {};
-  memory.clientNames[clientId] = name;
+  clientDisplayNames[clientId] = name;
+  memory.clientNames = clientDisplayNames;
   saveMemory(memory);
-  console.log(`${colors.green}Client name saved: ${clientId} -> ${name}${colors.reset}`);
 }
 
+// BSL matches accessors (plain, persisted)
+let persistentBslMatches = memory.bslMatches || {};
+
 function getBslMatches() {
-  return memory.bslMatches || {};
+  return persistentBslMatches;
 }
 
 function setBslMatch(clientId, clientFileName, playlistFileName) {
-  if (!memory.bslMatches) memory.bslMatches = {};
-  if (!memory.bslMatches[clientId]) memory.bslMatches[clientId] = {};
-  memory.bslMatches[clientId][clientFileName] = playlistFileName;
+  if (!persistentBslMatches[clientId]) persistentBslMatches[clientId] = {};
+  persistentBslMatches[clientId][clientFileName] = playlistFileName;
+  memory.bslMatches = persistentBslMatches;
   saveMemory(memory);
-  console.log(`${colors.green}BSL match saved: ${clientId}/${clientFileName} -> ${playlistFileName}${colors.reset}`);
 }
-
-// Legacy compatibility aliases
-let persistentBslMatches = getBslMatches();
-let clientDisplayNames = getClientNames();
 
 // Admin Fingerprint Lock Configuration
 const ADMIN_FINGERPRINT_LOCK = config.admin_fingerprint_lock === 'true';
@@ -1682,10 +1687,34 @@ io.on('connection', (socket) => {
       if (roomCode) {
         const room = getRoom(roomCode);
         if (room) {
+          const message = data.message?.trim() || '';
+
+          // Handle /rename command
+          if (message.toLowerCase().startsWith('/rename ')) {
+            const newName = message.substring(8).trim().substring(0, 32); // Max 32 chars
+            if (newName) {
+              const clientInfo = connectedClients.get(socket.id);
+              if (clientInfo && clientInfo.fingerprint) {
+                const oldName = clientDisplayNames[clientInfo.fingerprint] || data.sender || 'Guest';
+                setClientName(clientInfo.fingerprint, newName);
+                // Notify the client of their new name so they update locally
+                socket.emit('name-updated', { newName });
+                // Notify room of name change
+                io.to(roomCode).emit('chat-message', {
+                  sender: 'System',
+                  message: `${escapeHTML(oldName)} is now known as ${escapeHTML(newName)}`,
+                  timestamp: Date.now(),
+                  isSystem: true
+                });
+              }
+            }
+            return; // Don't broadcast the command itself
+          }
+
           // Broadcast message to all clients in the room (properly escaped)
           io.to(roomCode).emit('chat-message', {
             sender: escapeHTML(data.sender || 'Guest'),
-            message: escapeHTML(data.message?.substring(0, 500) || ''),
+            message: escapeHTML(message.substring(0, 500)),
             timestamp: Date.now()
           });
         }
@@ -1781,10 +1810,34 @@ io.on('connection', (socket) => {
     socket.on('chat-message', (data) => {
       if (!CHAT_ENABLED) return;
 
+      const message = data.message?.trim() || '';
+
+      // Handle /rename command
+      if (message.toLowerCase().startsWith('/rename ')) {
+        const newName = message.substring(8).trim().substring(0, 32); // Max 32 chars
+        if (newName) {
+          const clientInfo = connectedClients.get(socket.id);
+          if (clientInfo && clientInfo.fingerprint) {
+            const oldName = clientDisplayNames[clientInfo.fingerprint] || data.sender || 'Guest';
+            setClientName(clientInfo.fingerprint, newName);
+            // Notify the client of their new name so they update locally
+            socket.emit('name-updated', { newName });
+            // Notify all of name change
+            io.emit('chat-message', {
+              sender: 'System',
+              message: `${escapeHTML(oldName)} is now known as ${escapeHTML(newName)}`,
+              timestamp: Date.now(),
+              isSystem: true
+            });
+          }
+        }
+        return; // Don't broadcast the command itself
+      }
+
       // Broadcast message to all clients (properly escaped)
       io.emit('chat-message', {
         sender: escapeHTML(data.sender || 'Guest'),
-        message: escapeHTML(data.message?.substring(0, 500) || ''),
+        message: escapeHTML(message.substring(0, 500)),
         timestamp: Date.now()
       });
     });
