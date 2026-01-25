@@ -134,7 +134,7 @@ legacylauncher.bat     # Old startup script that is not updated but reliable, wr
 
 ## ⚙️ Configuration
 
-Edit `config.txt` to customize:
+Edit `config.env` to customize:
 
 ```ini
 port: [1024-49151]          # Server port
