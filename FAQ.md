@@ -5,10 +5,8 @@ Open Command Prompt(CMD), and write these commands in order or whichever ones yo
 ```cmd
 winget install ffmpeg
 winget install --id OpenJS.NodeJS.LTS -e
-md (Your path to the code)
-npm install express@5.1.0
-npm install socket.io@4.8.1
-npm install helmet
+md(or cd in some cases) (Your path to the code)
+npm install
 ```
 **Subtitle/Audio track changing does not work**
 
