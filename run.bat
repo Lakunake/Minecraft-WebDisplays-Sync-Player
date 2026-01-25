@@ -3,9 +3,16 @@
 if "%WT_SESSION%"=="" (
     where wt.exe >nul 2>&1
     if %errorlevel% equ 0 (
-        :: Use VBScript to launch WT completely detached, avoiding ghost windows
-        wscript.exe "%~dp0res\launcher.vbs" "%~dp0res\console.ps1"
-        exit /b
+        :: Check if wscript.exe is available (may be disabled by policy)
+        where wscript.exe >nul 2>&1
+        if %errorlevel% equ 0 (
+            :: Check if launcher.vbs exists before using it
+            if exist "%~dp0res\launcher.vbs" (
+                :: Use VBScript to launch WT completely detached, avoiding ghost windows
+                wscript.exe "%~dp0res\launcher.vbs" "%~dp0res\console.ps1"
+                exit /b
+            )
+        )
     )
 )
 

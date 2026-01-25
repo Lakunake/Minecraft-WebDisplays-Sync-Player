@@ -46,7 +46,7 @@ if %errorlevel% neq 0 (
 :: Initialize configuration
 :: =================================================================
 title Admin Console - Initializing
-if not exist config.txt (
+if not exist config.env (
     echo Creating default configuration...
     (
         echo # Sync-Player Configuration
@@ -84,7 +84,7 @@ if not exist config.txt (
         echo # The fingerprint is stored in admin_fingerprint.txt
         echo # Set to true to enable, false to allow any machine to access admin
         echo admin_fingerprint_lock: false
-    ) > config.txt
+    ) > config.env
     echo Default config created with all available options
 )
 
@@ -248,7 +248,18 @@ set USE_HTTPS=false
 set BSL_S2_MODE=any
 set ADMIN_LOCK=false
 
-if exist config.txt (
+if exist config.env (
+    for /f "tokens=1,* delims=: " %%a in ('type config.env ^| findstr /v "^#"') do (
+        if "%%a"=="port" set PORT=%%b
+        if "%%a"=="volume_step" set VOLUME_STEP=%%b
+        if "%%a"=="skip_seconds" set SKIP_SECONDS=%%b
+        if "%%a"=="join_mode" set JOIN_MODE=%%b
+        if "%%a"=="use_https" set USE_HTTPS=%%b
+        if "%%a"=="bsl_s2_mode" set BSL_S2_MODE=%%b
+        if "%%a"=="admin_fingerprint_lock" set ADMIN_LOCK=%%b
+    )
+) else if exist config.txt (
+    echo [WARNING]: Migrating from legacy config.txt...
     for /f "tokens=1,* delims=: " %%a in ('type config.txt ^| findstr /v "^#"') do (
         if "%%a"=="port" set PORT=%%b
         if "%%a"=="volume_step" set VOLUME_STEP=%%b
@@ -258,9 +269,11 @@ if exist config.txt (
         if "%%a"=="bsl_s2_mode" set BSL_S2_MODE=%%b
         if "%%a"=="admin_fingerprint_lock" set ADMIN_LOCK=%%b
     )
+    del config.txt
+    echo [SUCCESS]: Migration complete. Deleted legacy config.txt
 ) else (
     color 06
-    echo [WARNING]: config.txt not found, using default values
+    echo [WARNING]: config.env not found, using default values
     color 0a
 )
 

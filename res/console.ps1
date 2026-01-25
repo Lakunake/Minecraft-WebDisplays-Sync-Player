@@ -294,8 +294,9 @@ if (Test-Path "config.env") {
     }
     # Write-Host "Configuration loaded from config.env" -ForegroundColor Cyan
 }
-# 2. Read config.txt (Fallback)
+# 2. Migrate from legacy config.txt (if exists)
 elseif (Test-Path "config.txt") {
+    Write-Host "Migrating from legacy config.txt..." -ForegroundColor Yellow
     $configContent = Get-Content "config.txt"
     foreach ($line in $configContent) {
         if ($line -match "^\s*#" -or $line -match "^\s*$") { continue }
@@ -322,7 +323,9 @@ elseif (Test-Path "config.txt") {
             }
         }
     }
-    # Write-Host "Configuration loaded from config.txt (legacy)" -ForegroundColor Cyan
+    # Delete the old config.txt after migration
+    Remove-Item "config.txt" -Force
+    Write-Host "Migration complete. Deleted legacy config.txt" -ForegroundColor Green
 }
 else {
     # Create default config.env if nothing exists

@@ -72,10 +72,10 @@ fi
 # =================================================================
 # Initialize configuration (in root directory)
 # =================================================================
-if [ ! -f "config.txt" ]; then
+if [ ! -f "config.env" ]; then
     echo "Creating default configuration..."
     
-    cat > config.txt << 'EOF'
+    cat > config.env << 'EOF'
 # Sync-Player Configuration
 # Lines starting with # are comments
 
@@ -259,13 +259,44 @@ USE_HTTPS="false"
 BSL_S2_MODE="any"
 ADMIN_LOCK="false"
 
-if [ -f "config.txt" ]; then
+if [ -f "config.env" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
         # Skip comments and empty lines
         [[ "$line" =~ ^[[:space:]]*# ]] && continue
         [[ "$line" =~ ^[[:space:]]*$ ]] && continue
         
-        # Parse key: value pairs
+        # Parse key: value pairs (legacy format) or KEY=value (env format)
+        if [[ "$line" =~ ^[[:space:]]*([a-zA-Z_]+)[[:space:]]*:[[:space:]]*(.+)[[:space:]]*$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="${BASH_REMATCH[2]}"
+            value="${value%"${value##*[![:space:]]}"}"  # Trim trailing whitespace
+            
+            case "$key" in
+                "port")                   PORT="$value" ;;
+                "volume_step")            VOLUME_STEP="$value" ;;
+                "skip_seconds")           SKIP_SECONDS="$value" ;;
+                "join_mode")              JOIN_MODE="$value" ;;
+                "use_https")              USE_HTTPS="$value" ;;
+                "bsl_s2_mode")            BSL_S2_MODE="$value" ;;
+                "admin_fingerprint_lock") ADMIN_LOCK="$value" ;;
+                "bsl_advanced_match")     BSL_ADV_MATCH="$value" ;;
+                "bsl_advanced_match_threshold") BSL_ADV_MATCH_THRESHOLD="$value" ;;
+                "skip_intro_seconds")     SKIP_INTRO_SECONDS="$value" ;;
+                "client_controls_disabled") CLIENT_CONTROLS_DISABLED="$value" ;;
+                "client_sync_disabled")   CLIENT_SYNC_DISABLED="$value" ;;
+                "server_mode")            SERVER_MODE="$value" ;;
+                "chat_enabled")           CHAT_ENABLED="$value" ;;
+                "data_hydration")         DATA_HYDRATION="$value" ;;
+            esac
+        fi
+    done < config.env
+# Migrate from legacy config.txt if it exists
+elif [ -f "config.txt" ]; then
+    write_status "WARNING" "Migrating from legacy config.txt..."
+    while IFS= read -r line || [ -n "$line" ]; do
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+        
         if [[ "$line" =~ ^[[:space:]]*([a-zA-Z_]+)[[:space:]]*:[[:space:]]*(.+)[[:space:]]*$ ]]; then
             key="${BASH_REMATCH[1]}"
             value="${BASH_REMATCH[2]}"
@@ -290,8 +321,11 @@ if [ -f "config.txt" ]; then
             esac
         fi
     done < config.txt
+    # Delete legacy config.txt after migration
+    rm -f config.txt
+    write_status "SUCCESS" "Migration complete. Deleted legacy config.txt"
 else
-    write_status "WARNING" "config.txt not found, using default values"
+    write_status "WARNING" "config.env not found, using default values"
 fi
 
 # =================================================================

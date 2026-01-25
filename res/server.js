@@ -29,7 +29,7 @@ const colors = {
 // Startup Validation - Check if server is run from expected location
 // =================================================================
 function validateStartupLocation() {
-  const configPath = path.join(ROOT_DIR, 'config.txt');
+  const configPath = path.join(ROOT_DIR, 'config.env');
   const resFolder = path.basename(__dirname);
 
   // Check if we're actually in a 'res' folder
@@ -53,7 +53,7 @@ function validateStartupLocation() {
     console.log(`${colors.yellow}NOTE: Could not find project files${colors.reset}`);
     console.log(`${colors.yellow}========================================${colors.reset}`);
     console.log('');
-    console.log(`Could not locate config.txt or media folder in parent.`);
+    console.log(`Could not locate config.env or media folder in parent.`);
     console.log(`Looking in: ${ROOT_DIR}`);
     console.log('');
     console.log(`${colors.cyan}Recommended: Run from project root:${colors.reset}`);
@@ -74,10 +74,13 @@ if (!fs.existsSync(MEMORY_DIR)) {
 
 // Read and parse config file
 function readConfig() {
-  const configPath = path.join(ROOT_DIR, 'config.txt');
+  const configEnvPath = path.join(ROOT_DIR, 'config.env');
+  const configTxtPath = path.join(ROOT_DIR, 'config.txt');
+
   try {
-    if (fs.existsSync(configPath)) {
-      const configData = fs.readFileSync(configPath, 'utf8');
+    // Primary: Read config.env
+    if (fs.existsSync(configEnvPath)) {
+      const configData = fs.readFileSync(configEnvPath, 'utf8');
       const config = {};
 
       configData.split('\n').forEach(line => {
@@ -89,6 +92,29 @@ function readConfig() {
           if (key && value) config[key] = value;
         }
       });
+
+      return config;
+    }
+
+    // Migration: Read legacy config.txt and delete it
+    if (fs.existsSync(configTxtPath)) {
+      console.log(`${colors.yellow}Migrating from legacy config.txt...${colors.reset}`);
+      const configData = fs.readFileSync(configTxtPath, 'utf8');
+      const config = {};
+
+      configData.split('\n').forEach(line => {
+        line = line.trim();
+        if (line && !line.startsWith('#')) {
+          const parts = line.split(':');
+          const key = parts.shift().trim();
+          const value = parts.join(':').trim();
+          if (key && value) config[key] = value;
+        }
+      });
+
+      // Delete legacy config.txt after reading
+      fs.unlinkSync(configTxtPath);
+      console.log(`${colors.green}Migration complete. Deleted legacy config.txt${colors.reset}`);
 
       return config;
     }
@@ -121,10 +147,10 @@ function readConfig() {
 
 // Config loading relies on Node.js native --env-file (see startup scripts)
 
-// Read config.txt as fallback
+// Read config.env as fallback
 const fileConfig = readConfig();
 
-// Environment-first configuration with config.txt fallback
+// Environment-first configuration with config.env fallback
 // Helper to get config value with validation
 function getConfig(envKey, fileKey, fallback, validator = null) {
   const envValue = process.env[envKey];
@@ -216,7 +242,7 @@ const usingEnv = Object.keys(process.env).some(k => k.startsWith('SYNC_'));
 if (usingEnv) {
   console.log(`${colors.cyan}Configuration loaded from config.env${colors.reset}`);
 } else {
-  console.log(`${colors.cyan}Configuration loaded from config.txt (legacy)${colors.reset}`);
+  console.log(`${colors.cyan}Configuration loaded from config.env (legacy)${colors.reset}`);
 }
 */
 

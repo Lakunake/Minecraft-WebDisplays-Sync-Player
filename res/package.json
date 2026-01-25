@@ -1,9 +1,20 @@
 {
   "name": "sync-player",
   "version": "1.9.2",
+  "description": "Feature-Rich synchronized video player for multiple clients",
   "main": "server.js",
   "scripts": {
-    "start": "node --env-file-if-exists=../config.env server.js"
+    "start": "node --env-file-if-exists=../config.env server.js",
+    "dev": "node --watch --env-file-if-exists=../config.env server.js"
+  },
+  "author": "Lakunake",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player"
+  },
+  "engines": {
+    "node": ">=20.6.0"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
