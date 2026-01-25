@@ -558,7 +558,7 @@ class Room {
         return true;
       }
     }
-    console.log(`Admin check failed for room ${this.code}: provided='${fingerprint}', expected='${this.adminFingerprint}'`);
+    console.log(`Admin check failed for room ${this.code}: provided='${fingerprint.substring(0, 8)}...', expected='${this.adminFingerprint?.substring(0, 8) || 'null'}...'`);
     return false;
   }
 
@@ -804,7 +804,9 @@ function getAdminFingerprint() {
 function setAdminFingerprint(fp) {
   memory.encrypted = encryptData(fp);
   saveMemory(memory);
-  console.log(`${colors.green}Admin fingerprint registered: ${fp}${colors.reset}`);
+  // Log hashed fingerprint for security (don't expose raw fingerprint)
+  const hashedFp = crypto.createHash('sha256').update(fp).digest('hex').substring(0, 6);
+  console.log(`${colors.green}Admin fingerprint registered: ${hashedFp}...${colors.reset}`);
 }
 
 // Client names accessors (plain, persisted)
@@ -1460,7 +1462,6 @@ io.on('connection', (socket) => {
     'set-client-name',
     'get-client-list',
     'set-client-display-name',
-    'get-config',
     'delete-room',
     'create-room'
   ];
@@ -2086,9 +2087,15 @@ io.on('connection', (socket) => {
       joinMode: JOIN_MODE,
       bslS2Mode: BSL_S2_MODE,
       bslAdvancedMatch: BSL_ADVANCED_MATCH,
+      bslAdvancedMatchThreshold: BSL_ADVANCED_MATCH_THRESHOLD,
       useHttps: config.use_https === 'true',
       videoAutoplay: VIDEO_AUTOPLAY,
-      adminFingerprintLock: ADMIN_FINGERPRINT_LOCK
+      adminFingerprintLock: ADMIN_FINGERPRINT_LOCK,
+      maxVolume: MAX_VOLUME,
+      chatEnabled: CHAT_ENABLED,
+      dataHydration: DATA_HYDRATION,
+      serverMode: SERVER_MODE,
+      clientControlsDisabled: CLIENT_CONTROLS_DISABLED
     });
   });
 
@@ -2389,7 +2396,9 @@ io.on('connection', (socket) => {
         setAdminFingerprint(fingerprint);
       } else if (registeredAdminFingerprint !== fingerprint) {
         // Fingerprint mismatch - reject and disconnect
-        console.log(`${colors.red}Admin rejected: Fingerprint mismatch (expected: ${registeredAdminFingerprint}, got: ${fingerprint})${colors.reset}`);
+        // Hash the stored fingerprint for security, but show raw incoming for debugging
+        const hashedExpected = crypto.createHash('sha256').update(registeredAdminFingerprint).digest('hex').substring(0, 6);
+        console.log(`${colors.red}Admin rejected: Fingerprint mismatch (expected: ${hashedExpected}..., got: ${fingerprint})${colors.reset}`);
         socket.emit('admin-auth-result', {
           success: false,
           reason: 'Unauthorized device. This admin panel is locked to a different machine.'
@@ -2406,7 +2415,8 @@ io.on('connection', (socket) => {
     verifiedAdminSockets.add(socket.id);
 
     adminSocketId = socket.id;
-    console.log(`${colors.green}Admin registered for BSL-S²: ${socket.id}${fingerprint ? ` (fingerprint: ${fingerprint})` : ''}${colors.reset}`);
+    const hashedFp = fingerprint ? crypto.createHash('sha256').update(fingerprint).digest('hex').substring(0, 6) : null;
+    console.log(`${colors.green}Admin registered for BSL-S²: ${socket.id}${hashedFp ? ` (fingerprint: ${hashedFp}...)` : ''}${colors.reset}`);
     socket.emit('admin-auth-result', { success: true });
   });
 

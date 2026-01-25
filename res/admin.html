@@ -1818,7 +1818,8 @@
             <div class="panel-header">
               <h2>⚙️ Config</h2>
             </div>
-            <div id="config-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+            <div id="config-list"
+              style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; max-height: 400px; overflow-y: auto;">
               <div
                 style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
                 <span style="color: #888;">Port</span>
@@ -1833,6 +1834,11 @@
                 style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
                 <span style="color: #888;">Volume Step</span>
                 <span id="cfg-volume">-</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                <span style="color: #888;">Max Volume</span>
+                <span id="cfg-max-volume">-</span>
               </div>
               <div
                 style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
@@ -1851,6 +1857,21 @@
               </div>
               <div
                 style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                <span style="color: #888;">Chat</span>
+                <span id="cfg-chat">-</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                <span style="color: #888;">Server Mode</span>
+                <span id="cfg-server-mode">-</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                <span style="color: #888;">Client Controls</span>
+                <span id="cfg-client-controls">-</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
                 <span style="color: #888;">BSL-S² Mode</span>
                 <span id="cfg-bsl-mode">-</span>
               </div>
@@ -1858,6 +1879,11 @@
                 style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
                 <span style="color: #888;">BSL-S² Adv Match</span>
                 <span id="cfg-bsl-adv">-</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                <span style="color: #888;">BSL-S² Threshold</span>
+                <span id="cfg-bsl-threshold">-</span>
               </div>
               <div
                 style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
@@ -2282,13 +2308,27 @@
       ];
 
       const str = components.join('|');
-      let hash = 0;
+
+      // Generate a "full" 64-char deterministic hash from components
+      // 1. FNV-1a hash the components string to get a seed
+      let h = 0x811c9dc5;
       for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 0x01000193);
       }
-      return 'admin-' + Math.abs(hash).toString(36);
+
+      // 2. Use the hash to seed a simple PRNG to generate a long stable fingerprint
+      let s = h >>> 0;
+      const nextRaw = () => {
+        s = Math.imul(s ^ s >>> 7, 0x5F356375); // Xorshift-like mix
+        s = Math.imul(s ^ s << 13, 0xB6718429);
+        return (s >>> 0);
+      };
+      const nextHex = () => nextRaw().toString(16).padStart(8, '0');
+
+      // Generate 8 32-bit blocks = 64 hex chars
+      return 'admin-' + nextHex() + nextHex() + nextHex() + nextHex() +
+        nextHex() + nextHex() + nextHex() + nextHex();
     }
 
     // Get or store admin fingerprint
@@ -2330,11 +2370,16 @@
       if (cfg.port) document.getElementById('cfg-port').textContent = cfg.port;
       if (cfg.skipSeconds) document.getElementById('cfg-skip').textContent = cfg.skipSeconds + 's';
       if (cfg.volumeStep) document.getElementById('cfg-volume').textContent = Math.round(cfg.volumeStep * 100) + '%';
+      document.getElementById('cfg-max-volume').textContent = (cfg.maxVolume || 100) + '%';
       document.getElementById('cfg-autoplay').textContent = cfg.videoAutoplay ? 'On' : 'Off';
       document.getElementById('cfg-join-mode').textContent = cfg.joinMode || 'sync';
       document.getElementById('cfg-https').textContent = cfg.useHttps ? 'On' : 'Off';
+      document.getElementById('cfg-chat').textContent = cfg.chatEnabled !== false ? 'On' : 'Off';
+      document.getElementById('cfg-server-mode').textContent = cfg.serverMode ? 'On' : 'Off';
+      document.getElementById('cfg-client-controls').textContent = cfg.clientControlsDisabled ? 'Disabled' : 'Enabled';
       document.getElementById('cfg-bsl-mode').textContent = cfg.bslS2Mode || 'any';
       document.getElementById('cfg-bsl-adv').textContent = cfg.bslAdvancedMatch ? 'On' : 'Off';
+      document.getElementById('cfg-bsl-threshold').textContent = cfg.bslAdvancedMatchThreshold || '1';
       document.getElementById('cfg-admin-lock').textContent = cfg.adminFingerprintLock ? 'On' : 'Off';
       skipSeconds = cfg.skipSeconds || 5;
       skipIntroSeconds = cfg.skipIntroSeconds || 90;
