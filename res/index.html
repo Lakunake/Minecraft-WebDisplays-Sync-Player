@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Sync-Player</title>
+  <link rel="icon" href="data:,">
   <!-- Pixel Font for Chat -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
@@ -855,6 +856,8 @@
     };
     let currentVideoInfo = null;
     let mainVideoStartTime = 0;
+    let currentServerRate = 1.0;
+    let speedReloadTimeout = null;
     let videoLoadAttempts = 0;
     const maxVideoLoadAttempts = 3;
     let lastAppliedAudioTrack = null;
@@ -1161,6 +1164,7 @@
     });
 
     function loadCurrentVideo() {
+      console.log('loadCurrentVideo called');
       if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
         waitingMessage.style.display = 'block';
         video.style.display = 'none';
@@ -1184,8 +1188,19 @@
         videoLoadAttempts = 0;
         applyTrackSelections();
 
+        // Enforce playback rate here too
+        if (currentServerRate && currentServerRate !== 1.0) {
+          console.log(`[VideoLoad] Applying saved rate in onloadeddata: ${currentServerRate}x`);
+          video.playbackRate = currentServerRate;
+        }
+
         if (!video.paused) {
-          video.play().catch(e => {
+          video.play().then(() => {
+            // Re-apply rate after play starts to be absolutely sure
+            if (currentServerRate && currentServerRate !== 1.0) {
+              video.playbackRate = currentServerRate;
+            }
+          }).catch(e => {
             console.log('Playback error:', e);
             handlePlaybackError(e);
           });
@@ -1193,6 +1208,9 @@
       };
 
       video.onloadedmetadata = function () {
+        if (currentServerRate && currentServerRate !== 1.0) {
+          video.playbackRate = currentServerRate;
+        }
         applyTrackSelections();
       };
 
@@ -1294,6 +1312,14 @@
           if (Math.abs(ytTime - state.currentTime) > 2) {
             ytPlayer.seekTo(state.currentTime, true);
           }
+
+          // Sync playback rate
+          if (state.playbackRate && typeof ytPlayer.setPlaybackRate === 'function') {
+            const currentRate = ytPlayer.getPlaybackRate();
+            if (currentRate !== state.playbackRate) {
+              ytPlayer.setPlaybackRate(state.playbackRate);
+            }
+          }
         }
       } else if (currentPlatform === 'vimeo' && vimeoPlayer) {
         vimeoPlayer.getPaused().then(paused => {
@@ -1321,6 +1347,7 @@
 
     // Handle server sync events
     socket.on('sync', (state) => {
+      console.log(`[Sync] Received state: Rate=${state.playbackRate}, Time=${state.currentTime}`);
       const now = Date.now();
       if (now - lastUpdate < 100) return;
       lastUpdate = now;
@@ -1360,6 +1387,25 @@
 
       if (Math.abs(video.currentTime - targetTime) > 0.5) {
         video.currentTime = Math.max(0, targetTime);  // Don't go negative
+      }
+
+      const syncedRate = state.playbackRate || 1.0;
+      currentServerRate = syncedRate;
+
+      // If speed changed significantly, force a reload/re-sync as requested by user
+      if (Math.abs(video.playbackRate - syncedRate) > 0.01) {
+        console.log(`[Sync] Speed changed to ${syncedRate}x. Scheduling reload...`);
+        showTemporaryMessage(`Speed: ${syncedRate}x`);
+
+        // Clear existing timeout to debounce rapid changes
+        if (speedReloadTimeout) clearTimeout(speedReloadTimeout);
+
+        // Wait 800ms before reloading to allow for multiple clicks
+        speedReloadTimeout = setTimeout(() => {
+          console.log('[Debounce] Executing reload for speed change...');
+          video.playbackRate = syncedRate;
+          loadCurrentVideo();
+        }, 800);
       }
 
       if (state.audioTrack !== undefined && state.audioTrack !== currentAudioTrack) {

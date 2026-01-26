@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sync-Player Admin Panel</title>
+  <link rel="icon" href="data:,">
   <style>
     * {
       box-sizing: border-box;
@@ -852,6 +853,13 @@
       grid-column: span 3;
     }
 
+    .control-btn.speed {
+      background: linear-gradient(135deg, #03A9F4 0%, #0288D1 100%);
+      color: white;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
     .control-btn.skip {
       background: rgba(33, 150, 243, 0.2);
       color: #2196F3;
@@ -865,7 +873,6 @@
     .seek-control {
       display: flex;
       gap: 10px;
-      margin-top: 15px;
     }
 
     .seek-control input {
@@ -1992,15 +1999,34 @@
             </div>
 
             <button class="btn btn-secondary" id="skip-intro-btn"
-              style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, #7B1FA2, #4A148C);">⏩ Skip
+              style="width: 100%; background: linear-gradient(135deg, #7B1FA2, #4A148C);">⏩ Skip
               Intro (<span id="skip-intro-text">90s</span>)</button>
 
-            <div class="seek-control" style="margin-top: 10px;">
+            <div class="seek-control">
               <input type="number" id="seek-time" placeholder="Seconds" min="0" style="width: 80px;">
               <button class="btn btn-primary" id="seek-btn" style="flex: 1;">Seek</button>
             </div>
 
-            <button class="btn btn-secondary" id="get-time-btn" style="width: 100%; margin-top: 10px;">⏱️ Get Current
+            <!-- Speed Control -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; position: relative;">
+              <button class="control-btn speed" id="speed-down-btn">-</button>
+              <div
+                style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 10px;">
+                <div style="font-size: 11px; color: #888;">Speed</div>
+                <div id="speed-display" style="font-weight: bold; color: #fff;">1.0x</div>
+              </div>
+              <button class="control-btn speed" id="speed-up-btn">+</button>
+
+              <!-- Overlay Label -->
+              <div
+                style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;">
+                <span
+                  style="background: rgba(0,0,0,0.6); color: #ff9800; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 12px; font-weight: bold; border: 1px solid #ff9800;">Under
+                  Construction</span>
+              </div>
+            </div>
+
+            <button class="btn btn-secondary" id="get-time-btn" style="width: 100%;">⏱️ Get Current
               Time</button>
             <div id="current-time-display"
               style="text-align: center; margin-top: 8px; font-size: 14px; color: #2196F3; font-family: monospace;">
@@ -3710,7 +3736,16 @@
         text.textContent = 'Connected';
       }
 
-      socket.emit('bsl-admin-register', { fingerprint: adminFingerprint });
+      console.log('Connected to server, registering admin...');
+
+      // Extract room code if in server mode URL
+      const roomPathMatch = window.location.pathname.match(/^\/admin\/([A-Z0-9]{6})$/i);
+      const roomCode = roomPathMatch ? roomPathMatch[1] : null;
+
+      socket.emit('bsl-admin-register', {
+        fingerprint: adminFingerprint,
+        roomCode: roomCode
+      });
 
       // Check for VPN/proxy software
       fetch('/api/vpn-check')
@@ -3756,6 +3791,64 @@
     if (socket.connected) {
       socket.emit('bsl-admin-register', { fingerprint: adminFingerprint });
     }
+
+    // Speed Control Logic
+    let currentSpeed = 1.0;
+    const speedStep = 0.25;
+    const minSpeed = 0.25;
+    const maxSpeed = 3.0;
+
+    function handleSpeed(change) {
+      let newSpeed = currentSpeed + change;
+      // Precision rounding
+      newSpeed = Math.round(newSpeed * 100) / 100;
+
+      if (newSpeed >= minSpeed && newSpeed <= maxSpeed) {
+        currentSpeed = newSpeed;
+        updateSpeedDisplay();
+
+        // Send control event
+        socket.emit('control', {
+          action: 'rate',
+          rate: currentSpeed
+        });
+
+        addLog(`Set speed to ${currentSpeed}x`, 'info');
+      }
+    }
+
+    function updateSpeedDisplay() {
+      const display = document.getElementById('speed-display');
+      if (display) {
+        display.textContent = currentSpeed + 'x';
+      }
+    }
+
+    // Set initial listeners
+    document.getElementById('speed-down-btn').addEventListener('click', () => handleSpeed(-speedStep));
+    document.getElementById('speed-up-btn').addEventListener('click', () => handleSpeed(speedStep));
+
+    // Handle sync event to update speed
+    socket.on('sync', (state) => {
+      if (state.playbackRate !== undefined && state.playbackRate !== currentSpeed) {
+        currentSpeed = state.playbackRate;
+        updateSpeedDisplay();
+      }
+
+      // Existing sync logic for time update
+      if (state.currentTime !== undefined) {
+        // Clamp to 0 to prevent negative values from rewind
+        const totalSecs = Math.max(0, Math.floor(state.currentTime));
+        const hours = Math.floor(totalSecs / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+        const timeStr = hours > 0
+          ? `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+          : `${mins}:${secs.toString().padStart(2, '0')}`;
+        const displayEl = document.getElementById('current-time-display');
+        if (displayEl) displayEl.textContent = `Current: ${timeStr} (${totalSecs}s)`;
+      }
+    });
 
     // Handle admin auth result
     socket.on('admin-auth-result', (result) => {

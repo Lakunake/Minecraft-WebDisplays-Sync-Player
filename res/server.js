@@ -254,7 +254,25 @@ function escapeHTML(text) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// Helper to consolidate time (advance currentTime to now based on elapsed time and current rate)
+function consolidateTime(state) {
+  if (state.isPlaying) {
+    const now = Date.now();
+    // Safety check for invalid lastUpdate
+    if (state.lastUpdate > now) state.lastUpdate = now;
+
+    const elapsed = (now - state.lastUpdate) / 1000;
+    if (elapsed > 0) {
+      state.currentTime += elapsed * (state.playbackRate || 1.0);
+    }
+    state.lastUpdate = now;
+  } else {
+    state.lastUpdate = Date.now();
+  }
 }
 
 // Filename validation for defense-in-depth (even with execFile)
@@ -518,7 +536,8 @@ class Room {
       currentTime: 0,
       lastUpdate: Date.now(),
       audioTrack: 0,
-      subtitleTrack: -1
+      subtitleTrack: -1,
+      playbackRate: 1.0
     };
 
     // BSL-S² state for this room
@@ -917,7 +936,8 @@ let videoState = {
   currentTime: 0,
   lastUpdate: Date.now(),
   audioTrack: 0,
-  subtitleTrack: -1
+  subtitleTrack: -1,
+  playbackRate: 1.0
 };
 
 function getCurrentTrackSelections() {
@@ -1882,25 +1902,30 @@ io.on('connection', (socket) => {
 
       if (data.action) {
         if (data.action === 'playpause') {
+          consolidateTime(room.videoState);
           room.videoState.isPlaying = data.state;
-          room.videoState.lastUpdate = Date.now();
           io.to(roomCode).emit('sync', room.videoState);
         } else if (data.action === 'skip') {
+          consolidateTime(room.videoState);
           const direction = data.direction === 'forward' ? 1 : -1;
           room.videoState.currentTime += direction * (data.seconds || SKIP_SECONDS);
-          room.videoState.lastUpdate = Date.now();
           io.to(roomCode).emit('sync', room.videoState);
         } else if (data.action === 'seek') {
           room.videoState.currentTime = data.time;
           room.videoState.lastUpdate = Date.now();
           io.to(roomCode).emit('sync', room.videoState);
         } else if (data.action === 'selectTrack') {
+          consolidateTime(room.videoState);
           if (data.type === 'audio') {
             room.videoState.audioTrack = data.trackIndex;
           } else if (data.type === 'subtitle') {
             room.videoState.subtitleTrack = data.trackIndex;
           }
-          room.videoState.lastUpdate = Date.now();
+          io.to(roomCode).emit('sync', room.videoState);
+        } else if (data.action === 'rate') {
+          consolidateTime(room.videoState);
+          console.log(`[Rate Control] Setting playback rate to ${data.rate} for room ${roomCode}`);
+          room.videoState.playbackRate = data.rate;
           io.to(roomCode).emit('sync', room.videoState);
         }
       } else {
@@ -1910,7 +1935,8 @@ io.on('connection', (socket) => {
           currentTime: data.currentTime,
           lastUpdate: Date.now(),
           audioTrack: room.videoState.audioTrack,
-          subtitleTrack: room.videoState.subtitleTrack
+          subtitleTrack: room.videoState.subtitleTrack,
+          playbackRate: room.videoState.playbackRate
         };
         io.to(roomCode).emit('sync', room.videoState);
       }
@@ -1935,25 +1961,30 @@ io.on('connection', (socket) => {
     }
     if (data.action) {
       if (data.action === 'playpause') {
+        consolidateTime(videoState);
         videoState.isPlaying = data.state;
-        videoState.lastUpdate = Date.now();
         io.emit('sync', videoState);
       } else if (data.action === 'skip') {
+        consolidateTime(videoState);
         const direction = data.direction === 'forward' ? 1 : -1;
         videoState.currentTime += direction * (data.seconds || SKIP_SECONDS);
-        videoState.lastUpdate = Date.now();
         io.emit('sync', videoState);
       } else if (data.action === 'seek') {
         videoState.currentTime = data.time;
         videoState.lastUpdate = Date.now();
         io.emit('sync', videoState);
       } else if (data.action === 'selectTrack') {
+        consolidateTime(videoState);
         if (data.type === 'audio') {
           videoState.audioTrack = data.trackIndex;
         } else if (data.type === 'subtitle') {
           videoState.subtitleTrack = data.trackIndex;
         }
-        videoState.lastUpdate = Date.now();
+        io.emit('sync', videoState);
+      } else if (data.action === 'rate') {
+        consolidateTime(videoState);
+        videoState.playbackRate = data.rate;
+        console.log(`[Rate Control Legacy] Setting playback rate to ${data.rate}`);
         io.emit('sync', videoState);
       }
     } else {
@@ -1962,7 +1993,8 @@ io.on('connection', (socket) => {
         currentTime: data.currentTime,
         lastUpdate: Date.now(),
         audioTrack: videoState.audioTrack,
-        subtitleTrack: videoState.subtitleTrack
+        subtitleTrack: videoState.subtitleTrack,
+        playbackRate: videoState.playbackRate
       };
       io.emit('sync', videoState);
       console.log('Broadcasting sync to all clients:', videoState);
@@ -2035,7 +2067,7 @@ io.on('connection', (socket) => {
       targetVideoState.subtitleTrack = firstVideo.selectedSubtitleTrack !== undefined ? firstVideo.selectedSubtitleTrack : -1;
     }
 
-    targetVideoState.currentTime = 0;
+    targetVideoState.currentTime = data.startTime || 0;
     targetVideoState.lastUpdate = Date.now();
 
     console.log(`Playlist updated (Room: ${targetRoomCode || 'Legacy'}):`);
@@ -2415,6 +2447,17 @@ io.on('connection', (socket) => {
     verifiedAdminSockets.add(socket.id);
 
     adminSocketId = socket.id;
+
+    // If roomCode provided (Server Mode), map the admin socket to the room
+    if (data.roomCode) {
+      socketRoomMap.set(socket.id, data.roomCode);
+      // Ensure specific room admin tracking if needed
+      const room = rooms.get(data.roomCode);
+      if (room) {
+        room.adminSocketId = socket.id;
+      }
+    }
+
     const hashedFp = fingerprint ? crypto.createHash('sha256').update(fingerprint).digest('hex').substring(0, 6) : null;
     console.log(`${colors.green}Admin registered for BSL-S²: ${socket.id}${hashedFp ? ` (fingerprint: ${hashedFp}...)` : ''}${colors.reset}`);
     socket.emit('admin-auth-result', { success: true });
