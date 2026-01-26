@@ -104,7 +104,8 @@ There are also 2 chat commands called /fullscreen and /rename, they work as the 
 2. Connect your repository to your hosting service
 3. Set build command: `npm install`
 4. Set start command: `node --env-file-if-exists=../config.env server.js`
-5. Deploy and access your video player via the provided URL
+5. Set root folder to: `./res/`
+6. Deploy and access your video player via the provided URL
 > [!WARNING]
 > Not recommended due to the free plan limitations of websites
 
