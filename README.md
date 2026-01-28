@@ -176,6 +176,6 @@ See [LICENSE](LICENSE) for more details.
 ## 🙏 Credits
 
 Created by **Lakunake**
-Built using Node.js and many node modules
+Built using Node.js and many [node modules](res/package.json)
 
 Contact: johnwebdisplay@gmail.com        (Obviously not my real name)
