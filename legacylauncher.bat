@@ -306,7 +306,7 @@ if "%LOCAL_IP%"=="" set LOCAL_IP=localhost
 :: =================================================================
 title Admin Console
 echo.
-echo Sync-Player 1.9.2
+echo Sync-Player 1.10.0
 echo ==========================
 echo.
 echo Settings:

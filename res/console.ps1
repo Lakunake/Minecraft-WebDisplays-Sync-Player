@@ -109,6 +109,14 @@ if (-not (Test-Path "media")) {
     New-Item -ItemType Directory -Path "media" | Out-Null
     Write-Host "Created media directory"
 }
+if (-not (Test-Path "res\tracks")) {
+    New-Item -ItemType Directory -Path "res\tracks" | Out-Null
+    Write-Host "Created res\tracks directory"
+}
+if (-not (Test-Path "memory\tracks")) {
+    New-Item -ItemType Directory -Path "memory\tracks" | Out-Null
+    Write-Host "Created memory\tracks directory"
+}
 
 # =================================================================
 # Check and Install Dependencies (in res/ directory)
@@ -117,7 +125,7 @@ $Host.UI.RawUI.WindowTitle = "Admin Console - Checking Dependencies"
 Write-Host "Checking required dependencies..."
 
 $MISSING_DEPS = $false
-$requiredPackages = @("express", "socket.io", "helmet", "express-rate-limit", "rate-limiter-flexible", "cookie-parser")
+$requiredPackages = @("express", "socket.io", "helmet", "express-rate-limit", "rate-limiter-flexible", "cookie-parser", "node-av", "fast-deep-equal")
 
 if (-not (Test-Path "res\node_modules")) {
     $MISSING_DEPS = $true
@@ -137,14 +145,20 @@ else {
 }
 
 # Check FFmpeg
-$MISSING_FFMPEG = $false
-$ffmpegInstalled = Get-Command ffmpeg -ErrorAction SilentlyContinue
-if (-not $ffmpegInstalled) {
-    $MISSING_FFMPEG = $true
-    Write-Status "MISSING" "FFmpeg"
+# Check FFmpeg (Skip if node-av is installed)
+if (Test-Path "res\node_modules\node-av") {
+    Write-Status "OK" "FFmpeg bundled with node-av"
+    $MISSING_FFMPEG = $false
 }
 else {
-    Write-Status "OK" "FFmpeg found"
+    $ffmpegInstalled = Get-Command ffmpeg -ErrorAction SilentlyContinue
+    if (-not $ffmpegInstalled) {
+        $MISSING_FFMPEG = $true
+        Write-Status "MISSING" "FFmpeg"
+    }
+    else {
+        Write-Status "OK" "FFmpeg found"
+    }
 }
 
 # Install missing Node.js dependencies (run npm from res/ directory)
@@ -163,6 +177,7 @@ if ($MISSING_DEPS) {
         Write-Host ""
         Push-Location "res"
         cmd /c "npm install"
+        cmd /c "npm audit fix --force"
         Pop-Location
         if ($LASTEXITCODE -ne 0) {
             throw "npm install failed with exit code $LASTEXITCODE"
@@ -414,7 +429,7 @@ catch {
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console"
 Write-Host ""
-Write-Host "Sync-Player 1.9.2" -ForegroundColor Cyan
+Write-Host "Sync-Player 1.10.0" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Settings:" -ForegroundColor Yellow

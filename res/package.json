@@ -1,6 +1,6 @@
 {
   "name": "sync-player",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "description": "Feature-Rich synchronized video player for multiple clients",
   "main": "server.js",
   "scripts": {
@@ -20,7 +20,9 @@
     "cookie-parser": "^1.4.7",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
+    "fast-deep-equal": "^3.1.3",
     "helmet": "^8.0.0",
+    "node-av": "^5.0.4",
     "rate-limiter-flexible": "^9.0.1",
     "socket.io": "^4.8.1"
   }

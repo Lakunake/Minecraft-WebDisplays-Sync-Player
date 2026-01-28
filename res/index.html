@@ -1178,9 +1178,30 @@
       console.log('Loading video:', videoSrc);
       video.src = videoSrc;
 
+      // Phase 8: Inject External Tracks
+      const existingTracks = video.querySelectorAll('track');
+      existingTracks.forEach(t => t.remove());
+
+      if (currentVideo.tracks && currentVideo.tracks.subtitles) {
+        currentVideo.tracks.subtitles.forEach(track => {
+          if (track.isExternal && track.url) {
+            const trackEl = document.createElement('track');
+            trackEl.kind = 'subtitles';
+            trackEl.label = track.title || track.language;
+            trackEl.srclang = track.language;
+            trackEl.src = track.url;
+            // Store original ID to help matching later
+            trackEl.dataset.serverId = track.index;
+            video.appendChild(trackEl);
+          }
+        });
+      }
+
       // Request sync from server to get the current time
       socket.emit('request-sync');
 
+      // Note: clearVideoTracks only disables them, doesn't remove elements.
+      // We removed elements above manually.
       clearVideoTracks();
       video.load();
 
@@ -1274,14 +1295,43 @@
 
       if (typeof video.textTracks !== 'undefined' && currentVideoInfo.selectedSubtitleTrack !== undefined) {
         const targetSubIndex = currentVideoInfo.selectedSubtitleTrack;
+
+        // Check if we need to update
         if (lastAppliedSubtitleTrack !== targetSubIndex) {
-          for (let i = 0; i < video.textTracks.length; i++) {
-            if (targetSubIndex >= 0) {
-              video.textTracks[i].mode = (i === targetSubIndex) ? 'showing' : 'disabled';
-            } else {
-              video.textTracks[i].mode = 'disabled';
+
+          // Phase 8: External Track Selection Support
+          // If target is >= 1000, it's an external track injected via <track>
+          let externalTrackFound = false;
+          if (targetSubIndex >= 1000) {
+            const trackEl = video.querySelector(`track[data-server-id="${targetSubIndex}"]`);
+            if (trackEl && trackEl.track) {
+              trackEl.track.mode = 'showing';
+              externalTrackFound = true;
             }
           }
+
+          // Iterate all tracks to disable others (and enable standard if not external)
+          for (let i = 0; i < video.textTracks.length; i++) {
+            const track = video.textTracks[i];
+
+            // If we enabled an external track, disable everything else
+            if (externalTrackFound) {
+              if (track !== (video.querySelector(`track[data-server-id="${targetSubIndex}"]`)?.track)) {
+                track.mode = 'disabled';
+              }
+            } else {
+              // Standard Logic: Enable if index matches target (and target < 1000)
+              // Note: If browser doesn't support embedded tracks, this list might ONLY be external tracks.
+              // In that case, checking i === targetSubIndex (where target < 1000) is risky if list is short.
+              // But we proceed with standard behavior for consistency.
+              if (targetSubIndex >= 0 && targetSubIndex < 1000) {
+                track.mode = (i === targetSubIndex) ? 'showing' : 'disabled';
+              } else if (!externalTrackFound) {
+                track.mode = 'disabled';
+              }
+            }
+          }
+
           lastAppliedSubtitleTrack = targetSubIndex;
         }
       }

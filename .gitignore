@@ -166,3 +166,4 @@ LICENSE.txt
 package-lock.json
 package.json
 res/config.txt
+/res/tracks

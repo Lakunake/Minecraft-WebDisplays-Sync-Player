@@ -1688,6 +1688,149 @@
         animation: none;
       }
     }
+
+    /* FFmpeg Tools Styles */
+    .ffmpeg-section {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .ffmpeg-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 10px;
+    }
+
+    .ffmpeg-header h3 {
+      font-size: 16px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .ffmpeg-controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 15px;
+      align-items: end;
+    }
+
+    .ffmpeg-btn {
+      background: rgba(33, 150, 243, 0.2);
+      border: 1px solid rgba(33, 150, 243, 0.3);
+      color: #2196F3;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ffmpeg-btn:hover {
+      background: rgba(33, 150, 243, 0.3);
+    }
+
+    .ffmpeg-btn.danger {
+      background: rgba(244, 67, 54, 0.2);
+      border-color: rgba(244, 67, 54, 0.3);
+      color: #f44336;
+    }
+
+    .ffmpeg-btn.danger:hover {
+      background: rgba(244, 67, 54, 0.3);
+    }
+
+    .ffmpeg-warning {
+      background: rgba(255, 152, 0, 0.15);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      color: #FF9800;
+      padding: 10px 15px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .job-queue {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .job-item {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .job-progress {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      margin-top: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .job-progress-bar {
+      height: 100%;
+      background: #2196F3;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .encoder-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #aaa;
+      margin-right: 5px;
+    }
+
+    .encoder-badge.active {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    /* Password Modal Specifics */
+    .password-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 16px;
+      text-align: center;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 
@@ -1722,6 +1865,11 @@
       <div class="nav-item" data-view="remote" onclick="switchView('remote')">
         🎮
         <span class="nav-tooltip">Remote Control</span>
+      </div>
+
+      <div class="nav-item" data-view="ffmpeg" onclick="switchView('ffmpeg')">
+        🎞️
+        <span class="nav-tooltip">FFmpeg Tools</span>
       </div>
 
       <!-- Quick Controls - Bottom -->
@@ -2061,6 +2209,146 @@
                 <button class="btn btn-primary" id="relaunch-btn">🚀 Relaunch</button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+      <!-- FFmpeg Tools View -->
+      <div id="ffmpeg-view" class="view">
+        <h2 class="view-title">FFmpeg Tools</h2>
+
+        <!-- Password Overlay -->
+        <div id="ffmpeg-auth-overlay" class="glass" style="padding: 40px; text-align: center; margin-top: 20px;">
+          <h3>🔐 Design & Processing Tools</h3>
+          <p style="color: #ccc; margin-bottom: 20px;">This section is protected. Please enter the password to access.
+          </p>
+          <input type="password" id="ffmpeg-password-input" class="password-input" placeholder="ACCESS PASSWORD"
+            onkeypress="if(event.key === 'Enter') authenticateFfmpeg()">
+          <button class="ffmpeg-btn" onclick="authenticateFfmpeg()"
+            style="width: 100%; justify-content: center; padding: 12px; font-size: 14px; margin-top: 10px;">🔓 Unlock
+            Tools</button>
+        </div>
+
+        <!-- Main Content (Hidden until auth) -->
+        <div id="ffmpeg-content" style="display: none;">
+
+          <!-- Encoders Badge -->
+          <div style="margin-bottom: 20px;">
+            <span style="color: #888; font-size: 12px; margin-right: 10px;">DETECTED ENCODERS:</span>
+            <div id="encoder-list" style="display: inline-block;">
+              <span class="encoder-badge">Scanning...</span>
+            </div>
+          </div>
+
+          <!-- Main Grid Layout -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start;">
+
+            <!-- Left Column: Tools -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+
+              <!-- Remux Section -->
+              <div class="ffmpeg-section" style="margin-bottom: 0;">
+                <div class="ffmpeg-header">
+                  <h3>📦 Remux (Fast, No Re-encode)</h3>
+                </div>
+                <div class="ffmpeg-controls">
+                  <div>
+                    <select id="remux-file-input" class="dropdown" style="width: 100%; margin-bottom: 10px;">
+                      <option value="">Select source file...</option>
+                    </select>
+                    <div style="display: flex; gap: 10px;">
+                      <select id="remux-preset" class="dropdown" style="flex: 1;">
+                        <option value="mp4_fast">Clean Remux to MP4 (FastStart)</option>
+                        <option value="mkv_copy">Remux to MKV (Copy Streams)</option>
+                        <option value="header_fix">Fix Headers (Ignore Errors)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button class="ffmpeg-btn" onclick="runFfmpegPreset('remux')"
+                    style="width: auto; min-width: 120px; justify-content: center;">▶ Start Remux</button>
+                </div>
+              </div>
+
+              <!-- Re-encode Section -->
+              <div class="ffmpeg-section" style="margin-bottom: 0;">
+                <div class="ffmpeg-header">
+                  <h3>⚠️ Re-encode (CPU/GPU Intensive)</h3>
+                </div>
+                <!-- Warning moved inside standard flow or kept if preferred -->
+                <div class="ffmpeg-warning" style="margin-bottom: 15px;">
+                  ⚠️ <b>Warning:</b> This operation WILL put heavy load on the server.
+                </div>
+                <div class="ffmpeg-controls">
+                  <div>
+                    <select id="reencode-file-input" class="dropdown" style="width: 100%; margin-bottom: 10px;">
+                      <option value="">Select source file...</option>
+                    </select>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                      <select id="reencode-encoder" class="dropdown" style="flex: 1;">
+                        <option value="auto">Auto-Detect Encoder</option>
+                        <option value="libx264">CPU (x264)</option>
+                        <!-- HW options injected by JS -->
+                      </select>
+                      <select id="reencode-quality" class="dropdown" style="flex: 1;">
+                        <option value="high">High Quality</option>
+                        <option value="medium" selected>Medium Quality</option>
+                        <option value="low">Low Quality</option>
+                      </select>
+                    </div>
+                    <select id="reencode-resolution" class="dropdown" style="width: 100%;">
+                      <option value="original">Original Resolution</option>
+                      <option value="1080">1080p</option>
+                      <option value="720">720p</option>
+                      <option value="480">480p</option>
+                    </select>
+                  </div>
+                  <button class="ffmpeg-btn danger" onclick="runFfmpegPreset('reencode')"
+                    style="width: auto; min-width: 120px; justify-content: center;">▶ Start Re-encode</button>
+                </div>
+              </div>
+
+              <!-- Extract Section -->
+              <div class="ffmpeg-section" style="margin-bottom: 0;">
+                <div class="ffmpeg-header">
+                  <h3>🎵 Extract Tracks</h3>
+                </div>
+                <div class="ffmpeg-controls">
+                  <div>
+                    <select id="extract-file-input" class="dropdown" style="width: 100%; margin-bottom: 10px;">
+                      <option value="">Select source file...</option>
+                    </select>
+                    <div style="display: flex; gap: 10px;">
+                      <select id="extract-type" class="dropdown" style="flex: 1;">
+                        <option value="audio">Audio Tracks</option>
+                        <option value="subtitle">Subtitle Tracks</option>
+                      </select>
+                      <select id="extract-format" class="dropdown" style="flex: 1;">
+                        <option value="aac">AAC (Audio)</option>
+                        <option value="mp3">MP3 (Audio)</option>
+                        <option value="webvtt">WebVTT (Subtitle)</option>
+                        <option value="srt">SRT (Subtitle)</option>
+                        <option value="ass">ASS (Subtitle)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button class="ffmpeg-btn" onclick="runFfmpegPreset('extract')"
+                    style="width: auto; min-width: 120px; justify-content: center;">▶ Extract</button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Right Column: Queue -->
+            <div class="ffmpeg-section"
+              style="margin-bottom: 0; align-self: stretch; display: flex; flex-direction: column;">
+              <div class="ffmpeg-header">
+                <h3>📋 Job Queue</h3>
+                <button class="text-btn" style="font-size: 12px;" onclick="refreshFfmpegJobs()">Refresh</button>
+              </div>
+              <div id="ffmpeg-queue" class="job-queue" style="flex: 1; max-height: none; min-height: 400px;">
+                <div style="text-align: center; color: #888; padding: 20px;">No active jobs</div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -2503,7 +2791,7 @@
     let currentServerIndex = -1;
 
     // View order for nav indicator tracking
-    const viewOrder = ['dashboard', 'media', 'remote'];
+    const viewOrder = ['dashboard', 'media', 'remote', 'ffmpeg'];
     let currentViewName = 'dashboard';
 
     // View switching with scroll-like animation
@@ -2605,6 +2893,31 @@
     // Display files in the file browser
     function displayFiles(files) {
       const fileBrowser = dom.fileBrowser || document.getElementById('file-browser');
+
+      // Also populate FFmpeg inputs
+      const ffmpegInputs = ['remux-file-input', 'reencode-file-input', 'extract-file-input'];
+      ffmpegInputs.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+
+        // Preserve current selection if any
+        const currentVal = select.value;
+
+        // Reset options but keep the first prompt
+        select.innerHTML = '<option value="">Select source file...</option>';
+
+        files.forEach(file => {
+          // Provide both MKV and MP4 options to all tools (let tool decide validation/appropriateness)
+          if (file.filename.endsWith('.mkv') || file.filename.endsWith('.mp4') || file.filename.endsWith('.avi') || file.filename.endsWith('.mov')) {
+            const opt = document.createElement('option');
+            opt.value = file.filename;
+            opt.textContent = file.filename;
+            select.appendChild(opt);
+          }
+        });
+
+        if (currentVal) select.value = currentVal;
+      });
 
       if (files.length === 0) {
         fileBrowser.innerHTML = '<div class="empty-message">No media files found in videos folder</div>';
@@ -3369,8 +3682,10 @@
       } else {
         audioTracks.forEach((track, idx) => {
           const opt = document.createElement('option');
-          opt.value = idx;
-          opt.textContent = `${track.language} - ${track.title || 'Track ' + idx}`;
+          // Use track.index (Stream ID) if available, common for FFmpeg/node-av tracks
+          const trackId = (track.index !== undefined) ? track.index : idx;
+          opt.value = trackId;
+          opt.textContent = `${track.language} - ${track.title || 'Track ' + trackId}`;
           audioSelect.appendChild(opt);
         });
         audioSelect.disabled = false;
@@ -3381,10 +3696,13 @@
       subtitleSelect.innerHTML = '<option value="-1">None</option>';
       subtitleTracks.forEach((track, idx) => {
         const opt = document.createElement('option');
-        opt.value = idx;
-        opt.textContent = `${track.language} - ${track.title || 'Track ' + idx}`;
+        const trackId = (track.index !== undefined) ? track.index : idx;
+        opt.value = trackId;
+        opt.textContent = `${track.language} - ${track.title || 'Track ' + trackId}`;
         subtitleSelect.appendChild(opt);
       });
+      subtitleSelect.appendChild(document.createElement('option')).textContent = "---"; // Separator just in caseVisual
+      subtitleSelect.disabled = false;
       subtitleSelect.disabled = false;
 
       // Set selected values
@@ -4328,6 +4646,210 @@
 
       document.getElementById('external-add-btn').addEventListener('click', addExternalToPlaylist);
     });
+
+    // ==========================================
+    // FFmpeg Tools Logic
+    // ==========================================
+
+    let ffmpegAuthenticated = false;
+
+    async function authenticateFfmpeg() {
+      const passwordInput = document.getElementById('ffmpeg-password-input');
+      const password = passwordInput.value;
+
+      try {
+        const response = await fetch('/api/ffmpeg/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          ffmpegAuthenticated = true;
+          document.getElementById('ffmpeg-auth-overlay').style.display = 'none';
+          document.getElementById('ffmpeg-content').style.display = 'block';
+          sessionStorage.setItem('ffmpeg_password', password);
+
+          scanEncoders();
+          refreshFfmpegJobs();
+          // Auto-refresh jobs every 2 seconds
+          if (window.ffmpegJobInterval) clearInterval(window.ffmpegJobInterval);
+          window.ffmpegJobInterval = setInterval(refreshFfmpegJobs, 2000);
+        } else {
+          showToast('Invalid password', 3000, true);
+          passwordInput.value = '';
+          passwordInput.focus();
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        showToast('Authentication failed', 3000, true);
+      }
+    }
+
+    async function scanEncoders() {
+      try {
+        const response = await fetch('/api/ffmpeg/encoders');
+        const data = await response.json();
+
+        const badgeContainer = document.getElementById('encoder-list');
+        badgeContainer.innerHTML = '';
+
+        if (data.encoders && data.encoders.length > 0) {
+          data.encoders.forEach(enc => {
+            const span = document.createElement('span');
+            span.className = 'encoder-badge active';
+            span.textContent = enc.toUpperCase();
+            badgeContainer.appendChild(span);
+
+            // Add to dropdown if not exists (libx264/cpu are default)
+            const dropdown = document.getElementById('reencode-encoder');
+            // Check if option exists
+            if (![...dropdown.options].some(o => o.value === enc)) {
+              const opt = document.createElement('option');
+              opt.value = enc;
+              opt.textContent = enc.toUpperCase() + ' (Hardware)';
+              dropdown.appendChild(opt);
+            }
+          });
+        } else {
+          badgeContainer.innerHTML = '<span class="encoder-badge">None found (CPU only)</span>';
+        }
+
+      } catch (e) {
+        console.error('Scan encoders error:', e);
+      }
+    }
+
+    // Refresh file lists for dropdowns
+    function refreshFfmpegFileList() {
+      const inputs = ['remux-file-input', 'reencode-file-input', 'extract-file-input'];
+      inputs.forEach(id => {
+        const select = document.getElementById(id);
+        // Keep first option
+        const first = select.options[0];
+        select.innerHTML = '';
+        select.appendChild(first);
+
+        if (typeof playlist !== 'undefined' && playlist.length > 0) {
+          playlist.forEach(file => {
+            const opt = document.createElement('option');
+            opt.value = file.filename;
+            opt.textContent = file.filename;
+            select.appendChild(opt);
+          });
+        }
+      });
+    }
+
+    // Mock job queue refresh for now
+    async function refreshFfmpegJobs() {
+      try {
+        const response = await fetch('/api/ffmpeg/jobs');
+        const data = await response.json();
+        const queue = document.getElementById('ffmpeg-queue');
+        queue.innerHTML = '';
+
+        if (data.jobs && data.jobs.length > 0) {
+          data.jobs.forEach(job => {
+            const div = document.createElement('div');
+            div.className = 'job-card';
+            // Simple styling for job card
+            div.style.padding = '10px';
+            div.style.backgroundColor = 'rgba(255,255,255,0.05)';
+            div.style.borderRadius = '5px';
+            div.style.marginBottom = '8px';
+            div.style.borderLeft = `3px solid ${job.status === 'completed' ? '#00e676' : job.status === 'failed' ? '#ff1744' : job.status === 'running' ? '#2979ff' : '#888'}`;
+
+            div.innerHTML = `
+                  <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                     <span style="font-weight:bold; color:#fff;">${job.type.toUpperCase()} <small style="opacity:0.7">#${job.id}</small></span>
+                     <span style="font-size:12px; opacity:0.8">${job.status.toUpperCase()}</span>
+                  </div>
+                  <div style="font-size:12px; color:#aaa; margin-bottom:5px;">
+                     ${job.filename} <span style="opacity:0.5">(${job.preset || ''})</span>
+                  </div>
+                  ${job.error ? `<div style="color:#ff1744; font-size:11px;">Error: ${job.error}</div>` : ''}
+                  ${job.status === 'running' ? `
+                    <div style="background:rgba(255,255,255,0.1); height:4px; border-radius:2px; margin-top:5px; overflow:hidden;">
+                       <div style="background:#2979ff; width:${job.progress}%; height:100%;"></div>
+                    </div>` : ''}
+                `;
+            queue.appendChild(div);
+          });
+        } else {
+          queue.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">No active jobs</div>';
+        }
+      } catch (e) {
+        console.error("Job refresh error:", e);
+      }
+    }
+
+    async function runFfmpegPreset(type) {
+      let filename, preset, options = {};
+
+      if (type === 'remux') {
+        filename = document.getElementById('remux-file-input').value;
+        preset = document.getElementById('remux-preset').value;
+      } else if (type === 'reencode') {
+        filename = document.getElementById('reencode-file-input').value;
+        preset = document.getElementById('reencode-quality').value; // Using quality as simplified preset key for now
+        options.encoder = document.getElementById('reencode-encoder').value;
+        options.resolution = document.getElementById('reencode-resolution').value;
+      } else if (type === 'extract') {
+        filename = document.getElementById('extract-file-input').value;
+        preset = document.getElementById('extract-format').value;
+        options.trackType = document.getElementById('extract-type').value;
+      }
+
+      if (!filename) {
+        showToast('Please select a file first', 2000, true);
+        return;
+      }
+
+      const password = sessionStorage.getItem('ffmpeg_password');
+
+      try {
+        const response = await fetch('/api/ffmpeg/run-preset', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            password,
+            type,
+            filename,
+            preset,
+            options
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showToast('Job started successfully!', 2000);
+          refreshFfmpegJobs();
+          startJobPolling();
+        } else {
+          showToast(data.error || 'Failed to start job', 3000, true);
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Request failed', 3000, true);
+      }
+    }
+
+    let pollingInterval;
+    function startJobPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(refreshFfmpegJobs, 2000);
+    }
+
+    // Auto-login check if session matches
+    if (sessionStorage.getItem('ffmpeg_password')) {
+      // Ideally verify, but for UX immediately try to show content if we trust session
+      authenticateFfmpeg();
+    }
 
     window.openExternalModal = openExternalModal;
   </script>
