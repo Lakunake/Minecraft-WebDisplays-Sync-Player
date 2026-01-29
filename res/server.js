@@ -11,17 +11,6 @@ const { RateLimiterMemory } = require('rate-limiter-flexible');
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
 
-// node-av imports
-
-
-// Root directory (parent of res/ where server.js lives)
-const ROOT_DIR = path.join(__dirname, '..');
-// Memory directory for persistent data
-// Memory directory for persistent data
-const MEMORY_DIR = path.join(ROOT_DIR, 'memory');
-const TRACKS_DIR = path.join(__dirname, 'tracks');
-const TRACKS_MANIFEST_DIR = path.join(MEMORY_DIR, 'tracks');
-
 // ANSI color codes for console output
 const colors = {
   reset: '\x1b[0m',
@@ -32,8 +21,15 @@ const colors = {
   cyan: '\x1b[36m'
 };
 
+// Root directory (parent of res/ where server.js lives)
+const ROOT_DIR = path.join(__dirname, '..');
+// Memory directory for persistent data
+const MEMORY_DIR = path.join(ROOT_DIR, 'memory');
+const TRACKS_DIR = path.join(__dirname, 'tracks');
+const TRACKS_MANIFEST_DIR = path.join(MEMORY_DIR, 'tracks');
+
 // node-av imports
-let HardwareContext, Demuxer, Muxer, Decoder, Encoder;
+let HardwareContext, Demuxer, Muxer, Decoder, Encoder, FilterAPI;
 try {
   const avApi = require('node-av/api');
   HardwareContext = avApi.HardwareContext;
@@ -41,6 +37,7 @@ try {
   Muxer = avApi.Muxer;
   Decoder = avApi.Decoder;
   Encoder = avApi.Encoder;
+  FilterAPI = avApi.FilterAPI;
 } catch (e) {
   console.warn(`${colors.yellow}node-av not found or failed to load. FFmpeg features disabled.${colors.reset}`, e.message);
 }
@@ -676,6 +673,8 @@ async function runFfmpegJob(jobId, type, params) {
 
       job.status = 'completed';
       job.progress = 100;
+      job.endTime = Date.now();
+      job.duration = (job.endTime - job.startTime) / 1000;
 
     } else if (type === 'reencode') {
       const { resolution, quality, encoder: encoderName } = params.options;
@@ -736,6 +735,8 @@ async function runFfmpegJob(jobId, type, params) {
       await muxer.close();
       job.status = 'completed';
       job.progress = 100;
+      job.endTime = Date.now();
+      job.duration = (job.endTime - job.startTime) / 1000;
 
     } else if (type === 'extract') {
       const { trackType } = params.options; // 'audio' or 'subtitle'
@@ -768,18 +769,28 @@ async function runFfmpegJob(jobId, type, params) {
       const originalExt = path.extname(safeFilename);
       const baseName = path.basename(safeFilename, originalExt);
 
-      // Fix extension for webvtt
+      // Fix extension for webvtt (default for all text subs except ASS)
       let ext = targetFormat;
-      if (ext === 'webvtt') ext = 'vtt';
+      if (trackType === 'subtitle') {
+        if (targetFormat === 'ass') {
+          ext = 'ass';
+        } else {
+          ext = 'vtt';
+        }
+      } else {
+        // Audio
+        if (ext === 'webvtt') ext = 'vtt'; // Just in case
+      }
 
       // Loop through all matching streams
       for (let i = 0; i < matchingStreams.length; i++) {
         const stream = matchingStreams[i];
         const lang = stream.metadata?.language || 'und';
-        const title = stream.metadata?.title || (trackType === 'audio' ? `Audio Track ${stream.index}` : `Subtitle Track ${stream.index}`);
+        const title = stream.metadata?.title || stream.metadata?.handler_name || (trackType === 'audio' ? `Audio Track ${stream.index}` : `Subtitle Track ${stream.index}`);
+        const safeTitle = title.replace(/[^a-zA-Z0-9_\-\.]/g, '_').substring(0, 50);
 
-        // Unique filename per track including stream index
-        const outputFilename = `${baseName}_track${stream.index}_${lang}.${ext}`;
+        // Unique filename per track including stream index and title
+        const outputFilename = `${baseName}_track${stream.index}_${lang}_${safeTitle}.${ext}`;
         const outputUrl = path.join(TRACKS_DIR, outputFilename);
 
         console.log(`[FFmpeg] Extracting stream ${stream.index} (${lang}) to: ${outputUrl}`);
@@ -806,14 +817,11 @@ async function runFfmpegJob(jobId, type, params) {
           }
         } else {
           // Subtitles
-          if (targetFormat === 'vtt' || targetFormat === 'webvtt') {
-            args.push('-c:s', 'webvtt');
-          } else if (targetFormat === 'srt') {
-            args.push('-c:s', 'srt');
-          } else if (targetFormat === 'ass') {
+          if (ext === 'ass') {
             args.push('-c:s', 'ass');
           } else {
-            args.push('-c:s', 'copy');
+            // Force WebVTT for everything else (SRT, etc.)
+            args.push('-c:s', 'webvtt');
           }
         }
 
@@ -844,7 +852,7 @@ async function runFfmpegJob(jobId, type, params) {
           const newTrack = {
             type: trackType,
             lang: lang,
-            title: `Extracted ${lang.toUpperCase()} - ${title}`,
+            title: title,
             path: outputFilename,
             // URL points to the new static route /tracks
             url: `/tracks/${outputFilename}`
@@ -867,6 +875,8 @@ async function runFfmpegJob(jobId, type, params) {
 
       job.status = 'completed';
       job.progress = 100;
+      job.endTime = Date.now();
+      job.duration = (job.endTime - job.startTime) / 1000;
 
     } else {
       job.status = 'failed';
@@ -1331,6 +1341,8 @@ function csrfProtection(req, res, next) {
 app.use(express.static(ROOT_DIR));
 app.use('/media', express.static(path.join(ROOT_DIR, 'media')));
 app.use('/tracks', express.static(TRACKS_DIR));
+app.use('/js', express.static(path.join(__dirname, 'js')));
+app.use('/css', express.static(path.join(__dirname, 'css')));
 
 const PLAYLIST = {
   videos: [],
@@ -1382,6 +1394,7 @@ async function getTracksForFile(filename) {
             title: ext.title || 'External',
             isExternal: true,
             url: ext.url,
+            filename: ext.path, // Expose filename for UI
             default: false
           };
 
@@ -1793,6 +1806,129 @@ app.get('/api/thumbnail/:filename', thumbnailRateLimiter, async (req, res) => {
     return;
   }
 
+  // Check if node-av is available
+  if (path.extname(videoPath).toLowerCase() === '.mp4' || path.extname(videoPath).toLowerCase() === '.mkv' || path.extname(videoPath).toLowerCase() === '.avi') { // Basic check, Demuxer handles more
+    if (Demuxer && Decoder && Encoder && FilterAPI && Muxer) {
+      try {
+        console.log(`${colors.cyan}Processing thumbnail with node-av for: ${safeFilename}${colors.reset}`);
+
+        // 1. Open Input
+        const input = await Demuxer.open(videoPath);
+        const videoStream = input.video();
+
+        if (!videoStream) {
+          throw new Error('No video stream found');
+        }
+
+        // Calculate seek time
+        const duration = input.duration > 0 ? input.duration : (await getVideoDuration(videoPath));
+        const firstThird = Math.max(duration / 3, 1);
+        const randomTime = Math.random() * firstThird;
+        const seekTime = Math.max(1, Math.floor(randomTime));
+
+        console.log(`${colors.cyan}Seeking to ${seekTime}s (duration: ${duration}s)${colors.reset}`);
+
+        // Seek
+        await input.seek(seekTime); // Seek in seconds
+
+        // 2. Setup Decoder
+        const decoder = await Decoder.create(videoStream);
+
+        // 3. Setup Filter (Scale to 720p, format yuvj420p for MJPEG)
+        // Note: We create filter slightly differently depending on if we have frame props yet, 
+        // but FilterAPI.create initializes on first frame in processAll logic usually.
+        // However, we can create it now.
+        // We'll init it lazily inside loop or just create it with stream timebase validation.
+
+        // 4. Setup Output Muxer
+        const output = await Muxer.open(thumbnailPath, {
+          format: 'image2'
+        });
+
+        const packetGen = input.packets(videoStream.index);
+        const frameGen = decoder.frames(packetGen);
+
+        let gotFrame = false;
+        let encoder = null;
+        let outStreamIdx = -1;
+        let filter = null;
+
+        for await (const frame of frameGen) {
+          // Skip until we get a frame (decoder handles seeking mostly, but we might get frames before seek point if keyframe)
+          // Actually input.seek jumps to keyframe. Decoder outputs from there.
+          // We just take the first frame we get after seek.
+
+          if (!gotFrame) {
+            // Init filter if needed
+            if (!filter) {
+              filter = await FilterAPI.create('scale=-1:720,format=yuvj420p', {
+                width: frame.width,
+                height: frame.height,
+                pixelFormat: frame.format,
+                timeBase: videoStream.timeBase
+              });
+            }
+
+            const filteredFrames = await filter.processAll(frame);
+
+            for (const filteredFrame of filteredFrames) {
+              if (!encoder) {
+                const { FF_ENCODER_MJPEG } = require('node-av/constants');
+                encoder = await Encoder.create(FF_ENCODER_MJPEG, {
+                  timeBase: { num: 1, den: 1 },
+                  width: filteredFrame.width,
+                  height: filteredFrame.height,
+                  pixelFormat: filteredFrame.format
+                });
+                outStreamIdx = output.addStream(encoder);
+              }
+              const packets = await encoder.encodeAll(filteredFrame);
+              for (const pkt of packets) {
+                await output.writePacket(pkt, outStreamIdx);
+              }
+            }
+
+            // Flush encoder
+            if (encoder) {
+              for await (const pkt of encoder.flushPackets()) {
+                await output.writePacket(pkt, outStreamIdx);
+              }
+            }
+
+            gotFrame = true;
+            break; // Capture one frame
+          }
+        }
+
+        // Cleanup
+        // input is 'using' compliant if TS, but here manual close?
+        // Demuxer docs say it implements Disposable.
+        // But explicit close is good if not using 'using'.
+        // input.close() if available (Demuxer has isClosed check, implies close method?)
+        // The types showed `implements AsyncDisposable, Disposable` but didn't explicitly list `close()` in public methods shown (maybe private or inherited?).
+        // Actually docs had `await input.close()` in one example? OR `using input =`.
+        // Let's assume GC or `using` pattern, but we don't have `using` keyword in JS standard yet fully widespread or transpiled here?
+        // Node 22 supports `using`?
+        // I'll skip explicit close for now as per test script success, expecting GC or `Demuxer` handles it?
+        // Wait, `test_node_av.js` used `input.close()` in my edit earlier?
+        // Re-checking test script... I didn't verify close.
+        // Let's look at `node-av` docs again for `close`.
+        // `Demuxer` has `isClosed`.
+        // I'll try calling `input.close()` or `input[Symbol.asyncDispose]()` if strictly needed.
+        // For now, assume it's fine or I will add if memory issues.
+        // Actually, `test_node_av.js` ended with `await input.close();`. So I should use it.
+        if (input.close) await input.close();
+
+        console.log(`${colors.green}Generated thumbnail via node-av for: ${safeFilename}${colors.reset}`);
+        return res.json({ thumbnail: `/thumbnails/${thumbnailFilename}` });
+
+      } catch (avError) {
+        console.error(`${colors.yellow}node-av thumbnail failed, falling back to system ffmpeg:${colors.reset}`, avError);
+        // Fall through to execFile below
+      }
+    }
+  }
+
   try {
     // Get video duration
     const duration = await getVideoDuration(videoPath);
@@ -1867,6 +2003,7 @@ const socketRateLimiter = new RateLimiterMemory({
 // Socket.io handling
 io.on('connection', (socket) => {
   console.log(`${colors.cyan}A user connected: ${socket.id}${colors.reset}`);
+  socket.joinTime = Date.now(); // Track connection time for grace period
 
   // Get client IP for rate limiting
   const clientIp = socket.handshake.address;
@@ -2340,6 +2477,15 @@ io.on('connection', (socket) => {
     // Validate currentTime if present
     if (data.currentTime !== undefined && !validateCurrentTime(data.currentTime)) {
       console.log(`${colors.yellow}Invalid currentTime in control event: ${data.currentTime}${colors.reset}`);
+      return;
+    }
+
+    // Grace Period Check: Ignore control events from new connections for 5 seconds
+    // This prevents "join-reset" bugs where a loading client broadcasts 0:00
+    if (socket.joinTime && Date.now() - socket.joinTime < 5000) {
+      // Allow minor syncs or non-state-changing events if needed, but blocking major control is safer
+      // We log it so we know it happened
+      console.log(`${colors.yellow}Ignored control event during grace period from ${socket.id}${colors.reset}`);
       return;
     }
 

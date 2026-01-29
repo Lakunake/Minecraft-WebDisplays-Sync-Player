@@ -1,0 +1,617 @@
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      background: black;
+      display: none;
+    }
+
+    #image-display {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: black;
+      display: none;
+    }
+
+    /* YouTube Player Container */
+    #youtube-container {
+      width: 100%;
+      height: 100%;
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #youtube-container.visible {
+      display: block;
+    }
+
+    .player-container {
+      width: 100%;
+      height: 100%;
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: black;
+      z-index: 5;
+      /* Below overlays but above background */
+    }
+
+    .player-container.visible {
+      display: block;
+    }
+
+    #iframe-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    #youtube-player {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Overlay to capture clicks on YouTube */
+    #youtube-click-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      cursor: pointer;
+    }
+
+    /* Make iframe ignore mouse events - our overlay handles them */
+    #youtube-container iframe {
+      pointer-events: none;
+    }
+
+    /* NOTE: YouTube iframe content cannot be styled via CSS due to cross-origin policy.
+       The controls=0 player param hides most UI, but some branding may still appear. */
+
+    video::-webkit-media-controls,
+    video::-moz-media-controls {
+      display: none !important;
+    }
+
+    #status {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      z-index: 100;
+      pointer-events: none;
+      text-shadow: 1px 1px 2px black;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #status.visible {
+      opacity: 1;
+    }
+
+    #waiting-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 24px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      z-index: 90;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px 40px;
+      border-radius: 10px;
+    }
+
+    #preload-video {
+      display: none;
+    }
+
+    #current-track-info {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      color: rgba(255, 255, 255, 0.7);
+      background: rgba(0, 0, 0, 0.5);
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      z-index: 90;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #current-track-info.visible {
+      opacity: 1;
+    }
+
+    /* Subtitle Overlay */
+    #subtitle-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 80;
+      /* Below UI controls but above video */
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding-bottom: 50px;
+      /* Safe area */
+      overflow: hidden;
+    }
+
+    .subtitle-line {
+      text-align: center;
+      color: white;
+      text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        0px 2px 2px rgba(0, 0, 0, 0.8);
+      font-family: 'Arial', sans-serif;
+      margin-bottom: 5px;
+      line-height: 1.4;
+      max-width: 90%;
+    }
+
+    .subtitle-line.vtt-style {
+      font-size: clamp(16px, 4vw, 32px);
+      background: rgba(0, 0, 0, 0.5);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .subtitle-line.ass-style {
+      /* ASS subtitles often position themselves, but for basic support we stack effectively */
+      /* Font size will be dynamic via JS */
+      font-weight: bold;
+    }
+
+    /* BSL-S² Styles */
+    #bsl-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 300;
+    }
+
+    #bsl-overlay.visible {
+      display: flex;
+    }
+
+    .bsl-prompt {
+      background: #252525;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      max-width: 500px;
+    }
+
+    .bsl-prompt h2 {
+      color: #9C27B0;
+      margin-bottom: 15px;
+    }
+
+    .bsl-prompt p {
+      color: #aaa;
+      margin-bottom: 20px;
+    }
+
+    .bsl-btn {
+      background: #9C27B0;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.2s;
+    }
+
+    .bsl-btn:hover {
+      background: #7B1FA2;
+    }
+
+    .bsl-result {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .bsl-result.success {
+      background: #2c5f2d;
+    }
+
+    .bsl-result.partial {
+      background: #FF9800;
+      color: #333;
+    }
+
+    .bsl-btn-skip {
+      background: transparent;
+      color: #888;
+      border: 1px solid #555;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 10px;
+      transition: all 0.2s;
+    }
+
+    .bsl-btn-skip:hover {
+      color: #fff;
+      border-color: #888;
+    }
+
+    .bsl-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    /* Mobile Landscape Prompt */
+    #mobile-landscape-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 250;
+    }
+
+    #mobile-landscape-overlay.visible {
+      display: flex;
+    }
+
+    .mobile-prompt {
+      background: linear-gradient(145deg, #1a1a2e, #252550);
+      border-radius: 16px;
+      padding: 35px;
+      text-align: center;
+      max-width: 340px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .mobile-prompt-icon {
+      font-size: 60px;
+      margin-bottom: 15px;
+      animation: rotate-phone 2s ease-in-out infinite;
+    }
+
+    @keyframes rotate-phone {
+
+      0%,
+      100% {
+        transform: rotate(0deg);
+      }
+
+      25% {
+        transform: rotate(-15deg);
+      }
+
+      75% {
+        transform: rotate(90deg);
+      }
+    }
+
+    .mobile-prompt h2 {
+      color: #fff;
+      margin-bottom: 10px;
+      font-size: 22px;
+    }
+
+    .mobile-prompt p {
+      color: #aaa;
+      margin-bottom: 25px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .mobile-prompt-btn {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 14px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.2s;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .mobile-prompt-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+    }
+
+    .mobile-prompt-btn.secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #888;
+    }
+
+    .mobile-prompt-btn.secondary:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      color: #ccc;
+      box-shadow: none;
+    }
+
+    #media-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      /* Below overlays, above video background */
+      color: white;
+      font-family: sans-serif;
+      background: #333;
+      /* Default dark background */
+    }
+
+    #media-placeholder .icon {
+      font-size: 100px;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+    }
+
+    #media-placeholder .text {
+      font-size: 24px;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+      padding: 10px 20px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+    }
+
+    /* Chat Widget Styles */
+    #chat-widget {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      height: 300px;
+      background: transparent;
+      z-index: 150;
+      display: none;
+      flex-direction: column;
+      font-family: 'Press Start 2P', cursive;
+      overflow: visible;
+      transition: transform 0.3s ease;
+      /* Right-anchored collapse */
+      transform: translateX(0);
+    }
+
+    #chat-widget.visible {
+      display: flex;
+    }
+
+    #chat-widget.collapsed {
+      transform: translateX(calc(100% + 20px));
+      /* Slide out fully (including 20px margin), leaving only button visible */
+    }
+
+    #chat-header {
+      position: absolute;
+      left: -30px;
+      /* Position button to the left of the main container */
+      bottom: 0px;
+      width: 30px;
+      height: 45px;
+      /* Match input height for alignment */
+      padding: 0;
+      background: transparent;
+      /* Semi-transparent button background */
+      border-radius: 4px 0 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      z-index: 160;
+      /* Ensure button stays on top */
+      transition: opacity 0.5s ease;
+      /* Smooth fade for auto-hide */
+      opacity: 0.7;
+    }
+
+    #chat-header.idle-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #chat-header-left {
+      display: none;
+      /* Hide title */
+    }
+
+    #chat-toggle-btn {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      /* Matched to input font size */
+      padding: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      font-family: 'Press Start 2P', cursive;
+    }
+
+    #chat-badge {
+      display: none !important;
+      /* Hide badge for now */
+    }
+
+    #chat-messages {
+      flex: 1;
+      overflow-y: visible;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      /* Stack bottom-up naturally */
+      justify-content: flex-end;
+      /* Align to bottom */
+      scrollbar-width: none;
+      /* Hide scrollbar */
+      pointer-events: none;
+      /* Let clicks pass through */
+    }
+
+    #chat-messages::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chat-message {
+      margin-bottom: 6px;
+      background: transparent;
+      padding: 6px 10px;
+      border-radius: 4px;
+      width: fit-content;
+      max-width: 100%;
+      pointer-events: auto;
+      transition: opacity 0.5s;
+      opacity: 1;
+    }
+
+    .chat-message.fading-slow {
+      opacity: 0;
+      transition: opacity 2s ease-out;
+    }
+
+    .chat-message.fading-fast {
+      opacity: 0;
+      transition: opacity 0.5s ease-out;
+    }
+
+    .chat-message .sender {
+      color: #a0a0ff;
+      font-size: 8px;
+      margin-right: 5px;
+      display: inline;
+    }
+
+    .chat-message .text {
+      color: #fff;
+      font-size: 8px;
+      display: inline;
+      word-wrap: break-word;
+      line-height: 1.4;
+    }
+
+    .chat-message.own .sender {
+      color: #80b0ff;
+    }
+
+    .chat-message.system {
+      background: transparent;
+      text-align: left;
+      color: #FFFF00;
+      font-size: 7px;
+      padding: 2px 5px;
+    }
+
+    /* Hide message area when collapsed (optional, but transformation handles visible hiding) */
+    /* We don't hide because we want the toggle button to be part of the widget's transform */
+
+    #chat-input-area {
+      display: flex;
+      padding: 0;
+      background: transparent;
+      border: none;
+      margin-top: 5px;
+      align-items: center;
+    }
+
+    .chat-label {
+      color: #00FF00;
+      font-size: 10px;
+      /* Increased to visual match new input size */
+      margin-right: 5px;
+      text-shadow: 1px 1px 0 #000;
+      opacity: 0.7;
+    }
+
+    #chat-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 0;
+      /* Fix clipping: Use fixed height and vertical alignment */
+      height: 45px;
+      /* Greatly increased to afford larger font */
+      padding: 0 15px;
+      /* Horizontal padding only */
+      color: #fff;
+      /* switched to monospace for better readability and to fix clipping */
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      /* Significantly larger */
+      line-height: 45px;
+      /* Match height for centering */
+      outline: none;
+      opacity: 0.8;
+    }
+
+    #chat-input:focus {
+      border-color: #00FF00;
+    }
+
+    #chat-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      /* Match input font size */
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      /* Ensure same font family */
+    }
+
+    #chat-send {
+      display: none;
+      /* Hide send button, rely on Enter */
+    }
