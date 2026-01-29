@@ -118,8 +118,13 @@ class SubtitleRenderer {
             }
 
             if (section === '[Script Info]') {
-                if (line.startsWith('PlayResX:')) this.assParams.playResX = parseInt(line.split(':')[1]);
-                if (line.startsWith('PlayResY:')) this.assParams.playResY = parseInt(line.split(':')[1]);
+                const parts = line.split(':');
+                if (parts.length >= 2) {
+                    const key = parts[0].trim();
+                    const value = parts[1].trim();
+                    if (key === 'PlayResX') this.assParams.playResX = parseInt(value);
+                    if (key === 'PlayResY') this.assParams.playResY = parseInt(value);
+                }
             }
             else if (section === '[V4+ Styles]' || section === '[V4 Styles]') {
                 if (line.startsWith('Format:')) {
@@ -269,6 +274,7 @@ class SubtitleRenderer {
 
         // Check for \move(x1, y1, x2, y2, [t1, t2])
         // Regex handles optional t1, t2
+        const moveMatch = text.match(/\\move\s*\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)(?:\s*,\s*(\d+)\s*,\s*(\d+))?\s*\)/);
         if (moveMatch) {
             overrides.move = {
                 x1: parseFloat(moveMatch[1]),
@@ -440,8 +446,9 @@ class SubtitleRenderer {
         this.overlay.innerHTML = '';
         if (this.activeCues.length === 0) return;
 
-        const containerWidth = this.video.clientWidth || window.innerWidth;
-        const containerHeight = this.video.clientHeight || window.innerHeight;
+        // Overlay is now sized to the video content, so we use its dims
+        const containerWidth = this.overlay.clientWidth;
+        const containerHeight = this.overlay.clientHeight;
 
         // Calculate scaling factor
         // ASS coordinates are based on PlayResX/Y
@@ -482,6 +489,7 @@ class SubtitleRenderer {
                 const shadowColor = style.BackColour ? this.assColorToCss(style.BackColour) : 'rgba(0,0,0,0.5)';
                 const bold = style.Bold === '-1' || style.Bold === '1';
                 const italic = style.Italic === '-1' || style.Italic === '1';
+                const outlineWidth = (parseFloat(style.Outline) || 2) * scaleX;
 
                 // Positioning
                 // Default alignment
@@ -575,7 +583,8 @@ class SubtitleRenderer {
                 if (italic) div.style.fontStyle = 'italic';
 
                 // Outline/Shadow
-                const outlineWidth = (parseInt(style.Outline) || 1) * scaleX;
+                // Already defined above: outlineWidth
+
                 // CSS text-stroke is non-standard but widely supported. Text-shadow is safer.
                 // Simulating outline with text-shadow
                 if (outlineWidth > 0) {
@@ -682,7 +691,42 @@ class SubtitleRenderer {
     }
 
     resize() {
-        // Re-render to update scaling
+        if (!this.video || !this.overlay) return;
+
+        // Calculate real video dimensions (content rect)
+        const vidW = this.video.videoWidth;
+        const vidH = this.video.videoHeight;
+        if (!vidW || !vidH) return; // Video not loaded yet
+
+        const containerW = this.video.clientWidth || window.innerWidth;
+        const containerH = this.video.clientHeight || window.innerHeight;
+
+        const vidRatio = vidW / vidH;
+        const containerRatio = containerW / containerH;
+
+        let realW, realH, osX, osY;
+
+        if (containerRatio > vidRatio) {
+            // Container is wider (Pillarbox)
+            realH = containerH;
+            realW = realH * vidRatio;
+            osX = (containerW - realW) / 2;
+            osY = 0;
+        } else {
+            // Container is taller (Letterbox)
+            realW = containerW;
+            realH = realW / vidRatio;
+            osX = 0;
+            osY = (containerH - realH) / 2;
+        }
+
+        // Apply to overlay
+        this.overlay.style.width = `${realW}px`;
+        this.overlay.style.height = `${realH}px`;
+        this.overlay.style.left = `${osX}px`;
+        this.overlay.style.top = `${osY}px`;
+
+        // Re-render to update scaling with new Overlay dimensions
         if (this.activeCues.length > 0) {
             this.render();
         }

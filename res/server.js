@@ -1438,19 +1438,17 @@ async function getTracksForFile(filename) {
             default: isDefault
           };
 
-          if (stream.codecpar?.type === 'audio' || stream.codecpar?.codecType === 1) { // 1 = AVMEDIA_TYPE_AUDIO usually
-            // Let's verify type safely. The high-level 'video()' method finds video.
-            // stream.codecpar.type string is usually populated in wrappers.
+          // Note: node-av 5.x CodecParameters uses getters (codecType, codecId)
+          if (stream.codecpar?.codecType === 1 || (stream.codecpar?.type === 'audio')) { // 1 = AVMEDIA_TYPE_AUDIO
             tracks.audio.push(trackInfo);
           } else if (stream.codecpar?.type === 'subtitle' || stream.codecpar?.codecType === 3) { // 3 = SUBTITLE
-            tracks.subtitles.push(trackInfo);
+            // User requested to HIDE internal subtitles to force use of extracted sidecars.
+            // tracks.subtitles.push(trackInfo); 
           }
 
           // Fallback: check codec name/type strings if available directly on stream
-          // If the above is specific to detailed C-bindings, high-level API might just have .type() 
-          // For now, let's try strict check on 'audio'/'subtitle' strings which node-av likely exposes.
           if (stream.type === 'audio') tracks.audio.push(trackInfo);
-          if (stream.type === 'subtitle') tracks.subtitles.push(trackInfo);
+          // if (stream.type === 'subtitle') tracks.subtitles.push(trackInfo); // Internal subtitles disabled
         }
 
         // Remove duplicates if my logic matched twice (paranoid check)
@@ -1730,28 +1728,45 @@ if (!fs.existsSync(THUMBNAIL_DIR)) {
 // Serve thumbnails from temp directory
 app.use('/thumbnails', express.static(THUMBNAIL_DIR));
 
-// Get video duration using ffprobe
-function getVideoDuration(videoPath) {
-  return new Promise((resolve, reject) => {
-    execFile('ffprobe', [
-      '-v', 'quiet',
-      '-print_format', 'json',
-      '-show_format',
-      videoPath
-    ], (error, stdout) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      try {
-        const data = JSON.parse(stdout);
-        const duration = parseFloat(data.format.duration) || 0;
-        resolve(duration);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  });
+// Get video duration using node-av
+async function getVideoDuration(videoPath) {
+  let demuxer = null;
+  try {
+    if (Demuxer) {
+      demuxer = await Demuxer.open(videoPath);
+      // demuxer.duration is in seconds (float)
+      return demuxer.duration || 0;
+    } else {
+      // Fallback to ffprobe if node-av failed to load (though unlikely if Demuxer is defined)
+      return new Promise((resolve, reject) => {
+        execFile('ffprobe', [
+          '-v', 'quiet',
+          '-print_format', 'json',
+          '-show_format',
+          videoPath
+        ], (error, stdout) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          try {
+            const data = JSON.parse(stdout);
+            const duration = parseFloat(data.format.duration) || 0;
+            resolve(duration);
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+    }
+  } catch (err) {
+    console.error(`Error getting duration for ${videoPath}:`, err.message);
+    return 0;
+  } finally {
+    if (demuxer) {
+      await demuxer.close();
+    }
+  }
 }
 
 // Generate thumbnail from video using FFmpeg (720p, random frame from first third)
@@ -1788,22 +1803,70 @@ app.get('/api/thumbnail/:filename', thumbnailRateLimiter, async (req, res) => {
     console.log(`${colors.cyan}Extracting cover art from audio file: ${safeFilename}${colors.reset}`);
 
     // Extract embedded cover art from audio file
-    execFile('ffmpeg', [
-      '-i', videoPath,
-      '-an',
-      '-vcodec', 'copy',
-      '-y',
-      thumbnailPath
-    ], (error) => {
-      if (error) {
-        console.log(`${colors.yellow}No embedded cover art found in: ${safeFilename}${colors.reset}`);
-        // Return a default audio icon or null
-        return res.json({ thumbnail: null, isAudio: true });
+    // Extract embedded cover art from audio file using node-av
+    try {
+      if (!Demuxer) throw new Error('node-av Demuxer not available');
+
+      console.log(`${colors.cyan}Processing audio cover art with node-av for: ${safeFilename}${colors.reset}`);
+
+      const input = await Demuxer.open(videoPath);
+      let coverStream = null;
+
+      // 1. Look for stream with AV_DISPOSITION_ATTACHED_PIC (0x0400 = 1024)
+      for (const stream of input.streams) {
+        if (stream.disposition & 1024) {
+          coverStream = stream;
+          break;
+        }
       }
-      console.log(`${colors.green}Extracted cover art from: ${safeFilename}${colors.reset}`);
-      res.json({ thumbnail: `/thumbnails/${thumbnailFilename}`, isAudio: true });
-    });
-    return;
+
+      // 2. If not found, look for a video stream (generic cover art in some containers)
+      if (!coverStream) {
+        for (const stream of input.streams) {
+          // Access via codecType getter (node-av 5.x) or try strict check
+          if (stream.codecpar && (stream.codecpar.codecType === 0 || stream.codecpar.type === 'video')) { // 0 = AVMEDIA_TYPE_VIDEO
+            coverStream = stream;
+            break;
+          }
+        }
+      }
+
+      if (coverStream) {
+        console.log(`${colors.cyan}Found cover art stream #${coverStream.index}. Extracting...${colors.reset}`);
+
+        // Read first packet from this stream
+        let found = false;
+        // Iterate packets specifically for this stream
+        for await (const packet of input.packets(coverStream.index)) {
+          if (packet.streamIndex === coverStream.index) {
+            // Write packet data to file
+            if (packet.data) {
+              fs.writeFileSync(thumbnailPath, packet.data);
+              console.log(`${colors.green}Extracted cover art to: ${thumbnailPath}${colors.reset}`);
+              res.json({ thumbnail: `/thumbnails/${thumbnailFilename}`, isAudio: true });
+              found = true;
+            }
+            packet.free();
+            break; // Only need one packet
+          }
+          packet.free();
+        }
+        if (!found) {
+          console.log(`${colors.yellow}Stream found but no packets extracted.${colors.reset}`);
+          res.json({ thumbnail: null, isAudio: true });
+        }
+      } else {
+        console.log(`${colors.yellow}No embedded cover art stream found.${colors.reset}`);
+        res.json({ thumbnail: null, isAudio: true });
+      }
+
+      await input.close();
+
+    } catch (err) {
+      console.error(`${colors.red}Error extracting audio cover art: ${err.message}${colors.reset}`);
+      // Fallback or just return null
+      res.json({ thumbnail: null, isAudio: true });
+    }
   }
 
   // Check if node-av is available

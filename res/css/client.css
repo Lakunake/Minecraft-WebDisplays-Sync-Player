@@ -192,6 +192,8 @@
       /* ASS subtitles often position themselves, but for basic support we stack effectively */
       /* Font size will be dynamic via JS */
       font-weight: bold;
+      max-width: none;
+      /* Let JS handle width/margins */
     }
 
     /* BSL-S² Styles */

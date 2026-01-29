@@ -2126,3 +2126,19 @@ if (typeof socket !== 'undefined') {
     }
   });
 }
+
+// Initialize Subtitle Renderer when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof SubtitleRenderer !== 'undefined') {
+    const vid = document.getElementById('video');
+    const overlay = document.getElementById('subtitle-overlay');
+    if (vid && overlay) {
+      subtitleRenderer = new SubtitleRenderer(vid, overlay);
+      console.log('SubtitleRenderer initialized');
+    } else {
+      console.error('Video or Overlay element not found for SubtitleRenderer');
+    }
+  } else {
+    console.error('SubtitleRenderer class is not defined. Check script loading order.');
+  }
+});
