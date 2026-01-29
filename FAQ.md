@@ -9,9 +9,8 @@ md(or cd in some cases) (Your path to the code)
 npm install
 ```
 **Subtitle/Audio track changing does not work**
-> 1.10 is focusing on this so the current track system is very buggy now
 
-
+Extract Audio/Subtitle tracks and relaunch playlist through ffmpeg tools
 Enable #enable-experimental-web-platform-features through Chrome Flags(chrome://flags/) or your browser's config/flags
 
 **My friend can't see the hevc video im sharing and can only hear it**
