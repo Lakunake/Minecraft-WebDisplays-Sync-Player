@@ -7,10 +7,10 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 ---
 
 ## Requirements
-> these are auto-installed with console.ps1/run.bat
+> these are auto-installed with console.ps1/run.bat so you don't have it install it yourself
 
 * [Node.js](https://nodejs.org/) installed on your machine (v20.6.0+ required for config to work)
-* [ffmpeg](https://ffmpeg.org/) installed for high bitrate support and video optimization
+* [ffmpeg](https://ffmpeg.org/) installed for high bitrate support and video optimization (via [node-av](https://github.com/seydx/node-av))
 * Media files placed in the `/media/` folder (supports MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM, .PNG, .JPG, .WEBP)
 
 ---
@@ -23,12 +23,13 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 * Playlist support with sequential playback
 * Admin control panel for remote management
 * Real-time playback synchronization using Socket.IO
-* Lightweight Node.js + Express server
+* Lightweight Node.js + Express server (excluding media tooling)
 * Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
 * Automatic video preloading for smooth transitions
-* Dynamic Audio/Subtitle track changing *(upcoming rewrite)*
+* Dynamic Audio/Subtitle track changing supporting .ass and .vtt, you can extract these directly from admin panel
 * Minimal UI in view mode
 * Modernized UI with Glassmorphism in admin panel
+* Tab to use ffmpeg's provided tools without being
 * HTTP/HTTPS switch
 * Improved safety in multiple measures [ⓘ](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/1.9.2) + [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
 * [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
