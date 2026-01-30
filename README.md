@@ -30,7 +30,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 > implement into your own projects [here](https://www.npmjs.com/package/web-subtitle-renderer)! 
 * Minimal UI in view mode
 * Modernized UI with Glassmorphism in admin panel
-* Tab to use ffmpeg's provided tools without being
+* Tab to use ffmpeg's provided tools without needing much knowledge of using CLI
 * HTTP/HTTPS switch
 * Improved safety in multiple measures [ⓘ](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/1.9.2) + [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
 * [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
