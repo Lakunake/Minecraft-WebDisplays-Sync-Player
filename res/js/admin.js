@@ -2356,6 +2356,10 @@ async function scanEncoders() {
       badgeContainer.innerHTML = '<span class="encoder-badge">None found (CPU only)</span>';
     }
 
+    // Refresh the custom dropdown UI for the encoder select
+    const dropdown = document.getElementById('reencode-encoder');
+    setupCustomDropdown(dropdown);
+
   } catch (e) {
     console.error('Scan encoders error:', e);
   }
@@ -2379,6 +2383,8 @@ function refreshFfmpegFileList() {
         select.appendChild(opt);
       });
     }
+    // Refresh custom UI
+    setupCustomDropdown(select);
   });
 }
 
@@ -2507,8 +2513,8 @@ function setupCustomDropdown(select) {
     wrapper = document.createElement('div');
     wrapper.className = 'custom-select-wrapper';
 
-    // Drop Up Mode for specific elements (Remote Control Tracks)
-    if (select.id === 'remote-audio-track' || select.id === 'remote-subtitle-track') {
+    // Drop Up Mode for specific elements or via flag
+    if (select.id === 'remote-audio-track' || select.id === 'remote-subtitle-track' || select.dataset.dropUp === 'true') {
       wrapper.classList.add('drop-up');
     }
 
@@ -2584,3 +2590,56 @@ function setupCustomDropdown(select) {
     optionsDiv.appendChild(div);
   });
 }
+
+// ==================== Extract Tracks Filtering ====================
+function initExtractTracksFiltering() {
+  const typeSelect = document.getElementById('extract-type');
+  const formatSelect = document.getElementById('extract-format');
+
+  if (!typeSelect || !formatSelect) return;
+
+  function updateFormats() {
+    const type = typeSelect.value;
+    const options = Array.from(formatSelect.options);
+
+    let firstVisible = null;
+
+    options.forEach(opt => {
+      // Audio formats: aac, mp3
+      // Subtitle formats: webvtt, ass
+      const val = opt.value;
+      let visible = false;
+
+      if (type === 'audio') {
+        if (['aac', 'mp3'].includes(val)) visible = true;
+      } else if (type === 'subtitle') {
+        if (['webvtt', 'ass'].includes(val)) visible = true;
+      }
+
+      opt.style.display = visible ? '' : 'none';
+      if (visible && !firstVisible) firstVisible = opt;
+    });
+
+    // Update selection if current is invalid
+    const currentVal = formatSelect.value;
+    const currentOpt = options.find(o => o.value === currentVal);
+
+    // If current selection is hidden/invalid, switch to first visible
+    if (!currentOpt || currentOpt.style.display === 'none') {
+      if (firstVisible) {
+        formatSelect.value = firstVisible.value;
+      }
+    }
+
+    // Refresh custom dropdown UI
+    setupCustomDropdown(formatSelect);
+  }
+
+  typeSelect.addEventListener('change', updateFormats);
+
+  // Initial run
+  updateFormats();
+}
+
+// Run init
+document.addEventListener('DOMContentLoaded', initExtractTracksFiltering);

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sync-Player Admin Panel</title>
   <link rel="icon" href="data:,">
-<link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin.css">
 </head>
 
 <body>
@@ -492,15 +492,16 @@
                 </div>
                 <div class="ffmpeg-controls">
                   <div>
-                    <select id="extract-file-input" class="dropdown" style="width: 100%; margin-bottom: 10px;">
+                    <select id="extract-file-input" class="dropdown" data-drop-up="true"
+                      style="width: 100%; margin-bottom: 10px;">
                       <option value="">Select source file...</option>
                     </select>
                     <div style="display: flex; gap: 10px;">
-                      <select id="extract-type" class="dropdown" style="flex: 1;">
+                      <select id="extract-type" class="dropdown" data-drop-up="true" style="flex: 1;">
                         <option value="audio">Audio Tracks</option>
                         <option value="subtitle">Subtitle Tracks</option>
                       </select>
-                      <select id="extract-format" class="dropdown" style="flex: 1;">
+                      <select id="extract-format" class="dropdown" data-drop-up="true" style="flex: 1;">
                         <option value="aac">AAC (Audio)</option>
                         <option value="mp3">MP3 (Audio)</option>
                         <option value="webvtt">WebVTT (Subtitle)</option>
@@ -598,7 +599,7 @@
   </div> <!-- Close admin-ui -->
 
   <script src="/socket.io/socket.io.js"></script>
-<script src="/js/admin.js"></script>
+  <script src="/js/admin.js"></script>
 </body>
 
 </html>
