@@ -19,7 +19,7 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 
 * Multi-format streaming (MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM)
 * High Quality streaming with FFmpeg optimization
-* Both Side Local Syncronized Stream (BSL-S²) [ⓘ](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35)
+* Both Side Local Syncronized Stream ([BSL-S²](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35))
 * Playlist support with sequential playback
 * Admin control panel for remote management
 * Real-time playback synchronization using Socket.IO
