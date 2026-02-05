@@ -19,18 +19,18 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 
 * Multi-format streaming (MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM)
 * High Quality streaming with FFmpeg optimization
-* Both Side Local Syncronized Stream (BSL-S²) [ⓘ](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35)
+* Both Side Local Syncronized Stream ([BSL-S²](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35))
 * Playlist support with sequential playback
 * Admin control panel for remote management
 * Real-time playback synchronization using Socket.IO
 * Lightweight Node.js + Express server (excluding media tooling)
 * Custom video control zones  designed for the WebDisplays mod thats still usable in normal web browsers(click-based)
 * Automatic video preloading for smooth transitions
-* Dynamic Audio/Subtitle track changing supporting .ass and .vtt, you can extract these directly from admin panel
+* Dynamic Audio/Subtitle track changing supporting .ass(mostly) and .vtt, you can extract these directly from admin panel
 > implement into your own projects [here](https://www.npmjs.com/package/web-subtitle-renderer)! 
 * Minimal UI in view mode
 * Modernized UI with Glassmorphism in admin panel
-* Tab to use ffmpeg's provided tools without being
+* Tab to use ffmpeg's provided tools without needing much knowledge of using CLI
 * HTTP/HTTPS switch
 * Improved safety in multiple measures [ⓘ](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/1.9.2) + [Helmet](https://www.npmjs.com/package/helmet) for safer Direct Hosting experience
 * [Join Behaviors](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/releases/tag/goonen); Sync, and Reset
@@ -65,8 +65,10 @@ There are also 2 chat commands called /fullscreen and /rename, they work as the 
 - Main video selection with custom start time
 - File browser for media management
 - FFmpeg generated thumbnail for video from the first third of the video
+- Tab to use various ffmpeg tools
 <img width="1919" height="907" alt="image" src="https://github.com/user-attachments/assets/03b9b377-24c5-4ea3-a851-ab3386ddbc75" />
 <img width="1919" height="902" alt="image" src="https://github.com/user-attachments/assets/dcd825b6-322f-45aa-969e-b434a133a821" />
+<img width="1832" height="933" alt="image" src="https://github.com/user-attachments/assets/359ef7b1-b0c7-40d4-a734-fd16cd6c78e5" />
 
 > [!NOTE]
 >  All users will see the same video at the same time except for **volume**, which is controlled individually per client.
