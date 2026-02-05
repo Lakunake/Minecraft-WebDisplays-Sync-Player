@@ -168,3 +168,4 @@ package.json
 res/config.txt
 /res/tracks
 *.zip
+*.rar

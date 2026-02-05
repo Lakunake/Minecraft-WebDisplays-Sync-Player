@@ -149,6 +149,14 @@ if [ ! -d "media" ]; then
     mkdir -p media
     echo "Created media directory"
 fi
+if [ ! -d "res/tracks" ]; then
+    mkdir -p res/tracks
+    echo "Created res/tracks directory"
+fi
+if [ ! -d "memory/tracks" ]; then
+    mkdir -p memory/tracks
+    echo "Created memory/tracks directory"
+fi
 
 # =================================================================
 # Check and Install Dependencies (in res/ directory)
@@ -156,7 +164,7 @@ fi
 echo "Checking required dependencies..."
 
 MISSING_DEPS=false
-REQUIRED_PACKAGES=("express" "socket.io" "helmet" "express-rate-limit" "rate-limiter-flexible" "cookie-parser")
+REQUIRED_PACKAGES=("express" "socket.io" "helmet" "express-rate-limit" "rate-limiter-flexible" "cookie-parser" "node-av" "fast-deep-equal")
 
 if [ ! -d "res/node_modules" ]; then
     MISSING_DEPS=true
@@ -174,13 +182,17 @@ else
     fi
 fi
 
-# Check FFmpeg
+# Check FFmpeg (Skip if node-av is installed)
 MISSING_FFMPEG=false
-if ! command -v ffmpeg &> /dev/null; then
-    MISSING_FFMPEG=true
-    write_status "MISSING" "FFmpeg (required for video processing)"
+if [ -d "res/node_modules/node-av" ]; then
+    write_status "OK" "FFmpeg bundled with node-av"
 else
-    write_status "OK" "FFmpeg found"
+    if ! command -v ffmpeg &> /dev/null; then
+        MISSING_FFMPEG=true
+        write_status "MISSING" "FFmpeg (required for video processing)"
+    else
+        write_status "OK" "FFmpeg found"
+    fi
 fi
 
 # Install missing Node.js dependencies (run npm from res/ directory)
@@ -361,7 +373,7 @@ fi
 # Display server information
 # =================================================================
 echo ""
-echo -e "\033[36mSync-Player 1.10.0\033[0m"
+echo -e "\033[36mSync-Player 1.10.2\033[0m"
 echo -e "\033[36m==========================\033[0m"
 echo ""
 echo -e "\033[33mSettings:\033[0m"
@@ -380,9 +392,11 @@ echo "- Chat: ${CHAT_ENABLED:-true}"
 echo "- Data Hydration: ${DATA_HYDRATION:-true}"
 echo ""
 echo -e "\033[33mAccess URLs:\033[0m"
-echo "- Your network: http://${LOCAL_IP}:${PORT}"
-echo "- Admin Panel: http://${LOCAL_IP}:${PORT}/admin"
-echo "- Testing purposes: http://localhost:${PORT}"
+PROTOCOL="http"
+if [ "$USE_HTTPS" = "true" ]; then PROTOCOL="https"; fi
+echo "- Your network: ${PROTOCOL}://${LOCAL_IP}:${PORT}"
+echo "- Admin Panel: ${PROTOCOL}://${LOCAL_IP}:${PORT}/admin"
+echo "- Testing purposes: ${PROTOCOL}://localhost:${PORT}"
 echo ""
 echo -e "\033[33mFirewall: Manual configuration may be required for network access\033[0m"
 echo ""
@@ -407,7 +421,7 @@ write_status "DEBUG" "Starting server with port $PORT..."
 # Clear retry counter on successful start
 [ -f "$RETRY_FILE" ] && rm -f "$RETRY_FILE"
 
-node res/server.js "$LOCAL_IP"
+node --env-file-if-exists=config.env res/server.js "$LOCAL_IP"
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then

@@ -95,6 +95,69 @@ if (!fs.existsSync(TRACKS_MANIFEST_DIR)) {
   fs.mkdirSync(TRACKS_MANIFEST_DIR, { recursive: true });
 }
 
+// =================================================================
+// Stale Track Cleanup - Delete tracks for media files missing > 7 days
+// =================================================================
+function cleanupStaleTracks() {
+  const STALE_DAYS = 7;
+  const NOW = Date.now();
+  const STALE_MS = STALE_DAYS * 24 * 60 * 60 * 1000;
+
+  if (!fs.existsSync(TRACKS_MANIFEST_DIR)) return;
+
+  const jsonFiles = fs.readdirSync(TRACKS_MANIFEST_DIR).filter(f => f.endsWith('.json'));
+  let cleaned = 0;
+
+  for (const jsonFile of jsonFiles) {
+    const videoFilename = jsonFile.replace('.json', '');
+    const mediaPath = path.join(ROOT_DIR, 'media', videoFilename);
+    const jsonPath = path.join(TRACKS_MANIFEST_DIR, jsonFile);
+
+    try {
+      const trackData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+
+      if (fs.existsSync(mediaPath)) {
+        // Media exists - update lastSeen
+        trackData.lastSeen = NOW;
+        fs.writeFileSync(jsonPath, JSON.stringify(trackData, null, 2));
+      } else {
+        // Media missing - check if stale
+        const lastSeen = trackData.lastSeen || NOW;
+
+        if (NOW - lastSeen > STALE_MS) {
+          // Delete track files
+          if (trackData.externalTracks) {
+            for (const track of trackData.externalTracks) {
+              const trackPath = path.join(TRACKS_DIR, track.path);
+              if (fs.existsSync(trackPath)) {
+                fs.unlinkSync(trackPath);
+                console.log(`[Cleanup] Deleted stale track: ${track.path}`);
+              }
+            }
+          }
+          // Delete JSON
+          fs.unlinkSync(jsonPath);
+          console.log(`[Cleanup] Deleted stale metadata: ${jsonFile}`);
+          cleaned++;
+        } else if (!trackData.lastSeen) {
+          // First time missing - set lastSeen
+          trackData.lastSeen = NOW;
+          fs.writeFileSync(jsonPath, JSON.stringify(trackData, null, 2));
+        }
+      }
+    } catch (err) {
+      // Silently ignore corrupt files
+    }
+  }
+
+  if (cleaned > 0) {
+    console.log(`[Cleanup] Removed ${cleaned} stale track entries`);
+  }
+}
+
+// Run cleanup at startup
+cleanupStaleTracks();
+
 // Read and parse config file
 function readConfig() {
   const configEnvPath = path.join(ROOT_DIR, 'config.env');
@@ -109,10 +172,26 @@ function readConfig() {
       configData.split('\n').forEach(line => {
         line = line.trim();
         if (line && !line.startsWith('#')) {
-          const parts = line.split(':');
-          const key = parts.shift().trim();
-          const value = parts.join(':').trim();
-          if (key && value) config[key] = value;
+          // Support both KEY=value (env format) and key: value (legacy format)
+          let key, value;
+          if (line.includes('=')) {
+            const eqIdx = line.indexOf('=');
+            key = line.substring(0, eqIdx).trim();
+            value = line.substring(eqIdx + 1).trim();
+          } else if (line.includes(':')) {
+            const parts = line.split(':');
+            key = parts.shift().trim();
+            value = parts.join(':').trim();
+          }
+          if (key && value !== undefined) {
+            // Map SYNC_* environment variable names to snake_case config keys
+            if (key.startsWith('SYNC_')) {
+              const mappedKey = key.substring(5).toLowerCase(); // SYNC_PORT -> port
+              config[mappedKey] = value;
+            } else {
+              config[key] = value;
+            }
+          }
         }
       });
 
@@ -233,6 +312,13 @@ const validators = {
       return { valid: false, error: `Must be ${min}-${max}` };
     }
     return { valid: true, value: num };
+  },
+  subtitleRenderer: (v) => {
+    const val = String(v).toLowerCase();
+    if (!['wsr', 'jassub'].includes(val)) {
+      return { valid: false, error: 'Must be "wsr" or "jassub"' };
+    }
+    return { valid: true, value: val };
   }
 };
 
@@ -257,7 +343,8 @@ const config = {
   chat_enabled: getConfig('SYNC_CHAT_ENABLED', 'chat_enabled', 'true'),
   data_hydration: getConfig('SYNC_DATA_HYDRATION', 'data_hydration', 'true'),
   max_volume: String(getConfig('SYNC_MAX_VOLUME', 'max_volume', '100', validators.range(100, 1000))),
-  ffmpeg_tools_password: getConfig('SYNC_FFMPEG_TOOLS_PASSWORD', 'ffmpeg_tools_password', '')
+  ffmpeg_tools_password: getConfig('SYNC_FFMPEG_TOOLS_PASSWORD', 'ffmpeg_tools_password', ''),
+  subtitle_renderer: getConfig('SYNC_SUBTITLE_RENDERER', 'subtitle_renderer', 'wsr', validators.subtitleRenderer)
 };
 
 // Log config source (Disabled)
@@ -349,7 +436,6 @@ if (config.use_https === 'true') {
         cert: fs.readFileSync(certPath)
       };
       server = https.createServer(options, app);
-      console.log(`${colors.green}Starting server in HTTPS mode${colors.reset}`);
     } else {
       console.error('SSL key or certificate file not found. Falling back to HTTP.');
       server = http.createServer(app);
@@ -380,6 +466,17 @@ const CHAT_ENABLED = getConfig('SYNC_CHAT_ENABLED', 'chat_enabled', true, valida
 const SERVER_MODE = getConfig('SYNC_SERVER_MODE', 'server_mode', false, validators.boolean);
 const DATA_HYDRATION = getConfig('SYNC_DATA_HYDRATION', 'data_hydration', true, validators.boolean);
 const MAX_VOLUME = getConfig('SYNC_MAX_VOLUME', 'max_volume', 400, validators.positiveInt);
+
+// Subtitle renderer: 'jassub' requires HTTPS (SharedArrayBuffer), force 'wsr' when HTTPS is off
+const SUBTITLE_RENDERER_CONFIG = config.subtitle_renderer || 'wsr';
+const SUBTITLE_RENDERER = (config.use_https === 'true' && SUBTITLE_RENDERER_CONFIG === 'jassub')
+  ? 'jassub'
+  : 'wsr';
+
+if (SUBTITLE_RENDERER_CONFIG === 'jassub' && SUBTITLE_RENDERER === 'wsr') {
+  console.log(`${colors.yellow}JASSUB requires HTTPS. Using WSR (built-in) renderer instead.${colors.reset}`);
+  console.log(`${colors.yellow}Run generate-ssl.ps1 to enable HTTPS and JASSUB.${colors.reset}`);
+}
 
 // FFmpeg Tools Configuration
 const FFMPEG_TOOLS_PASSWORD = getConfig('SYNC_FFMPEG_TOOLS_PASSWORD', 'ffmpeg_tools_password', '');
@@ -785,8 +882,10 @@ async function runFfmpegJob(jobId, type, params) {
       // Loop through all matching streams
       for (let i = 0; i < matchingStreams.length; i++) {
         const stream = matchingStreams[i];
-        const lang = stream.metadata?.language || 'und';
-        const title = stream.metadata?.title || stream.metadata?.handler_name || (trackType === 'audio' ? `Audio Track ${stream.index}` : `Subtitle Track ${stream.index}`);
+        // node-av metadata is a Dictionary object with getAll() method, not a plain object
+        const meta = stream.metadata?.getAll?.() || {};
+        const lang = meta.language || 'und';
+        const title = meta.title || meta.handler_name || (trackType === 'audio' ? `Audio Track ${stream.index}` : `Subtitle Track ${stream.index}`);
         const safeTitle = title.replace(/[^a-zA-Z0-9_\-\.]/g, '_').substring(0, 50);
 
         // Unique filename per track including stream index and title
@@ -1278,13 +1377,42 @@ const ADMIN_FINGERPRINT_LOCK = config.admin_fingerprint_lock === 'true';
 let registeredAdminFingerprint = ADMIN_FINGERPRINT_LOCK ? getAdminFingerprint() : null;
 
 // Apply helmet security headers with safe configuration
-app.use(helmet({
-  contentSecurityPolicy: false, // Disabled to allow inline scripts and Socket.io
-  crossOriginEmbedderPolicy: false, // Disabled to allow video playback
-}));
+if (config.use_https === 'true') {
+  // HTTPS Mode: Enable COOP/COEP for JASSUB (SharedArrayBuffer)
+  // Use 'credentialless' to allow external resources (YouTube)
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginEmbedderPolicy: { policy: "credentialless" },
+  }));
+} else {
+  // HTTP Mode: Relaxed security (legacy/LAN compatibility)
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
+}
 
 // Cookie parser for CSRF tokens
 app.use(cookieParser());
+
+// Serve bundled JASSUB files (created by postinstall.js)
+const JASSUB_PUBLIC_DIR = path.join(__dirname, 'public', 'jassub');
+if (fs.existsSync(JASSUB_PUBLIC_DIR)) {
+  app.use('/jassub', express.static(JASSUB_PUBLIC_DIR, {
+    setHeaders: (res, filePath) => {
+      // Required CORS headers for WASM loading
+      res.set('Cross-Origin-Opener-Policy', 'same-origin');
+      res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+      // Proper content types
+      if (filePath.endsWith('.wasm')) {
+        res.type('application/wasm');
+      } else if (filePath.endsWith('.js')) {
+        res.type('application/javascript');
+      }
+    }
+  }));
+}
 
 // CSRF Token Management
 const csrfTokens = new Map(); // sessionId -> { token, expires }
@@ -1343,6 +1471,10 @@ app.use('/media', express.static(path.join(ROOT_DIR, 'media')));
 app.use('/tracks', express.static(TRACKS_DIR));
 app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
+// JASSUB library (libass WebAssembly wrapper for ASS subtitles)
+app.use('/jassub', express.static(path.join(__dirname, 'node_modules/jassub/dist')));
+app.use('/rvfc-polyfill', express.static(path.join(__dirname, 'node_modules/rvfc-polyfill')));
+app.use('/abslink', express.static(path.join(__dirname, 'node_modules/abslink')));
 
 const PLAYLIST = {
   videos: [],
@@ -1425,7 +1557,8 @@ async function getTracksForFile(filename) {
 
           // Let's look at what we need: index, codec, language, title, default
 
-          const metadata = stream.metadata || {};
+          // node-av metadata is a Dictionary object with getAll() method, not a plain object
+          const metadata = stream.metadata?.getAll?.() || {};
           const disposition = stream.disposition || 0;
           // Disposition is usually a bitmask. 0x1 = default.
           const isDefault = (disposition & 1) !== 0; // AV_DISPOSITION_DEFAULT
@@ -1782,7 +1915,16 @@ app.get('/api/thumbnail/:filename', thumbnailRateLimiter, async (req, res) => {
 
   const safeFilename = validation.sanitized;
   const videoPath = path.join(ROOT_DIR, 'media', safeFilename);
-  const thumbnailFilename = safeFilename.replace(/\.[^.]+$/, '.jpg');
+
+  // Support custom width (default 720p)
+  let width = parseInt(req.query.width) || 720;
+  width = Math.min(1920, Math.max(50, width)); // Clamp 50-1920
+
+  // Use distinct cache file for different widths (backward compat for 720)
+  const thumbnailFilename = width === 720
+    ? safeFilename.replace(/\.[^.]+$/, '.jpg')
+    : safeFilename.replace(/\.[^.]+$/, `.${width}.jpg`);
+
   const thumbnailPath = path.join(THUMBNAIL_DIR, thumbnailFilename);
 
   // Check if thumbnail already exists (cached)
@@ -1802,7 +1944,7 @@ app.get('/api/thumbnail/:filename', thumbnailRateLimiter, async (req, res) => {
   if (isAudioFile) {
     console.log(`${colors.cyan}Extracting cover art from audio file: ${safeFilename}${colors.reset}`);
 
-    // Extract embedded cover art from audio file
+
     // Extract embedded cover art from audio file using node-av
     try {
       if (!Demuxer) throw new Error('node-av Demuxer not available');
@@ -1875,37 +2017,46 @@ app.get('/api/thumbnail/:filename', thumbnailRateLimiter, async (req, res) => {
       try {
         console.log(`${colors.cyan}Processing thumbnail with node-av for: ${safeFilename}${colors.reset}`);
 
+        // Logic: Reuse master thumbnail (720p) if available and we want a smaller size
+        // This ensures the blurred background matches the main thumbnail
+        const masterFilename = safeFilename.replace(/\.[^.]+$/, '.jpg');
+        const masterPath = path.join(THUMBNAIL_DIR, masterFilename);
+        let inputPath = videoPath;
+        let isImageInput = false;
+
+        // If requesting non-standard size and master exists, use master as source
+        if (width !== 720 && fs.existsSync(masterPath)) {
+          inputPath = masterPath;
+          isImageInput = true;
+          console.log(`${colors.cyan}Downscaling existing master thumbnail for ${safeFilename}${colors.reset}`);
+        }
+
         // 1. Open Input
-        const input = await Demuxer.open(videoPath);
+        const input = await Demuxer.open(inputPath);
         const videoStream = input.video();
 
         if (!videoStream) {
           throw new Error('No video stream found');
         }
 
-        // Calculate seek time
-        const duration = input.duration > 0 ? input.duration : (await getVideoDuration(videoPath));
-        const firstThird = Math.max(duration / 3, 1);
-        const randomTime = Math.random() * firstThird;
-        const seekTime = Math.max(1, Math.floor(randomTime));
+        if (!isImageInput) {
+          const duration = input.duration > 0 ? input.duration : (await getVideoDuration(videoPath));
+          // Deterministic seek based on filename hash to ensure consistency
+          const seed = safeFilename.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          const seekPct = Math.max(0.01, (seed % 20) / 100); // 1% to 19%
+          const seekTime = Math.max(1, Math.floor(duration * seekPct));
 
-        console.log(`${colors.cyan}Seeking to ${seekTime}s (duration: ${duration}s)${colors.reset}`);
-
-        // Seek
-        await input.seek(seekTime); // Seek in seconds
+          console.log(`${colors.cyan}Seeking deterministically to ${seekTime}s (duration: ${duration}s)${colors.reset}`);
+          await input.seek(seekTime);
+        }
 
         // 2. Setup Decoder
         const decoder = await Decoder.create(videoStream);
 
-        // 3. Setup Filter (Scale to 720p, format yuvj420p for MJPEG)
-        // Note: We create filter slightly differently depending on if we have frame props yet, 
-        // but FilterAPI.create initializes on first frame in processAll logic usually.
-        // However, we can create it now.
-        // We'll init it lazily inside loop or just create it with stream timebase validation.
-
-        // 4. Setup Output Muxer
+        // 3. Setup Output Muxer (with explicit update option to allow single image write)
         const output = await Muxer.open(thumbnailPath, {
-          format: 'image2'
+          format: 'image2',
+          update: '1' // Critical for single image writing in recent ffmpeg/node-av
         });
 
         const packetGen = input.packets(videoStream.index);
@@ -1917,14 +2068,11 @@ app.get('/api/thumbnail/:filename', thumbnailRateLimiter, async (req, res) => {
         let filter = null;
 
         for await (const frame of frameGen) {
-          // Skip until we get a frame (decoder handles seeking mostly, but we might get frames before seek point if keyframe)
-          // Actually input.seek jumps to keyframe. Decoder outputs from there.
-          // We just take the first frame we get after seek.
-
+          // If seeking, decoder handles getting to the right frame logic roughly, but we take first emitted
           if (!gotFrame) {
-            // Init filter if needed
             if (!filter) {
-              filter = await FilterAPI.create('scale=-1:720,format=yuvj420p', {
+              // Using yuvj420p for MJPEG full range consistency
+              filter = await FilterAPI.create(`scale=-1:${width},format=yuvj420p`, {
                 width: frame.width,
                 height: frame.height,
                 pixelFormat: frame.format,
@@ -1959,31 +2107,18 @@ app.get('/api/thumbnail/:filename', thumbnailRateLimiter, async (req, res) => {
             }
 
             gotFrame = true;
-            break; // Capture one frame
+            break; // Done after one frame
           }
         }
 
-        // Cleanup
-        // input is 'using' compliant if TS, but here manual close?
-        // Demuxer docs say it implements Disposable.
-        // But explicit close is good if not using 'using'.
-        // input.close() if available (Demuxer has isClosed check, implies close method?)
-        // The types showed `implements AsyncDisposable, Disposable` but didn't explicitly list `close()` in public methods shown (maybe private or inherited?).
-        // Actually docs had `await input.close()` in one example? OR `using input =`.
-        // Let's assume GC or `using` pattern, but we don't have `using` keyword in JS standard yet fully widespread or transpiled here?
-        // Node 22 supports `using`?
-        // I'll skip explicit close for now as per test script success, expecting GC or `Demuxer` handles it?
-        // Wait, `test_node_av.js` used `input.close()` in my edit earlier?
-        // Re-checking test script... I didn't verify close.
-        // Let's look at `node-av` docs again for `close`.
-        // `Demuxer` has `isClosed`.
-        // I'll try calling `input.close()` or `input[Symbol.asyncDispose]()` if strictly needed.
-        // For now, assume it's fine or I will add if memory issues.
-        // Actually, `test_node_av.js` ended with `await input.close();`. So I should use it.
         if (input.close) await input.close();
 
-        console.log(`${colors.green}Generated thumbnail via node-av for: ${safeFilename}${colors.reset}`);
-        return res.json({ thumbnail: `/thumbnails/${thumbnailFilename}` });
+        if (gotFrame) {
+          console.log(`${colors.green}Generated thumbnail via node-av for: ${safeFilename}${colors.reset}`);
+          return res.json({ thumbnail: `/thumbnails/${thumbnailFilename}` });
+        } else {
+          throw new Error('No frame extracted');
+        }
 
       } catch (avError) {
         console.error(`${colors.yellow}node-av thumbnail failed, falling back to system ffmpeg:${colors.reset}`, avError);
@@ -2267,7 +2402,8 @@ io.on('connection', (socket) => {
         roomName: room.name,
         isAdmin,
         chatEnabled: CHAT_ENABLED,
-        maxVolume: MAX_VOLUME
+        maxVolume: MAX_VOLUME,
+        subtitleRenderer: SUBTITLE_RENDERER
       });
 
       // Send current room state
@@ -2431,7 +2567,8 @@ io.on('connection', (socket) => {
       clientControlsDisabled: CLIENT_CONTROLS_DISABLED,
       serverMode: false,
       chatEnabled: CHAT_ENABLED,
-      maxVolume: MAX_VOLUME
+      maxVolume: MAX_VOLUME,
+      subtitleRenderer: SUBTITLE_RENDERER
     });
 
     // Send playlist to client
@@ -2804,7 +2941,8 @@ io.on('connection', (socket) => {
       chatEnabled: CHAT_ENABLED,
       dataHydration: DATA_HYDRATION,
       serverMode: SERVER_MODE,
-      clientControlsDisabled: CLIENT_CONTROLS_DISABLED
+      clientControlsDisabled: CLIENT_CONTROLS_DISABLED,
+      subtitleRenderer: SUBTITLE_RENDERER
     });
   });
 

@@ -177,7 +177,7 @@ if ($MISSING_DEPS) {
         Write-Host ""
         Push-Location "res"
         cmd /c "npm install"
-        cmd /c "npm audit fix --force"
+        cmd /c "npm audit fix"
         Pop-Location
         if ($LASTEXITCODE -ne 0) {
             throw "npm install failed with exit code $LASTEXITCODE"
@@ -266,6 +266,7 @@ $config = @{
     SERVER_MODE              = "false"
     CHAT_ENABLED             = "true"
     DATA_HYDRATION           = "true"
+    SUBTITLE_RENDERER        = "wsr"
 }
 
 # Helper to map env vars to config keys
@@ -285,6 +286,7 @@ $envMap = @{
     "SYNC_SERVER_MODE"               = "SERVER_MODE"
     "SYNC_CHAT_ENABLED"              = "CHAT_ENABLED"
     "SYNC_DATA_HYDRATION"            = "DATA_HYDRATION"
+    "SYNC_SUBTITLE_RENDERER"         = "SUBTITLE_RENDERER"
 }
 
 # 1. Read config.env (Primary)
@@ -429,7 +431,7 @@ catch {
 # =================================================================
 $Host.UI.RawUI.WindowTitle = "Admin Console"
 Write-Host ""
-Write-Host "Sync-Player 1.10.0" -ForegroundColor Cyan
+Write-Host "Sync-Player 1.10.2" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Settings:" -ForegroundColor Yellow
@@ -441,11 +443,13 @@ Write-Host "- Client Controls: $(if ($config.CLIENT_CONTROLS_DISABLED -eq 'true'
 Write-Host "- Client Sync: $(if ($config.CLIENT_SYNC_DISABLED -eq 'true') { 'Disabled' } else { 'Enabled' })" -ForegroundColor White
 Write-Host "- Server Mode: $($config.SERVER_MODE)" -ForegroundColor White
 Write-Host "- Chat: $($config.CHAT_ENABLED)" -ForegroundColor White
+Write-Host "- Subtitle Renderer: $($config.SUBTITLE_RENDERER)" -ForegroundColor White
 Write-Host ""
 Write-Host "Access URLs:" -ForegroundColor Yellow
-Write-Host "- Your network: http://${LOCAL_IP}:$($config.PORT)" -ForegroundColor White
-Write-Host "- Admin Panel: http://${LOCAL_IP}:$($config.PORT)/admin" -ForegroundColor White
-Write-Host "- Testing purposes: http://localhost:$($config.PORT)" -ForegroundColor White
+$protocol = if ($config.USE_HTTPS -eq "true") { "https" } else { "http" }
+Write-Host "- Your network: ${protocol}://${LOCAL_IP}:$($config.PORT)" -ForegroundColor White
+Write-Host "- Admin Panel: ${protocol}://${LOCAL_IP}:$($config.PORT)/admin" -ForegroundColor White
+Write-Host "- Testing purposes: ${protocol}://localhost:$($config.PORT)" -ForegroundColor White
 Write-Host ""
 Write-Host "Firewall: Manual configuration required for network access" -ForegroundColor Yellow
 Write-Host ""

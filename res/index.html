@@ -8,6 +8,15 @@
   <!-- Pixel Font for Chat -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/client.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "rvfc-polyfill": "/rvfc-polyfill/index.js",
+        "abslink": "/abslink/src/abslink.js",
+        "abslink/w3c": "/abslink/adapters/w3c.js"
+      }
+    }
+  </script>
 
 </head>
 
@@ -32,7 +41,7 @@
   <div id="twitch-container" class="player-container"></div>
   <div id="soundcloud-container" class="player-container"></div>
   <div id="iframe-container" class="player-container">
-    <iframe id="generic-iframe" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    <iframe id="generic-iframe" allow="autoplay; fullscreen"></iframe>
   </div>
 
   <div id="waiting-message">Waiting for admin to launch playlist...</div>

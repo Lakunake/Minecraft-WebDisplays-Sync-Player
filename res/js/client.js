@@ -9,6 +9,8 @@ const subtitleOverlay = document.getElementById('subtitle-overlay');
 
 // Initialize Subtitle Renderer (Declared here, initialized after class def)
 let subtitleRenderer;
+let jassubInstance = null; // JASSUB instance for ASS rendering (when SUBTITLE_RENDERER=jassub)
+let subtitleRendererMode = 'wsr'; // 'wsr' (built-in) or 'jassub' (libass)
 
 // Helper to check if a file is an image
 const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
@@ -292,6 +294,8 @@ function showTrackInfo(message, duration = 3000) {
 
 // Send control event to server - ONLY if we have received initial sync
 function sendControlEvent() {
+  if (clientControlsDisabled) return;
+
   if (!hasInitialSync) {
     console.log('Skipping control event - waiting for initial sync');
     return;
@@ -387,6 +391,12 @@ socket.on('config', (config) => {
   chatEnabled = config.chatEnabled !== false; // Default to true
   maxVolume = config.maxVolume || 100; // Default to 100%
 
+  // Subtitle renderer mode from config
+  if (config.subtitleRenderer && ['wsr', 'jassub'].includes(config.subtitleRenderer)) {
+    subtitleRendererMode = config.subtitleRenderer;
+    console.log(`[Subtitle] Renderer mode: ${subtitleRendererMode}`);
+  }
+
   // Update title with room info if in server mode
   if (config.serverMode && config.roomName) {
     document.title = `${config.roomName} - Sync-Player`;
@@ -401,7 +411,7 @@ socket.on('config', (config) => {
     }
   }
 
-  console.log(`Config received: skipSeconds=${skipSeconds}, volumeStep=${volumeStep}, clientControlsDisabled=${clientControlsDisabled}, chatEnabled=${chatEnabled}, maxVolume=${maxVolume}`);
+  console.log(`Config received: skipSeconds=${skipSeconds}, volumeStep=${volumeStep}, clientControlsDisabled=${clientControlsDisabled}, chatEnabled=${chatEnabled}, maxVolume=${maxVolume}, subtitleRenderer=${subtitleRendererMode}`);
   if (clientControlsDisabled) {
     showTemporaryMessage('View-only mode (controls disabled)', 3000);
   }
@@ -664,9 +674,14 @@ function tryDirectTrackManipulation() {
         video.textTracks[i].mode = 'disabled';
       }
 
-      // 2. Load via SubtitleRenderer
+      // 2. Load via SubtitleRenderer or JASSUB
       // Check if disabled (convention: -1 or undefined, but here we only act if defined)
       if (targetSubIndex === -1) {
+        // Destroy JASSUB if active
+        if (jassubInstance) {
+          jassubInstance.destroy();
+          jassubInstance = null;
+        }
         subtitleRenderer.disable();
       }
       else if (currentVideoInfo.tracks && currentVideoInfo.tracks.subtitles) {
@@ -684,11 +699,36 @@ function tryDirectTrackManipulation() {
             const format = (ext === 'ass' || ext === 'ssa') ? 'ass' : 'vtt';
             console.log(`[Subtitle] Requesting overlay load: ${trackUrl} (${format})`);
             showTemporaryMessage(`Loading subtitles: ${track.language || 'Unknown'}`, 2000);
-            subtitleRenderer.loadTrack(trackUrl, format);
+
+            // Use JASSUB for ASS files if configured, otherwise use built-in renderer
+            if (format === 'ass' && subtitleRendererMode === 'jassub') {
+              // Destroy previous JASSUB instance
+              if (jassubInstance) {
+                jassubInstance.destroy();
+                jassubInstance = null;
+              }
+              // Also disable built-in renderer overlay
+              subtitleRenderer.disable();
+
+              // Dynamically import and create JASSUB instance
+              loadJASSUB(trackUrl);
+            } else {
+              // Use built-in SubtitleRenderer for VTT or when JASSUB not configured
+              // Destroy JASSUB if switching away from it
+              if (jassubInstance) {
+                jassubInstance.destroy();
+                jassubInstance = null;
+              }
+              subtitleRenderer.loadTrack(trackUrl, format);
+            }
           } else {
             console.warn('[Subtitle] Track selected but no URL/Filename found:', track);
             // Fallback: If it's a native track that wasn't extracted, we can't render it on overlay easily
             // without extraction. User is expected to extract tracks via admin.
+            if (jassubInstance) {
+              jassubInstance.destroy();
+              jassubInstance = null;
+            }
             subtitleRenderer.disable();
           }
         }
@@ -697,6 +737,79 @@ function tryDirectTrackManipulation() {
       lastAppliedSubtitleTrack = targetSubIndex;
     }
   }
+}
+
+// Load JASSUB dynamically for ASS subtitle rendering
+// Helper to fetch worker script as Blob (bypass cross-origin worker restriction)
+async function fetchWorkerBlob(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch worker: ${response.status}`);
+  const text = await response.text();
+  const blob = new Blob([text], { type: 'text/javascript' });
+  return URL.createObjectURL(blob);
+}
+
+// Load JASSUB dynamically for ASS subtitle rendering
+async function loadJASSUB(trackUrl) {
+  // Check if SharedArrayBuffer is available (required for JASSUB)
+  // It's only available on localhost or HTTPS origins
+  if (typeof SharedArrayBuffer === 'undefined') {
+    console.warn('[Subtitle] SharedArrayBuffer not available - JASSUB requires localhost or HTTPS');
+    console.log('[Subtitle] Falling back to built-in renderer');
+    showTemporaryMessage('Using fallback subtitle renderer', 2000);
+    subtitleRenderer.loadTrack(trackUrl, 'ass');
+    return;
+  }
+
+  // Use CDN JASSUB - local bundle fails due to pthread sub-worker import.meta.url resolution
+  // esm.run handles all internal paths correctly within its bundler context
+
+  // Helper: wrap promise with timeout
+  const withTimeout = (promise, ms, message) => {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+    ]);
+  };
+
+  try {
+    console.log('[Subtitle] Loading JASSUB from CDN (esm.run)...');
+
+    // Use esm.run which handles all relative paths internally
+    const { default: JASSUB } = await withTimeout(
+      import('https://esm.run/jassub@latest'),
+      10000,
+      'CDN import timeout'
+    );
+
+    if (!JASSUB) {
+      throw new Error('JASSUB not found after loading from CDN');
+    }
+
+    console.log('[Subtitle] JASSUB loaded, creating instance...');
+
+    // Let JASSUB handle its own worker/wasm URLs (esm.run resolves them correctly)
+    jassubInstance = new JASSUB({
+      video: video,
+      subUrl: trackUrl,
+      useLocalFonts: false  // Disable local fonts to avoid DataCloneError
+    });
+
+    console.log('[Subtitle] Waiting for JASSUB ready...');
+    await withTimeout(jassubInstance.ready, 30000, 'Initialization timeout');
+
+    console.log('[Subtitle] JASSUB initialized successfully for:', trackUrl);
+    return;
+  } catch (error) {
+    console.warn('[Subtitle] Failed to load JASSUB:', error.message);
+    if (jassubInstance) {
+      try { jassubInstance.destroy(); } catch (e) { }
+      jassubInstance = null;
+    }
+  }
+  console.error('[Subtitle] JASSUB failed, falling back to built-in renderer');
+  showTemporaryMessage('JASSUB unavailable, using fallback renderer', 3000);
+  subtitleRenderer.loadTrack(trackUrl, 'ass');
 }
 
 function tryVideoAttributes() {
@@ -1467,6 +1580,8 @@ function handleYouTubeStateChange(event) {
 
 // Send control event for YouTube
 function sendYouTubeControlEvent() {
+  if (clientControlsDisabled) return;
+
   if (!hasInitialSync || !ytPlayer || !ytPlayerReady) return;
 
   try {
@@ -1806,12 +1921,14 @@ if (typeof SubtitleRenderer !== 'undefined') {
 // ==================== Chat Widget Logic ====================
 
 // Generate/Get Fingerprint (Ported from landing.html)
+// Uses origin-specific key so localhost, LAN IP, HTTP, and HTTPS all get separate fingerprints
 function generateFingerprint() {
-  const stored = localStorage.getItem('sync-player-fingerprint');
+  const storageKey = 'sync-player-fingerprint-' + window.location.origin;
+  const stored = localStorage.getItem(storageKey);
   if (stored) return stored;
 
   const fp = 'fp_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-  localStorage.setItem('sync-player-fingerprint', fp);
+  localStorage.setItem(storageKey, fp);
   return fp;
 }
 

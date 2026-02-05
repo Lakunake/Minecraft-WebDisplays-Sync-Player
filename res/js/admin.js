@@ -164,12 +164,14 @@ function applyPlatformTheme(element, video, isDark = false) {
 }
 
 // Generate fingerprint for device identification (MUST match landing page!)
+// Uses origin-specific key so localhost, LAN IP, HTTP, and HTTPS all get separate fingerprints
 function generateFingerprint() {
-  const stored = localStorage.getItem('sync-player-fingerprint');
+  const storageKey = 'sync-player-fingerprint-' + window.location.origin;
+  const stored = localStorage.getItem(storageKey);
   if (stored) return stored;
 
   const fp = 'fp_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-  localStorage.setItem('sync-player-fingerprint', fp);
+  localStorage.setItem(storageKey, fp);
   return fp;
 }
 
@@ -231,13 +233,14 @@ function getAdminFingerprint() {
     return generateFingerprint();
   }
 
-  // Legacy mode - use admin-fingerprint
-  let stored = localStorage.getItem('admin-fingerprint');
+  // Legacy mode - use admin-fingerprint with origin-specific key
+  const storageKey = 'admin-fingerprint-' + window.location.origin;
+  let stored = localStorage.getItem(storageKey);
   if (stored) {
     return stored;
   }
   const fp = generateAdminFingerprint();
-  localStorage.setItem('admin-fingerprint', fp);
+  localStorage.setItem(storageKey, fp);
   return fp;
 }
 
@@ -272,6 +275,7 @@ socket.on('config', (cfg) => {
   document.getElementById('cfg-bsl-adv').textContent = cfg.bslAdvancedMatch ? 'On' : 'Off';
   document.getElementById('cfg-bsl-threshold').textContent = cfg.bslAdvancedMatchThreshold || '1';
   document.getElementById('cfg-admin-lock').textContent = cfg.adminFingerprintLock ? 'On' : 'Off';
+  document.getElementById('cfg-subtitle-renderer').textContent = cfg.subtitleRenderer || 'wsr';
   skipSeconds = cfg.skipSeconds || 5;
   skipIntroSeconds = cfg.skipIntroSeconds || 90;
   document.getElementById('skip-intro-text').textContent = skipIntroSeconds + 's';
@@ -731,6 +735,7 @@ function updatePlaylistDisplay() {
         requestAnimationFrame(() => requestAnimationFrame(() => thumbnailBg.classList.add('cleared')));
       }
     } else if (!item.isYouTube && !item.isExternal) {
+      // Fetch master thumbnail (default 720p) instead of 240p
       fetch(`/api/thumbnail/${encodeURIComponent(item.filename)}`)
         .then(response => response.json())
         .then(data => {
@@ -987,33 +992,34 @@ function movePlaylistItemRemote(index, direction) {
 // Fetch and display video thumbnail
 // Fetch and display video thumbnail
 let currentThumbnailFilename = null;
-async function fetchThumbnail(filename) {
+async function fetchThumbnail(filename, width = 720) {
   const thumbnailEl = document.querySelector('.video-thumbnail');
   const thumbnailIcon = document.querySelector('.video-thumbnail-icon');
 
   if (!thumbnailEl) return;
 
-  // Check cache first - if available, ALWAYS apply it (fixes bug where theme wipes it)
-  if (thumbnailCache[filename]) {
-    thumbnailEl.style.backgroundImage = `url('${thumbnailCache[filename]}')`;
+  // Check cache first (key by filename + width to be safe, though mainly one usage)
+  const cacheKey = `${filename}:${width}`;
+  if (thumbnailCache[cacheKey]) {
+    thumbnailEl.style.backgroundImage = `url('${thumbnailCache[cacheKey]}')`;
     thumbnailEl.style.backgroundSize = 'cover';
     thumbnailEl.style.backgroundPosition = 'center';
     if (thumbnailIcon) thumbnailIcon.style.display = 'none';
-    currentThumbnailFilename = filename;
+    currentThumbnailFilename = cacheKey;
     return;
   }
 
-  // Avoid refetching same thumbnail if we don't have it cached yet
-  if (currentThumbnailFilename === filename) return;
-  currentThumbnailFilename = filename;
+  // Avoid refetching same thumbnail
+  if (currentThumbnailFilename === cacheKey) return;
+  currentThumbnailFilename = cacheKey;
 
   try {
-    const response = await fetch(`/api/thumbnail/${encodeURIComponent(filename)}`);
+    const response = await fetch(`/api/thumbnail/${encodeURIComponent(filename)}?width=${width}`);
     if (response.ok) {
       const data = await response.json();
       if (data.thumbnail) {
         // Update cache
-        thumbnailCache[filename] = data.thumbnail;
+        thumbnailCache[cacheKey] = data.thumbnail;
 
         thumbnailEl.style.backgroundImage = `url('${data.thumbnail}')`;
         thumbnailEl.style.backgroundSize = 'cover';
@@ -1109,7 +1115,7 @@ function renderRemotePlaylistSidebar() {
       item.style.color = '';
     }
     else if (!video.isYouTube && !video.isExternal) {
-      fetch(`/api/thumbnail/${encodeURIComponent(video.filename)}`)
+      fetch(`/api/thumbnail/${encodeURIComponent(video.filename)}?width=240`)
         .then(res => res.json())
         .then(data => {
           if (data.thumbnail && typeof data.thumbnail === 'string') {
