@@ -11,13 +11,13 @@ A FULLY synchronized non-coder friendly HTML5 video player for Minecraft's WebDi
 
 * [Node.js](https://nodejs.org/) installed on your machine (v20.6.0+ required for config to work)
 * [ffmpeg](https://ffmpeg.org/) installed for high bitrate support and video optimization (via [node-av](https://github.com/seydx/node-av))
-* Media files placed in the `/media/` folder (supports MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM, .PNG, .JPG, .WEBP)
+* Media files placed in the `/media/` folder (supports MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM, .PNG, .JPG, .WEBP, embeds and more)
 
 ---
 
 ## Features
 
-* Multi-format streaming (MP3, MP4, .MKV, .AVI, .MOV, .WMV, .WEBM)
+* Multi-format streaming mentioned above
 * High Quality streaming with FFmpeg optimization
 * Both Side Local Syncronized Stream ([BSL-S²](https://github.com/Lakunake/Minecraft-WebDisplays-Sync-Player/issues/35))
 * Playlist support with sequential playback
