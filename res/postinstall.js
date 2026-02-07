@@ -50,7 +50,7 @@ function applyIpPatch() {
   if (content.includes(ORIGINAL_IS_PUBLIC)) {
     content = content.replace(ORIGINAL_IS_PUBLIC, PATCHED_IS_PUBLIC);
     fs.writeFileSync(IP_LIB_PATH, content, 'utf-8');
-    console.log('[postinstall] ✓ Applied security patch to ip library (GHSA-2p57-rm9w-gvfp)');
+    console.log('[postinstall] ✓ Applied security patch to ip library (GHSA-2p57-rm9w-gvfp), the 4 audit errors are now a false positive.');
   } else {
     console.warn('[postinstall] ⚠ Could not find original isPublic function to patch. Manual review required.');
   }

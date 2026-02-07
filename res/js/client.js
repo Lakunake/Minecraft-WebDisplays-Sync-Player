@@ -10,6 +10,7 @@ const subtitleOverlay = document.getElementById('subtitle-overlay');
 // Initialize Subtitle Renderer (Declared here, initialized after class def)
 let subtitleRenderer;
 let jassubInstance = null; // JASSUB instance for ASS rendering (when SUBTITLE_RENDERER=jassub)
+let canvasSupervisor = null; // MutationObserver to enforce canvas styles
 let subtitleRendererMode = 'wsr'; // 'wsr' (built-in) or 'jassub' (libass)
 
 // Helper to check if a file is an image
@@ -47,7 +48,7 @@ function hideAllPlayers() {
   const containers = document.querySelectorAll('.player-container');
   containers.forEach(el => el.classList.remove('visible'));
   youtubeContainer.classList.remove('visible');
-  video.style.display = 'none';
+  video.style.opacity = '0.001';
   imageDisplay.style.display = 'none';
   if (mediaPlaceholder) mediaPlaceholder.style.display = 'none';
 
@@ -184,7 +185,7 @@ function loadExternalContent(platform, id, url) {
 
       case 'directUrl':
         // Use main video player
-        video.style.display = 'block';
+        video.style.opacity = '1';
         video.src = url;
         video.play().catch(e => console.error(e));
         break;
@@ -453,7 +454,7 @@ socket.on('initial-state', (state) => {
 
   if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
     waitingMessage.style.display = 'none';
-    video.style.display = 'block';
+    video.style.opacity = '1';
     hasInitialSync = true;
     loadCurrentVideo();
   } else {
@@ -467,7 +468,7 @@ socket.on('playlist-position', (index) => {
   currentPlaylist.currentIndex = index;
   if (currentPlaylist.videos.length > 0 && index >= 0) {
     waitingMessage.style.display = 'none';
-    video.style.display = 'block';
+    video.style.opacity = '1';
     hasInitialSync = true;
     loadCurrentVideo();
   } else {
@@ -486,7 +487,7 @@ socket.on('playlist-update', (playlist) => {
 
   if (currentPlaylist.videos.length > 0 && currentPlaylist.currentIndex >= 0) {
     waitingMessage.style.display = 'none';
-    video.style.display = 'block';
+    video.style.opacity = '1';
     hasInitialSync = true;
     loadCurrentVideo();
   } else {
@@ -537,7 +538,7 @@ function loadCurrentVideo() {
 
   if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
     waitingMessage.style.display = 'block';
-    video.style.display = 'none';
+    video.style.opacity = '0.001';
     return;
   }
 
@@ -616,7 +617,7 @@ function loadCurrentVideo() {
       }, 1000);
     } else {
       waitingMessage.style.display = 'block';
-      video.style.display = 'none';
+      video.style.opacity = '0.001';
       showTemporaryMessage('Failed to load video. Please check file format.', 5000);
     }
   };
@@ -625,7 +626,7 @@ function loadCurrentVideo() {
 function handlePlaybackError(error) {
   console.log('Playback error:', error);
   waitingMessage.style.display = 'block';
-  video.style.display = 'none';
+  video.style.opacity = '0.001';
   showTemporaryMessage('Playback failed. Please check file format.', 3000);
 }
 
@@ -761,8 +762,18 @@ async function loadJASSUB(trackUrl) {
     return;
   }
 
-  // Use CDN JASSUB - local bundle fails due to pthread sub-worker import.meta.url resolution
-  // esm.run handles all internal paths correctly within its bundler context
+  // Use JASSUB v1.8.8 - v2.x uses abslink which causes DataCloneError with _getLocalFont
+  // v1.8.8 uses Comlink which handles Worker communication properly
+  const CDN_BASE = 'https://cdn.jsdelivr.net/npm/jassub@1.8.8/dist';
+
+  // Helper: fetch worker script and create blob URL (bypass cross-origin)
+  const fetchWorkerBlob = async (url) => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch worker: ${response.status}`);
+    const text = await response.text();
+    const blob = new Blob([text], { type: 'application/javascript' });
+    return URL.createObjectURL(blob);
+  };
 
   // Helper: wrap promise with timeout
   const withTimeout = (promise, ms, message) => {
@@ -773,11 +784,11 @@ async function loadJASSUB(trackUrl) {
   };
 
   try {
-    console.log('[Subtitle] Loading JASSUB from CDN (esm.run)...');
+    console.log('[Subtitle] Loading JASSUB v1.8.8 from CDN...');
 
-    // Use esm.run which handles all relative paths internally
+    // Import JASSUB v1.8.8 (uses Comlink, not abslink)
     const { default: JASSUB } = await withTimeout(
-      import('https://esm.run/jassub@latest'),
+      import('https://esm.run/jassub@1.8.8'),
       10000,
       'CDN import timeout'
     );
@@ -786,19 +797,211 @@ async function loadJASSUB(trackUrl) {
       throw new Error('JASSUB not found after loading from CDN');
     }
 
-    console.log('[Subtitle] JASSUB loaded, creating instance...');
+    // Fetch worker and create blob URL to bypass cross-origin restriction
+    console.log('[Subtitle] Creating blob worker...');
+    const workerBlobUrl = await withTimeout(
+      fetchWorkerBlob(`${CDN_BASE}/jassub-worker.js`),
+      10000,
+      'Worker fetch timeout'
+    );
 
-    // Let JASSUB handle its own worker/wasm URLs (esm.run resolves them correctly)
+    console.log('[Subtitle] Creating JASSUB instance...');
+    // Convert to absolute URL since blob worker can't resolve relative paths
+    const absoluteTrackUrl = new URL(trackUrl, location.origin).href;
+
+    // Fetch track content in main thread to avoid worker fetch issues/CORS
+    let trackContent = null;
+    try {
+      console.log('[Subtitle] Fetching track content:', absoluteTrackUrl);
+      const trackRes = await fetch(absoluteTrackUrl);
+      if (!trackRes.ok) throw new Error(`Track fetch failed: ${trackRes.status}`);
+      trackContent = await trackRes.text();
+      console.log('[Subtitle] Track content loaded, length:', trackContent.length);
+    } catch (e) {
+      console.error('[Subtitle] Failed to load track content:', e);
+      throw e;
+    }
+
+    // Verify and fetch fonts (Main Thread)
+    // Dynamic loading: Fetch list of available fonts from server
+    let fontFiles = [];
+    try {
+      const listRes = await fetch('/api/fonts');
+      if (listRes.ok) {
+        fontFiles = await listRes.json();
+        console.log('[Subtitle] Discovered fonts:', fontFiles);
+      } else {
+        console.warn('[Subtitle] Failed to list fonts, using fallback defaults');
+        fontFiles = ['GandhiSans-Regular.otf', 'GandhiSans-Bold.otf', 'GandhiSans-Italic.otf', 'GandhiSans-BoldItalic.otf'];
+      }
+    } catch (e) {
+      console.warn('[Subtitle] Error fetching font list:', e);
+      fontFiles = ['GandhiSans-Regular.otf', 'GandhiSans-Bold.otf', 'GandhiSans-Italic.otf', 'GandhiSans-BoldItalic.otf'];
+    }
+
+    const fontBlobUrls = [];
+    console.log('[Subtitle] fetching fonts in main thread...');
+
+    // Helper to fetch font and create blob URL
+    const fetchFont = async (filename) => {
+      try {
+        const url = `${location.origin}/font/${filename}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.status);
+        const blob = await res.blob();
+        return URL.createObjectURL(blob);
+      } catch (e) {
+        console.warn(`[Subtitle] Failed to load font ${filename}:`, e);
+        return null;
+      }
+    };
+
+    // Fetch all fonts in parallel
+    const loadedFonts = await Promise.all(fontFiles.map(f => fetchFont(f)));
+    const validFontUrls = loadedFonts.filter(url => url !== null);
+    console.log(`[Subtitle] Loaded ${validFontUrls.length}/${fontFiles.length} fonts`);
+
+    // Cleanup existing instance and supervisor to prevent leaks
+    if (canvasSupervisor) {
+      canvasSupervisor.disconnect();
+      canvasSupervisor = null;
+    }
+    if (jassubInstance) {
+      try {
+        jassubInstance.destroy();
+      } catch (e) {
+        console.warn('[Subtitle] Error destroying previous JASSUB instance:', e);
+      }
+      jassubInstance = null;
+    }
+
     jassubInstance = new JASSUB({
       video: video,
-      subUrl: trackUrl,
-      useLocalFonts: false  // Disable local fonts to avoid DataCloneError
+      subContent: trackContent, // Use content instead of URL
+      workerUrl: workerBlobUrl,
+      wasmUrl: `${CDN_BASE}/jassub-worker.wasm`,
+      useLocalFonts: false,
+      debug: true,
+      // Pre-load all fonts using Blob URLs (safe from worker fetch issues)
+      fonts: validFontUrls,
+      fallbackFont: 'Gandhi Sans'
     });
 
     console.log('[Subtitle] Waiting for JASSUB ready...');
+
+    // Persistent Canvas Supervisor
+    // Watches for JASSUB creating/replacing the canvas and enforces visibility
+    canvasSupervisor = new MutationObserver((mutations) => {
+      const canvas = video.parentNode.querySelector('canvas');
+      if (canvas) {
+        // Enforce styles if they drift
+        if (canvas.style.zIndex !== '100' || canvas.style.opacity !== '1') {
+          console.log('[Subtitle] Enforcing canvas styles!');
+          canvas.style.zIndex = '100';
+          canvas.style.position = 'absolute';
+          canvas.style.top = '0';
+          canvas.style.left = '0';
+          canvas.style.width = '100%';
+          canvas.style.height = '100%';
+          canvas.style.pointerEvents = 'none';
+          canvas.style.opacity = '1';
+          canvas.style.visibility = 'visible';
+          canvas.classList.add('jassub-canvas-forced');
+        }
+      }
+    });
+
+    // Start supervising the video container
+    canvasSupervisor.observe(video.parentNode, { childList: true, subtree: true });
+
+    // Initial enforcement
+    setTimeout(() => {
+      const canvas = video.parentNode.querySelector('canvas');
+      if (canvas) {
+        canvas.style.zIndex = '100';
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.opacity = '1';
+        canvas.style.visibility = 'visible';
+        canvas.classList.add('jassub-canvas-forced');
+        console.log('[Subtitle] Initial style enforcement applied');
+      }
+    }, 100);
+
     await withTimeout(jassubInstance.ready, 30000, 'Initialization timeout');
 
-    console.log('[Subtitle] JASSUB initialized successfully for:', trackUrl);
+    setTimeout(() => {
+      console.log('[Subtitle] JASSUB initialized successfully');
+      // Force initial resize check
+      ensureJassubSize();
+    }, 500);
+
+    // Debug: Check if JASSUB created a canvas element
+    const allCanvases = document.querySelectorAll('canvas');
+    console.log('[Subtitle] All canvas elements after JASSUB init:', allCanvases.length);
+    allCanvases.forEach((canvas, i) => {
+      const style = getComputedStyle(canvas);
+      console.log(`[Subtitle] Canvas ${i}:`, {
+        id: canvas.id,
+        className: canvas.className,
+        width: canvas.width,
+        height: canvas.height,
+        position: style.position,
+        zIndex: style.zIndex,
+        visibility: style.visibility,
+        display: style.display,
+        parentElement: canvas.parentElement?.tagName
+      });
+    });
+
+    // Debug: Check JASSUB instance properties
+    console.log('[Subtitle] JASSUB instance:', jassubInstance);
+    if (jassubInstance.canvas) {
+      console.log('[Subtitle] JASSUB canvas element:', jassubInstance.canvas);
+    }
+
+    // JASSUB's ResizeObserver doesn't work well when video starts with display:none
+    // Instead of calling resize() directly (which triggers a buggy render path),
+    // we'll re-attach to the video when it becomes visible
+    const ensureJassubSize = () => {
+      if (!jassubInstance) return;
+      const rect = video.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        console.log('[Subtitle] Video now visible, JASSUB should auto-resize via ResizeObserver');
+        // Force ResizeObserver to re-check by triggering its callback
+        if (jassubInstance._boundResize) {
+          jassubInstance._boundResize();
+        }
+      }
+    };
+
+    // Listen for video visibility changes
+    const videoObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === 'style' || mutation.attributeName === 'class') {
+          const isVisible = video.style.opacity !== '0' && video.offsetWidth > 0;
+          if (isVisible) {
+            console.log('[Subtitle] Video became visible, updating JASSUB');
+            ensureJassubSize();
+          }
+        }
+      }
+    });
+    videoObserver.observe(video, { attributes: true, attributeFilter: ['style', 'class'] });
+
+    // Also trigger on window resize and fullscreen change
+    window.addEventListener('resize', ensureJassubSize);
+    document.addEventListener('fullscreenchange', () => {
+      setTimeout(ensureJassubSize, 100); // Small delay for fullscreen transition
+    });
+
+    // Initial check in case video is already visible
+    setTimeout(ensureJassubSize, 100);
+
     return;
   } catch (error) {
     console.warn('[Subtitle] Failed to load JASSUB:', error.message);
@@ -1324,7 +1527,7 @@ const originalLoadCurrentVideo = loadCurrentVideo;
 loadCurrentVideo = function () {
   if (currentPlaylist.videos.length === 0 || currentPlaylist.currentIndex < 0) {
     waitingMessage.style.display = 'block';
-    video.style.display = 'none';
+    video.style.opacity = '0.001';
     imageDisplay.style.display = 'none';
     currentMediaIsImage = false;
     return;
@@ -1360,7 +1563,7 @@ loadCurrentVideo = function () {
     currentMediaIsImage = true;
 
     // Hide video, show image
-    video.style.display = 'none';
+    video.style.opacity = '0.001';
     video.pause();
 
     // Check for BSL-S² local playback
@@ -1400,11 +1603,11 @@ loadCurrentVideo = function () {
       showTemporaryMessage('🎵 Playing Audio', 3000);
     };
 
-    video.style.display = 'none';
+    video.style.opacity = '0.001';
   } else {
     imageDisplay.style.display = 'none';
     mediaPlaceholder.style.display = 'none';
-    video.style.display = 'block';
+    video.style.opacity = '1';
   }
 
   // Check for BSL-S² local playback
@@ -1456,7 +1659,7 @@ loadCurrentVideo = function () {
       }, 1000);
     } else {
       waitingMessage.style.display = 'block';
-      video.style.display = 'none';
+      video.style.opacity = '0.001';
       showTemporaryMessage('Failed to load video. Please check file format.', 5000);
     }
   };

@@ -1471,6 +1471,21 @@ app.use('/media', express.static(path.join(ROOT_DIR, 'media')));
 app.use('/tracks', express.static(TRACKS_DIR));
 app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
+app.use('/font', express.static(path.join(__dirname, 'font')));
+
+// API to list available fonts
+app.get('/api/fonts', (req, res) => {
+  const fontDir = path.join(__dirname, 'font');
+  fs.readdir(fontDir, (err, files) => {
+    if (err) {
+      console.error('Error listing fonts:', err);
+      return res.json([]);
+    }
+    // Filter for common font extensions
+    const fontFiles = files.filter(f => /\.(otf|ttf|woff|woff2)$/i.test(f));
+    res.json(fontFiles);
+  });
+});
 // JASSUB library (libass WebAssembly wrapper for ASS subtitles)
 app.use('/jassub', express.static(path.join(__dirname, 'node_modules/jassub/dist')));
 app.use('/rvfc-polyfill', express.static(path.join(__dirname, 'node_modules/rvfc-polyfill')));
